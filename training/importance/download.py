@@ -45,7 +45,9 @@ def extract_nested(archive: Path, out: Path, tag: str = "", depth: int = 0) -> i
     kept = 0
     scratch = paths.scratch_dir("downloads") / f"nested_{depth}"
     scratch.mkdir(parents=True, exist_ok=True)
-    if zipfile.is_zipfile(archive):
+    # Choose the reader by extension: zipfile.is_zipfile() is True for a tar that happens to END with an
+    # embedded zip (this tar does), which would silently read only that inner zip.
+    if archive.name.lower().endswith(".zip"):
         zf = zipfile.ZipFile(archive)
         entries = [(i.filename, i.file_size, lambda i=i: zf.open(i)) for i in zf.infolist() if not i.is_dir()]
     else:
