@@ -167,3 +167,8 @@ Format:
 - Next: the demo. Optional: add the APP_PASSWORD Colab Secret and rerun the start cell. Warm generate sits right at the 30 s target. Beat This! comes back by itself if its host recovers (the checkpoint is then copied to Drive).
 - Blockers: none.
 - Results: see the 19:03 entry above and docs/RESULTS.md.
+
+## 2026-10-27 19:39 ET | Keshav | app password on | branch main
+- Done: APP_PASSWORD Colab Secret added; app restarted with the start cell and login is enforced (username `montage`; unauthenticated config/API requests get 401). New link printed in Colab and saved to jobs/keshav/app.url.
+- Next: the demo.
+- Blockers: none.
