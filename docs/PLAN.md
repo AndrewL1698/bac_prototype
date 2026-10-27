@@ -35,11 +35,11 @@ Assign people to tracks here (proposed; swap if you prefer):
 ## Phases
 
 Day 1
-- [ ] **0. Setup and Colab ops** (`spec/00_setup.md`)
-  - [ ] scaffold: pyproject, requirements, config loader, paths, types, log, `test_repo_hygiene.py`
-  - [ ] job runner + status, `colab_bootstrap.py`, `smoke_models.py`
-  - [ ] fixtures generator; pytest green
-  - [ ] Colab connected, bootstrapped, GPU verified
+- [x] **0. Setup and Colab ops** (`spec/00_setup.md`) (merged 2026-10-26; downloads are Track B)
+  - [x] scaffold: pyproject, requirements, config loader, paths, types, log, `test_repo_hygiene.py`
+  - [x] job runner + status, `colab_bootstrap.py`, `smoke_models.py`
+  - [x] fixtures generator; pytest green
+  - [x] Colab connected, bootstrapped, GPU verified
   - [ ] background downloads started: DEAM, SumMe/TVSum
 - [ ] **1. Ingest and candidates** (`spec/01_ingest_candidates.md`)
 - [ ] **2. Music analysis**, heuristic emotion (`spec/02_music.md`)
@@ -61,7 +61,7 @@ Day 2
 
 | Phase | Person | Branch | Started (ET) | Notes |
 |---|---|---|---|---|
-| 0 (scaffold, job runner, fixtures) | Keshav | phase-0-setup | 2026-10-26 21:45 | Track B can start downloads once job runner is on main |
+| 1 (ingest, candidates) | Keshav | phase-1-ingest | 2026-10-26 23:20 | |
 
 ## Decisions
 
@@ -69,6 +69,13 @@ Day 2
 
 - 2026-10-26 | Keshav | Output is 16:9 1080p; portrait/square media uses blurred-background fill; near-16:9 media is face-aware cropped when the crop loses <= 20% | demo looks consistent and never crops heads
 - 2026-10-26 | Keshav | Director = user's free-text brief + notes, compiled by Claude (Haiku 5.5, structured outputs) into an EditPlan; rule-based fallback | user acts as director, system does the rest
+- 2026-10-26 | Keshav | Colab bootstrap runs via `%run scripts/colab_bootstrap.py` (not `!python`) | Drive mount and Secrets only work inside the notebook kernel
+- 2026-10-26 | Keshav | Colab Secrets are only released to cells run from the Colab UI, not to cells run remotely through colab-mcp. Bootstrap takes `--user` and keeps values a UI run saved in `/content/montage_env.sh` | remote runs time out on `userdata.get`
+- 2026-10-26 | Keshav | Requirements: pin packages Colab does not ship (open_clip 3.3.0, gradio 6.30.0, anthropic 2.3.0, beat-this 1.1.0, scenedetect 0.7.2, ...); lower bounds for Colab-shipped ones; no opencv wheel (Colab ships opencv 5.0 with FaceDetectorYN) | pinning Colab's own packages forces reinstalls that break CUDA/numpy
+- 2026-10-26 | Keshav | First requirements install runs as background job `pip_install` | keeps the bootstrap cell under ~25 s
+- 2026-10-26 | Keshav | Repo-hygiene secret check matches a prefix plus a realistic token body (e.g. `sk-ant-` + 20 chars), not the bare prefix | CLAUDE.md itself mentions the prefixes
+- 2026-10-26 | Keshav | CLIP ViT-L-14 with OpenAI weights loads with `force_quick_gelu=True` | open_clip's plain ViT-L-14 config omits QuickGELU; without it embeddings (and the LAION aesthetic head) are off
+- 2026-10-26 | Keshav | Colab runtime is Python 3.13, torch 2.11/cu130, transformers 5.20; MERT-v1-95M fails to load under transformers 5.20 (smoke test). Track B: find a working transformers pin for MERT | recorded for 9B
 - 2026-10-26 | Keshav | V-JEPA not used in v1 (no text alignment; photos dominate; tiny training set); possible later ablation | scope and timeline
 
 ## Setup checklist
@@ -81,7 +88,7 @@ Shared
 
 Keshav
 - [x] Push access to the repo; local clone; `uv` installed
-- [ ] Colab Secrets: `ANTHROPIC_API_KEY`, `MONTAGE_USER=keshav`
+- [x] Colab Secrets: `ANTHROPIC_API_KEY`, `MONTAGE_USER=keshav`
 - [ ] Demo album in `montage_data/demo/<album>/`, songs in `montage_data/demo/songs/`
 
 Andrew

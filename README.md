@@ -10,7 +10,7 @@ Prototype for the BAC project: an **AI music video editor**. Upload 30-80 photos
 
 _Keep this list current. Update it when a phase merges to `main`._
 
-- Specs and plan only. Implementation starts at Phase 0.
+- **Phase 0 (scaffold):** config (`montage.config`, dotted `--set` overrides), data contracts (`montage.types`), shared-Drive paths with atomic writes, background jobs (`scripts/run_job.py`, `scripts/job_status.py`), Colab bootstrap, synthetic test media (`scripts/make_fixtures.py`), model smoke tests (`scripts/smoke_models.py`: CLIP, LAION aesthetic, Beat This!, YuNet, Claude API, FFmpeg pass; MERT pending), `pytest -q` green.
 
 ## How it works (one paragraph)
 
@@ -23,11 +23,12 @@ _Available after Phase 8._
 1. Open a new Colab notebook, Runtime -> Change runtime type -> **A100 GPU**.
 2. In the key icon (Secrets) add `ANTHROPIC_API_KEY` (optional; without it the director uses rules) and `MONTAGE_USER` (your name, lowercase). Enable notebook access for both.
 3. Make sure the shared `montage_data` Drive folder is in your My Drive (see "Data and secrets").
-4. Run one cell:
+4. Run one cell **from the Colab UI** (Secrets are only readable from cells you run yourself):
    ```
-   !git clone -q https://github.com/AndrewL1698/bac_prototype /content/bac_prototype 2>/dev/null; python /content/bac_prototype/scripts/colab_bootstrap.py
+   !git clone -q https://github.com/AndrewL1698/bac_prototype /content/bac_prototype 2>/dev/null
+   %run /content/bac_prototype/scripts/colab_bootstrap.py --branch main
    ```
-   Approve the Drive and Secrets prompts. It prints GPU, FFmpeg, and API-key status.
+   Approve the Drive and Secrets prompts. It prints GPU, FFmpeg, API-key status, and the first time starts a background `pip_install` job (check with `!python scripts/job_status.py pip_install`). Later remote runs (Claude Code via colab-mcp) reuse the saved settings; pass `--user <you>` if needed.
 5. Start the app in the background and get the link:
    ```
    %cd /content/bac_prototype
