@@ -7,6 +7,10 @@ from pathlib import Path
 
 import pytest
 
+# Local Windows/conda: numpy (MKL) and torch ship different OpenMP runtimes; once a test imports
+# torch, the next BLAS call aborts the interpreter. Colab is unaffected.
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+
 REPO = Path(__file__).resolve().parents[1]
 FIXTURES = REPO / "tests" / "fixtures"
 
