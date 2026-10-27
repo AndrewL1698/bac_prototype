@@ -45,7 +45,7 @@ Day 1
 - [x] **2. Music analysis**, heuristic emotion (`spec/02_music.md`)
 - [x] **3. Visual features, tags, heuristic importance, dedup** (`spec/03_visual_features.md`, `spec/04_importance.md` heuristic part)
 - [x] **4. Director: rule-based fallback + plan compilation** (`spec/05_director.md` sections 1-4)
-- [ ] **5. Slots, costs, beam search, EDL** (`spec/06_planner.md`)
+- [x] **5. Slots, costs, beam search, EDL** (`spec/06_planner.md`)
 - [ ] **6. Render**: preview + export, framing, Ken Burns (`spec/07_render.md`)
 - [ ] **7. Pipeline + CLI** end to end on fixtures and one real album (`spec/08_app.md` section 1)
 - [ ] **8. Gradio app v1** (`spec/08_app.md` sections 2-4)
@@ -61,7 +61,7 @@ Day 2
 
 | Phase | Person | Branch | Started (ET) | Notes |
 |---|---|---|---|---|
-| 5 (slots, costs, beam search, EDL) | Keshav | phase-5-planner | 2026-10-27 01:20 | |
+| 6 (render) | Keshav | phase-6-render | 2026-10-27 02:00 | |
 
 ## Decisions
 
@@ -82,6 +82,8 @@ Day 2
 - 2026-10-27 | Keshav | Tags and mood are computed from candidate embeddings at load time using cached text embeddings (one shared npz of CLIP text embeddings on Drive), not stored per asset | changing the tag vocabulary or mood prompts never re-runs the image encoder
 - 2026-10-27 | Keshav | Dedup: inside a cluster, the first window of each video keeps the cluster and its other windows become singletons | guarantees windows of one video never share a cluster even in mixed clusters
 - 2026-10-27 | Keshav | Rule-based vibe query is the brief minus its avoid/length clauses (not the raw brief) | the raw brief would pull CLIP toward things the director asked to skip
+- 2026-10-27 | Keshav | Framing keeps max_crop_loss 0.2 (4:3 photos -> fill_blur, 2.2:1 video -> crop), contradicting spec 07's table on those two rows | the table is internally inconsistent; the PLAN decision wins until Keshav decides otherwise
+- 2026-10-27 | Keshav | Video crop placement uses the candidate's face center from features, passed to the renderer as a side table (not in the EDL schema) | EDL schema stays unchanged
 
 ## Setup checklist
 
