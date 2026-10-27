@@ -56,12 +56,14 @@ Day 2
 - [ ] **10A. Importance ranker** (SumMe/TVSum) trained + plugged in (`spec/10_train_importance.md`)
 - [ ] **10B. (optional) CUFED**, only if 9A-10A are done and more than 4 h remain
 - [ ] **11. Evaluation, naive-cut compare, demo mode, backups, DEMO.md, RESULTS.md** (`spec/11_eval_demo.md`)
+  - [x] demo parts (Track A): demo mode, backups, Rate tab + vote analysis, DEMO.md (merged 2026-10-27; real-album prep run waits for the demo album)
+  - [ ] evaluation parts (Track B): eval grid, metrics, render check, report, RESULTS.md
 
 ## Current work
 
 | Phase | Person | Branch | Started (ET) | Notes |
 |---|---|---|---|---|
-| 11 (demo parts: demo mode, Rate tab, DEMO.md) | Keshav | wip-phase-11-demo | 2026-10-27 11:45 | eval grid/metrics/report stay with Track B |
+| _(none: Keshav's Track A phases are merged)_ | | | | |
 
 ## Decisions
 
@@ -87,6 +89,7 @@ Day 2
 - 2026-10-27 | Keshav | App/CLI user errors raise gr.Error / exit 2 with the friendly message (spec said gr.Warning) | a Warning toast does not stop the handler or reach gradio_client, so the error path could not be tested
 - 2026-10-27 | Keshav | Beat snapping uses error diffusion (remainder carried to the next shot, clipped to +/-0.5 in log2) | snapping to 1/2/4/8 alone made pacing changes below a factor of 2 invisible
 - 2026-10-27 | Keshav | A whole-cut speed note shifts global pacing and every explicit section pacing by the same step; if the LLM revision leaves pacing unchanged, the rule step (+/-0.4) is applied | section pacing overrides global pacing, so a global-only change could leave the cut unchanged
+- 2026-10-27 | Keshav | The live vote (eval/vote.py) and Rate tab are built with the demo parts of phase 11 (Track A); eval grid/metrics/report stay with Track B | the vote is part of the demo flow
 
 ## Setup checklist
 

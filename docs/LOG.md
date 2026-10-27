@@ -100,3 +100,11 @@ Format:
 - Done: tests on Colab 17/17: mocked fallbacks (timeout, refusal, max_tokens, bad JSON, wrong-case enums), 3 live briefs valid, plan source llm + LLM editor's note, "faster" 36 -> 39 shots, "lose the shot at 0:05" removes that asset, pin forces inclusion.
 - Next: phase 11 demo parts (branch `wip-phase-11-demo`: demo mode, Rate tab, DEMO.md).
 - Blockers: `montage_data/demo/` still empty (needs Keshav's album + songs).
+
+## 2026-10-27 12:10 ET | Keshav | phase 11 (demo parts) | branch wip-phase-11-demo (merged)
+- Done: `montage/app/demo_mode.py` (`--prepare` warms song and album caches; per album generates + exports a 1080p backup and a naive-cut backup to `demo/backups/`; pre-renders the vote pair to `demo/vote/` + `pairs.json`; times a warm generate; prints a readiness checklist: GPU, Claude key, emotion/ranker weights, Beat This! checkpoint, backups, vote pairs, warm time, app URL). Per-album `brief.txt` and optional `song.txt`. `montage/eval/vote.py` (one CSV per user under `eval/votes/`, exact binomial test, Wilson 95% interval, `python -m montage.eval.vote --analyze`). App Rate tab (Load a pair, left/right order randomized, Left better / Tie / Right better, one vote per loaded pair, live tally). `docs/DEMO.md` run-of-show with the app's real button names, pre-demo checklist, and fallback table.
+- Done: Beat This! checkpoint is now cached on Drive (`weights/beat_this-final0.ckpt`) after any successful download and preferred on load; a load failure is remembered per process.
+- Tests on Colab: demo prepare on the fixture album (backups + vote pair written, warm generate 16.7 s < 30 s), vote analysis (15/5/2 -> 0.75, correct binomial p), Rate tab via gradio_client, plus the earlier app tests.
+- Next: Keshav: put the demo album + songs on Drive, then run `demo_mode --prepare` as a job and start the `app` job (see docs/DEMO.md). Track B: eval grid, metrics, report (spec 11 sections 1-4) and RESULTS.md.
+- Blockers: Beat This! checkpoint host (cloud.cp.jku.at) returned HTTP 500 today, so fresh runtimes use librosa beats until it recovers once (then the Drive copy is used forever). `montage_data/demo/` still empty.
+- Heads-up (Andrew): `montage/eval/vote.py` is in place (spec 11 section 5); the eval grid/metrics/report modules in `montage/eval/` are still yours.
