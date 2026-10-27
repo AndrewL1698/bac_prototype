@@ -19,6 +19,7 @@ _Keep this list current. Update it when a phase merges to `main`._
 - **Phase 6 (render):** `montage.render.assemble.render_edl(edl, assets, song_path, preview)` renders frame-exact 720p previews or 1080p exports (Ken Burns photos, face-aware crop or blurred fill for odd aspect ratios, HDR tonemapping), muxes the song excerpt, and verifies frame and audio counts.
 - **Phase 7 (pipeline + CLI):** `python -m montage.cli generate --media DIR --song FILE --brief "..."` (and `recut --session ID --note ...`, `export --run ID`) runs the whole thing; outputs land in `montage_data/runs/<run_id>/` (preview.mp4, edl.json, plan.json, curves.png, storyboard.jpg).
 - **Phase 8 (Gradio app):** `python -m montage.app.gradio_app --share` (as job `app` on Colab): upload media + song + brief -> beat-synced preview, editor's note, plan, storyboard with why-this-shot and pin/exclude, notes + Recut, Export 1080p, under-the-hood curves/timings, naive-cut comparison. Day 1 uses fallbacks only (rule-based director).
+- **Phase 9A (LLM director):** with `ANTHROPIC_API_KEY` set, Claude (claude-haiku-5-5, structured outputs) turns the brief into the edit plan, revises it from notes ("faster", "more of the beach", "lose the shot at 0:12"), and writes the editor's note; any failure falls back to the rules and the status line says so. Optional thumbnail contact sheet (off by default).
 
 ## How it works (one paragraph)
 

@@ -51,7 +51,7 @@ Day 1
 - [x] **8. Gradio app v1** (`spec/08_app.md` sections 2-4)
 
 Day 2
-- [ ] **9A. LLM director**, notes/recut, pin/exclude, editor's note (`spec/05_director.md` sections 5-8, `spec/08_app.md` section 5)
+- [x] **9A. LLM director**, notes/recut, pin/exclude, editor's note (`spec/05_director.md` sections 5-8, `spec/08_app.md` section 5)
 - [ ] **9B. DEAM emotion head** trained + plugged in (`spec/09_train_emotion.md`)
 - [ ] **10A. Importance ranker** (SumMe/TVSum) trained + plugged in (`spec/10_train_importance.md`)
 - [ ] **10B. (optional) CUFED**, only if 9A-10A are done and more than 4 h remain
@@ -61,7 +61,7 @@ Day 2
 
 | Phase | Person | Branch | Started (ET) | Notes |
 |---|---|---|---|---|
-| 9A (LLM director, notes, editor's note) | Keshav | phase-9a-llm | 2026-10-26 22:50 | built; open: faster note must add shots. Phase 11 demo drafts on wip-phase-11-demo |
+| 11 (demo parts: demo mode, Rate tab, DEMO.md) | Keshav | wip-phase-11-demo | 2026-10-27 11:45 | eval grid/metrics/report stay with Track B |
 
 ## Decisions
 
@@ -85,6 +85,8 @@ Day 2
 - 2026-10-27 | Keshav | Framing keeps max_crop_loss 0.2 (4:3 photos -> fill_blur, 2.2:1 video -> crop), contradicting spec 07's table on those two rows | the table is internally inconsistent; the PLAN decision wins until Keshav decides otherwise
 - 2026-10-27 | Keshav | Video crop placement uses the candidate's face center from features, passed to the renderer as a side table (not in the EDL schema) | EDL schema stays unchanged
 - 2026-10-27 | Keshav | App/CLI user errors raise gr.Error / exit 2 with the friendly message (spec said gr.Warning) | a Warning toast does not stop the handler or reach gradio_client, so the error path could not be tested
+- 2026-10-27 | Keshav | Beat snapping uses error diffusion (remainder carried to the next shot, clipped to +/-0.5 in log2) | snapping to 1/2/4/8 alone made pacing changes below a factor of 2 invisible
+- 2026-10-27 | Keshav | A whole-cut speed note shifts global pacing and every explicit section pacing by the same step; if the LLM revision leaves pacing unchanged, the rule step (+/-0.4) is applied | section pacing overrides global pacing, so a global-only change could leave the cut unchanged
 
 ## Setup checklist
 

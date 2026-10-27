@@ -93,3 +93,10 @@ Format:
 - Next: fix "faster -> more shots" (Claude raised pacing 0 -> 0.3; the cut stayed at 32 shots), merge 9A, then the demo parts of 11.
 - Blockers: `montage_data/demo/` has no album/songs yet (Keshav). MERT does not load under Colab's transformers 5.20 (Track B, 9B).
 - Heads-up: the times on tonight's phase 1-8 entries above were estimated and ran ahead of the clock (some say 2026-10-27). All of that work happened on 2026-10-26 between about 21:30 and 23:05 ET.
+
+## 2026-10-27 11:45 ET | Keshav | phase 9A | branch phase-9a-llm (merged)
+- Done: Claude director (`director/llm.py`, `schema.py`, `prompts.py`): `claude-haiku-5-5` with structured outputs (`messages.create` + `output_config` json_schema from `anthropic.transform_schema`, effort low), enum lowercasing, repair (unknown ids dropped, pacing/energy clamped, length 0 or 45-60, <= 6 queries of <= 8 words), one retry then rules. LLM notes (`revise_from_llm`) and LLM editor's note (`note_from_llm`); optional thumbnail contact sheet (only when `director.send_thumbnails` / the app toggle is on). Pins/excludes already wired through `recut`.
+- Done: two fixes for "faster" notes. (1) Error-diffusion snapping in `planning/slots.py`: shots still snap to 1/2/4/8 beats, but the average follows pacing smoothly. (2) A whole-cut speed note moves global pacing AND every explicit section pacing (in the rules and in Claude's revise instructions), with a guard that applies the rule step if Claude leaves pacing unchanged. Root cause on the test album: Claude had set intro/outro pacing -0.5 from "slower at the start", which overrides the global value.
+- Done: tests on Colab 17/17: mocked fallbacks (timeout, refusal, max_tokens, bad JSON, wrong-case enums), 3 live briefs valid, plan source llm + LLM editor's note, "faster" 36 -> 39 shots, "lose the shot at 0:05" removes that asset, pin forces inclusion.
+- Next: phase 11 demo parts (branch `wip-phase-11-demo`: demo mode, Rate tab, DEMO.md).
+- Blockers: `montage_data/demo/` still empty (needs Keshav's album + songs).
