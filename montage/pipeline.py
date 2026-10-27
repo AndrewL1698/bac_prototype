@@ -155,6 +155,11 @@ def director_context(s: Session, st: State, plan: EditPlan | None = None, edl: E
            "tag_vocab": context.allowed_queries_hint(), "asset_ids": [a.id for a in st.media.assets]}
     if edl is not None:
         ctx["edl_summary"] = context.edl_summary(edl, st.features.table.tags)
+    if config.get_config().director.send_thumbnails:
+        try:
+            ctx["contact_sheet"] = context.contact_sheet(st.media.assets, st.media.candidates, st.importance.final)
+        except Exception as e:  # noqa: BLE001  optional
+            log.warning("contact sheet failed: %s", e)
     return ctx
 
 
