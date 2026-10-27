@@ -4,13 +4,13 @@
 On Colab start it through the job runner: scripts/run_job.py --name app -- python -m montage.app.gradio_app --share
 """
 
-from __future__ import annotations
-
 import argparse
 import functools
 import json
 import traceback
 from pathlib import Path
+
+import gradio as gr
 
 from montage import paths
 from montage.log import get_logger
@@ -71,8 +71,6 @@ def plan_markdown(plan, profile=None) -> str:
 
 
 def build_app():
-    import gradio as gr
-
     from montage import pipeline
     from montage.app.storyboard import gallery_items
 

@@ -120,15 +120,18 @@ def parse_env_file(path: str | Path) -> dict[str, str]:
 
 
 def load_colab_env(path: str | Path = COLAB_ENV_FILE) -> dict[str, str]:
-    """Load /content/montage_env.sh into os.environ (no-op if missing). Returns what was loaded."""
-    env = parse_env_file(path)
-    for k, v in env.items():
+    """Load /content/montage_env.sh into os.environ (no-op if missing). Variables already set in the
+    environment win (tests and callers can point at another DATA_ROOT/user). Returns what was applied."""
+    applied = {}
+    for k, v in parse_env_file(path).items():
         if k == "PATH":
             cur = os.environ.get("PATH", "")
-            os.environ["PATH"] = v.replace("$PATH", cur) if "$PATH" in v else v
-        else:
-            os.environ[k] = v
-    return env
+            new = v.replace("$PATH", cur) if "$PATH" in v else v
+            if new != cur:
+                os.environ["PATH"] = applied[k] = new
+        elif k not in os.environ:
+            os.environ[k] = applied[k] = v
+    return applied
 
 
 def __getattr__(name: str):
