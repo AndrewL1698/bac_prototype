@@ -61,7 +61,7 @@ Day 2
 
 | Phase | Person | Branch | Started (ET) | Notes |
 |---|---|---|---|---|
-| _(none yet)_ | | | | |
+| 0 (scaffold, job runner, fixtures) | Keshav | phase-0-setup | 2026-10-26 21:45 | Track B can start downloads once job runner is on main |
 
 ## Decisions
 
@@ -76,7 +76,7 @@ Day 2
 Shared
 - [x] Spec pack committed on `main` (Keshav, 2026-10-26)
 - [x] Drive folder `montage_data` created in Keshav's My Drive with `demo/`, `demo/songs/`, `eval/albums/`, `eval/songs/`
-- [ ] colab-mcp registered for Claude Code at project scope: Keshav runs the `claude mcp add --scope project` command from `KICKOFF.md` step 4 and commits `.mcp.json` and `.claude/settings.json` (each person then approves the server once)
+- [x] colab-mcp registered for Claude Code at project scope: Keshav runs the `claude mcp add --scope project` command from `KICKOFF.md` step 4 and commits `.mcp.json` and `.claude/settings.json` (each person then approves the server once)
 - [ ] `montage_data` shared with Andrew (Editor); Andrew adds a shortcut in My Drive
 
 Keshav
