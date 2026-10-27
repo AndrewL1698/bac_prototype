@@ -1,4 +1,5 @@
-"""Copy a demo-sized subset of a large album: the shortest videos plus photos spread evenly over time.
+"""Copy a demo-sized subset of a large album: the longest videos up to --max-video-s (more footage per clip;
+phone albums are full of 2-3 s live-photo snippets) plus photos spread evenly over time.
 
     python scripts/run_job.py --name pick -- python scripts/pick_subset.py --src "DIR" --dest "DIR" [--n 60] [--max-videos 20]
 
@@ -22,10 +23,12 @@ from montage import jobs, paths  # noqa: E402
 from montage.ingest.assets import _probe_one, collect  # noqa: E402
 
 
-def pick(items: list[tuple[Path, dict]], n: int, max_videos: int, min_video_s: float = 2.0) -> list[Path]:
+def pick(items: list[tuple[Path, dict]], n: int, max_videos: int, min_video_s: float = 2.0,
+         max_video_s: float = 60.0) -> list[Path]:
     """items: (path, probe dict with kind, duration, taken_at). Returns the chosen paths in time order."""
-    videos = sorted((x for x in items if x[1]["kind"] == "video" and (x[1].get("duration") or 0) >= min_video_s),
-                    key=lambda x: x[1]["duration"])[:max_videos]
+    videos = sorted((x for x in items if x[1]["kind"] == "video"
+                     and min_video_s <= (x[1].get("duration") or 0) <= max_video_s),
+                    key=lambda x: -x[1]["duration"])[:max_videos]
     photos = sorted((x for x in items if x[1]["kind"] == "photo"), key=lambda x: (x[1].get("taken_at") or "", x[0].name))
     k = min(len(photos), max(0, n - len(videos)))
     idx = np.unique(np.round(np.linspace(0, len(photos) - 1, k)).astype(int)) if k else []
@@ -40,6 +43,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--dest", required=True)
     ap.add_argument("--n", type=int, default=60)
     ap.add_argument("--max-videos", type=int, default=20)
+    ap.add_argument("--max-video-s", type=float, default=60.0)
     args = ap.parse_args(argv)
     src, dest = Path(args.src), Path(args.dest)
     files = collect([src])
@@ -54,7 +58,7 @@ def main(argv: list[str] | None = None) -> int:
 
     with ThreadPoolExecutor(max_workers=8) as ex:
         items = list(ex.map(probe, files))
-    chosen = pick(items, args.n, args.max_videos)
+    chosen = pick(items, args.n, args.max_videos, max_video_s=args.max_video_s)
     dest.mkdir(parents=True, exist_ok=True)
     used: set[str] = set()
     for i, p in enumerate(chosen):
