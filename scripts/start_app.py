@@ -59,10 +59,12 @@ def main(argv: list[str] | None = None) -> int:
         print(".", end="", flush=True)
         time.sleep(2)
     print()
-    pw = "on" if os.environ.get("MONTAGE_APP_PASSWORD") else "off (add Colab Secret APP_PASSWORD to turn it on)"
+    if os.environ.get("MONTAGE_APP_PASSWORD"):
+        pw = f"on (username: {os.environ.get('MONTAGE_APP_USER') or 'montage'}, password: your APP_PASSWORD secret)"
+    else:
+        pw = "off (add a Colab Secret named APP_PASSWORD and rerun this cell to turn it on)"
     if url_file.exists():
-        print(f"APP LINK: {url_file.read_text().strip()}\npassword: {pw}; username: "
-              f"{os.environ.get('MONTAGE_APP_USER') or 'montage'}\nKeep this Colab tab open while you use the app.")
+        print(f"APP LINK: {url_file.read_text().strip()}\npassword: {pw}\nKeep this Colab tab open while you use the app.")
     else:
         print(f"Still starting. In a minute run: !python {REPO}/scripts/job_status.py app")
     return 0
