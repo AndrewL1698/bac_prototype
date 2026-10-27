@@ -52,7 +52,7 @@ Day 1
 
 Day 2
 - [x] **9A. LLM director**, notes/recut, pin/exclude, editor's note (`spec/05_director.md` sections 5-8, `spec/08_app.md` section 5)
-- [ ] **9B. DEAM emotion head** trained + plugged in (`spec/09_train_emotion.md`)
+- [x] **9B. DEAM emotion head** trained + plugged in (`spec/09_train_emotion.md`)
 - [ ] **10A. Importance ranker** (SumMe/TVSum) trained + plugged in (`spec/10_train_importance.md`)
 - [ ] **10B. (optional) CUFED**, only if 9A-10A are done and more than 4 h remain
 - [ ] **11. Evaluation, naive-cut compare, demo mode, backups, DEMO.md, RESULTS.md** (`spec/11_eval_demo.md`)
@@ -96,6 +96,7 @@ Day 2
 - 2026-10-27 | Keshav | Keshav takes over Track B (downloads, 9B, 10A, 11 evaluation) | Andrew is unavailable until the demo
 - 2026-10-27 | Keshav | DEAM comes from public Hugging Face mirrors (audio: herrjyj/herrjyj-deam-assets DEAM_audio.zip; dynamic 2 Hz annotations: Rehead/DEAM_continuous_annotations, annotation columns only), validated against the DEAM layout | the official host cvml.unige.ch does not respond (from Colab or locally); no Kaggle credentials
 - 2026-10-27 | Keshav | Optional app password via Colab Secret APP_PASSWORD (Gradio login, username montage); one-command start scripts/start_app.py waits up to 120 s for the link | anyone with a share link could otherwise use the app and the API key; the start cell is human-run, so a longer wait is fine
+- 2026-10-27 | Keshav | MERT layer outputs are captured with forward hooks when transformers returns no hidden_states (5.20 with MERT's remote code); revision pinned to 12af15f | keeps the pinned model working across transformers versions
 
 ## Setup checklist
 

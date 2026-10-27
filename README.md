@@ -22,6 +22,7 @@ _Keep this list current. Update it when a phase merges to `main`._
 - **Phase 9A (LLM director):** with `ANTHROPIC_API_KEY` set, Claude (claude-haiku-5-5, structured outputs) turns the brief into the edit plan, revises it from notes ("faster", "more of the beach", "lose the shot at 0:12"), and writes the editor's note; any failure falls back to the rules and the status line says so. Optional thumbnail contact sheet (off by default).
 - **Phase 11 (demo parts):** `python -m montage.app.demo_mode --prepare` (as a job) warms caches, renders 1080p and naive-cut backups to `montage_data/demo/backups/`, pre-renders the vote pair, times a warm generate, and prints a readiness checklist; the app's Rate tab collects blind A/B votes (`python -m montage.eval.vote --analyze`); run-of-show in [`docs/DEMO.md`](docs/DEMO.md).
 - **Demo media tools:** `scripts/pick_subset.py --src BIG_ALBUM --dest demo/<album> --n 60` copies a demo-sized subset (longest clips up to 60 s + photos spread over time); demo prep builds cached SDR proxies for HDR phone videos so warm generates stay under 30 s (28 s on the 60-item demo album).
+- **Phase 9B (music emotion):** a MERT-based head trained on DEAM (`weights/emotion_head.pt`) gives per-moment valence and arousal; test CCC 0.74 valence / 0.82 arousal. The app's status line shows `Emotion: MERT`.
 
 ## How it works (one paragraph)
 

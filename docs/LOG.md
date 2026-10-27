@@ -135,3 +135,10 @@ Format:
 - Next: DEAM + SumMe/TVSum downloads, then 9B and 10A training, then the eval grid.
 - Blockers: the official DEAM host (cvml.unige.ch) does not respond; using public Hugging Face mirrors instead (see PLAN Decisions).
 - Heads-up (Andrew): Track B is now being done by Keshav's session; please do not start the same phases without checking PLAN "Current work".
+
+## 2026-10-27 15:40 ET | Keshav | phase 9B | branch track-b (merged)
+- Done: DEAM downloaded from public Hugging Face mirrors (official host down): 1,802 songs with audio and 2 Hz valence/arousal annotations (15-45 s). MERT-v1-95M pinned to revision 12af15f; under transformers 5.20 its forward returns no hidden states, so `mert_window_features` records the 13 layer outputs with forward hooks. `training/emotion/{download_deam,extract_mert,dataset,train,evaluate}.py`; 1,802 feature shards in 6.6 min; training with early stopping (best epoch 1), evaluation vs predict-mean and a best-layer ridge probe; head deployed to `weights/emotion_head.pt` (shared head definition `montage.music.emotion.make_head`, so training and inference cannot drift).
+- Results: test CCC valence 0.738 / arousal 0.821 (ridge probe 0.707 / 0.818, predict-mean 0); full songs 0.383 / 0.525 (probe 0.419 / 0.543). Per-song arousal CCC about 0.1. Spot check: arousal rises in the loud middle section of `song_sections.wav` (-0.37 -> 0.25 -> -0.22); flat on a volume-only click track (MERT normalizes loudness).
+- Next: 10A (SumMe/TVSum archives extracting), then 11 evaluation.
+- Blockers: none.
+- Heads-up: new weights are live: `weights/emotion_head.pt`. Every app now reports `Emotion: MERT` and recomputes cached song analyses once (their emotion_source was heuristic). New config key `music.emotion.revision`.
