@@ -76,8 +76,8 @@ def test_recut_lose_shot(run):
     from montage import config
     s = pipeline.session_for_run(res.run_id)
     edl = pipeline.load_edl(s.runs[-1])
-    target = edl.shots[2]
-    t = int(target.start + 0.01)
+    target = next(sh for sh in edl.shots[1:] if sh.end - sh.start >= 1.5)
+    t = int((target.start + target.end) / 2)  # a whole second inside the target shot
     with config.override(OFF):
         r = pipeline.recut(s.session_id, note=f"lose the shot at 0:{t:02d}")
     assert target.asset_id not in {sh.asset_id for sh in pipeline.load_edl(r.run_id).shots}
