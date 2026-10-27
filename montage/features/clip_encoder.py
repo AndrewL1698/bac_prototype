@@ -29,7 +29,9 @@ def get_clip():
             import open_clip
             import torch
             cfg = get_config().features
-            model, _, preprocess = open_clip.create_model_and_transforms(cfg.clip_model, pretrained=cfg.clip_pretrained)
+            # OpenAI weights were trained with QuickGELU; open_clip's plain ViT-L-14 config omits it.
+            model, _, preprocess = open_clip.create_model_and_transforms(
+                cfg.clip_model, pretrained=cfg.clip_pretrained, force_quick_gelu=cfg.clip_pretrained == "openai")
             model.eval().to(device())
             if device() == "cuda":
                 model = model.half()
