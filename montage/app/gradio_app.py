@@ -8,7 +8,6 @@ import argparse
 import functools
 import json
 import traceback
-from pathlib import Path
 
 import gradio as gr
 
@@ -256,9 +255,12 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
     demo = build_app()
     demo.queue(default_concurrency_limit=1)
-    allowed = [str(paths.data_root()), str(paths.scratch()), str(Path("/content").resolve())]
+    # Serve only generated outputs (videos/plots in runs/, storyboard thumbnails). Never the whole Drive
+    # folder or /content: /content/montage_env.sh holds the API key and the share link is public.
+    allowed = [str(paths.data_root() / "runs"), str(paths.scratch_dir("thumbs"))]
+    blocked = [str(paths.COLAB_ENV_FILE), str(paths.data_root() / "sessions"), str(paths.data_root() / "jobs")]
     demo.launch(share=args.share, server_name="0.0.0.0", server_port=args.port, prevent_thread_lock=True,
-                allowed_paths=allowed, show_error=True)
+                allowed_paths=allowed, blocked_paths=blocked, show_error=True)
     url = getattr(demo, "share_url", None) or getattr(demo, "local_url", None) or f"http://127.0.0.1:{args.port}"
     paths.atomic_write(paths.jobs_dir() / "app.url", url + "\n")
     print(f"APP URL: {url}", flush=True)
