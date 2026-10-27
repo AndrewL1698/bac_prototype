@@ -41,3 +41,9 @@ Format:
 - Next: phase 2 (music analysis).
 - Blockers: none.
 - Heads-up: frames, thumbnails and proxies live on scratch (`/content/scratch/frames/<hash>/`, `thumbs/`); probe and scene results are cached on Drive under `cache/assets/` and `cache/scenes/`.
+
+## 2026-10-27 00:20 ET | Keshav | phase 2 | branch phase-2-music (merged)
+- Done: `montage.music`: load (librosa, FFmpeg fallback), beats (Beat This! `Audio2Beats` on GPU, librosa fallback with low-frequency downbeat phase, half/double mode), energy curves on the 2 Hz grid, structure (beat-sync MFCC+chroma, Foote novelty, peaks snapped to downbeats), emotion (heuristic arousal; MERT path ready), intensity, section labels, excerpt selection with hints, `build_profile` -> `MusicProfile`, `summarize`. Full analysis cached at `cache/music/<song_hash>.json` + `_grid.npz`. Phase 2 tests 17/17 on Colab, including Beat This! F >= 0.95 and librosa F >= 0.9 on 90/120/150 BPM clicks, both `song_sections.wav` boundaries, and a 3.5 min song analyzed in under 20 s.
+- Next: phase 3 (visual features, tags, heuristic importance, dedup).
+- Blockers: none.
+- Heads-up (Andrew, 9B): `montage/music/emotion.py` already has the shared helpers from spec 09: `make_windows(y24, times)` (5 s windows centered on each time, zero-padded) and `mert_window_features(windows)` -> (n, 13, 768) fp16, plus an `EmotionHead` loader matching the spec-09 architecture (reads `state_dict` from `weights/emotion_head.pt`). Import them in `training/emotion/extract_mert.py`; change the head loader if your checkpoint format differs. Cached analyses are recomputed automatically once the head file exists (emotion_source changes to `mert`).

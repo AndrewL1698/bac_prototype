@@ -42,7 +42,7 @@ Day 1
   - [x] Colab connected, bootstrapped, GPU verified
   - [ ] background downloads started: DEAM, SumMe/TVSum
 - [x] **1. Ingest and candidates** (`spec/01_ingest_candidates.md`)
-- [ ] **2. Music analysis**, heuristic emotion (`spec/02_music.md`)
+- [x] **2. Music analysis**, heuristic emotion (`spec/02_music.md`)
 - [ ] **3. Visual features, tags, heuristic importance, dedup** (`spec/03_visual_features.md`, `spec/04_importance.md` heuristic part)
 - [ ] **4. Director: rule-based fallback + plan compilation** (`spec/05_director.md` sections 1-4)
 - [ ] **5. Slots, costs, beam search, EDL** (`spec/06_planner.md`)
@@ -61,7 +61,7 @@ Day 2
 
 | Phase | Person | Branch | Started (ET) | Notes |
 |---|---|---|---|---|
-| 2 (music analysis) | Keshav | phase-2-music | 2026-10-26 23:45 | |
+| 3 (visual features, heuristic importance) | Keshav | phase-3-visual | 2026-10-27 00:20 | |
 
 ## Decisions
 
@@ -78,6 +78,7 @@ Day 2
 - 2026-10-26 | Keshav | Colab runtime is Python 3.13, torch 2.11/cu130, transformers 5.20; MERT-v1-95M fails to load under transformers 5.20 (smoke test). Track B: find a working transformers pin for MERT | recorded for 9B
 - 2026-10-26 | Keshav | V-JEPA not used in v1 (no text alignment; photos dominate; tiny training set); possible later ablation | scope and timeline
 - 2026-10-26 | Keshav | Exact duplicate files (same content hash) are skipped at ingest with a note; very short clips (<1 s usable) still give one candidate if >= 0.5 s | avoids wasting slots, keeps every clip usable
+- 2026-10-27 | Keshav | Energy curves average frames in 0.5 s bins centered on each grid time; MusicProfile.tempo is the detected tempo before half/double adjustment (beat_mode says which) | aligns with centered emotion windows; BPM shown to users matches the song
 
 ## Setup checklist
 
