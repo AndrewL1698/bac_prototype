@@ -63,7 +63,7 @@ Day 2
 
 | Phase | Person | Branch | Started (ET) | Notes |
 |---|---|---|---|---|
-| 0 downloads, 9B, 10A, 11 eval (Track B, taken over) | Keshav | track-b | 2026-10-27 14:45 | Andrew unavailable until the demo |
+| 10A, 11 eval (Track B, taken over) | Keshav | track-b | 2026-10-27 14:45 | 9B merged; 10A features job running; 11 code on track-b |
 | _(none: Keshav's Track A work is merged; demo ready)_ | | | | |
 
 ## Decisions

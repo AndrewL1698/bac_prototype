@@ -142,3 +142,9 @@ Format:
 - Next: 10A (SumMe/TVSum archives extracting), then 11 evaluation.
 - Blockers: none.
 - Heads-up: new weights are live: `weights/emotion_head.pt`. Every app now reports `Emotion: MERT` and recomputes cached song analyses once (their emotion_source was heuristic). New config key `music.emotion.revision`.
+
+## 2026-10-27 15:20 ET | Keshav | session end (Track B in progress) | branch track-b (not merged)
+- Done: 9B merged to main (emotion head live in weights/). On branch track-b (pushed, not merged): 10A code (h5 label mapping, pipeline window features, RankNet, 5-fold CV, selection, deploy) and 11 evaluation code (metrics, run_grid, render_check, report + figures); local tests green. SumMe/TVSum extracted: 24 SumMe + 50 TVSum videos; SumMe "Uncut_Evening_Flight" is damaged inside the published Zenodo archive (download md5 matches Zenodo), so 74 of 75 videos are mapped.
+- Running: Colab job vsum_feats (python -m training.importance.extract_clip), features for the 74 videos; resumable per video if the runtime is recycled.
+- Next: after vsum_feats, run the rank_train job (python -m training.importance.evaluate) to cross-validate and deploy the ranker; build the eval set (2 albums from the unused demo_source/Summer Trip items, 3 songs); run eval_grid and render_check; fill docs/RESULTS.md; merge track-b; rerun demo prep.
+- Blockers: none.
