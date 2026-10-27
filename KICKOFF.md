@@ -6,12 +6,12 @@ Repo: https://github.com/AndrewL1698/bac_prototype (public). Both collaborators 
 
 1. **Repo access.** Andrew adds the other person as a collaborator (Settings -> Collaborators) so both can push. Clone locally:
    `git clone https://github.com/AndrewL1698/bac_prototype`
-   Set your git name so logs attribute you: `git config user.name "Kesh"` (or "Andrew").
+   Set your git name so logs attribute you: `git config user.name "Keshav"` (or "Andrew").
 2. **Colab Secrets.** Open any Colab notebook, click the key icon, and add (enable notebook access for each):
    - `ANTHROPIC_API_KEY`: your own key (optional; without it the director uses rules)
-   - `MONTAGE_USER`: `kesh` or `andrew`
+   - `MONTAGE_USER`: `keshav` or `andrew`
    No GitHub token is needed: Colab only pulls, and the repo is public.
-3. **Shared Drive folder.** Kesh owns `My Drive/montage_data` (already created, with `demo/`, `demo/songs/`, `eval/albums/`, `eval/songs/`) and shares it with Andrew as Editor. Andrew: open "Shared with me", right-click `montage_data` -> Organize -> Add shortcut -> My Drive. Both must see it at `My Drive/montage_data`.
+3. **Shared Drive folder.** Keshav owns `My Drive/montage_data` (already created, with `demo/`, `demo/songs/`, `eval/albums/`, `eval/songs/`) and shares it with Andrew as Editor. Andrew: open "Shared with me", right-click `montage_data` -> Organize -> Add shortcut -> My Drive. Both must see it at `My Drive/montage_data`.
 4. **Claude Code + colab-mcp.** Use a **local** Claude Code session (Claude desktop app or `claude` CLI) opened on your clone of the repo. You need `uv` installed (`uvx` on PATH: `pip install uv` or `winget install astral-sh.uv`).
    - If the repo already has `.mcp.json` (someone committed it), just approve the `colab-mcp` server when Claude Code asks, then check with `/mcp`.
    - If not (first person only), run this once in a terminal in the repo folder, then commit and push the new `.mcp.json`:
@@ -30,7 +30,7 @@ During long jobs keep the Colab tab open and the laptop awake. When Claude Code 
 
 ## Spec pack
 
-Already committed on `main` (2026-10-26, Kesh). Tracks are proposed in `docs/PLAN.md` (Kesh: A, Andrew: B); swap there if you prefer.
+Already committed on `main` (2026-10-26, Keshav). Tracks are proposed in `docs/PLAN.md` (Keshav: A, Andrew: B); swap there if you prefer.
 
 ## Start prompt (first session for each person)
 

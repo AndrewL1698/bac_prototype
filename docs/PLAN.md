@@ -29,7 +29,7 @@ A live workshop demo of the AI music video editor in two days.
 Phase 0 is shared: whoever starts first builds the scaffold (config, types, paths, jobs, fixtures) and merges it fast; the other starts dataset downloads as soon as the job runner is on `main`.
 
 Assign people to tracks here (proposed; swap if you prefer):
-- Track A: Kesh (demoing, so owns the app and demo flow)
+- Track A: Keshav (demoing, so owns the app and demo flow)
 - Track B: Andrew
 
 ## Phases
@@ -67,21 +67,21 @@ Day 2
 
 (append: `YYYY-MM-DD | who | decision | why`)
 
-- 2026-10-26 | Kesh | Output is 16:9 1080p; portrait/square media uses blurred-background fill; near-16:9 media is face-aware cropped when the crop loses <= 20% | demo looks consistent and never crops heads
-- 2026-10-26 | Kesh | Director = user's free-text brief + notes, compiled by Claude (Haiku 5.5, structured outputs) into an EditPlan; rule-based fallback | user acts as director, system does the rest
-- 2026-10-26 | Kesh | V-JEPA not used in v1 (no text alignment; photos dominate; tiny training set); possible later ablation | scope and timeline
+- 2026-10-26 | Keshav | Output is 16:9 1080p; portrait/square media uses blurred-background fill; near-16:9 media is face-aware cropped when the crop loses <= 20% | demo looks consistent and never crops heads
+- 2026-10-26 | Keshav | Director = user's free-text brief + notes, compiled by Claude (Haiku 5.5, structured outputs) into an EditPlan; rule-based fallback | user acts as director, system does the rest
+- 2026-10-26 | Keshav | V-JEPA not used in v1 (no text alignment; photos dominate; tiny training set); possible later ablation | scope and timeline
 
 ## Setup checklist
 
 Shared
-- [x] Spec pack committed on `main` (Kesh, 2026-10-26)
-- [x] Drive folder `montage_data` created in Kesh's My Drive with `demo/`, `demo/songs/`, `eval/albums/`, `eval/songs/`
-- [ ] colab-mcp registered for Claude Code at project scope: Kesh runs the `claude mcp add --scope project` command from `KICKOFF.md` step 4 and commits `.mcp.json` and `.claude/settings.json` (each person then approves the server once)
+- [x] Spec pack committed on `main` (Keshav, 2026-10-26)
+- [x] Drive folder `montage_data` created in Keshav's My Drive with `demo/`, `demo/songs/`, `eval/albums/`, `eval/songs/`
+- [ ] colab-mcp registered for Claude Code at project scope: Keshav runs the `claude mcp add --scope project` command from `KICKOFF.md` step 4 and commits `.mcp.json` and `.claude/settings.json` (each person then approves the server once)
 - [ ] `montage_data` shared with Andrew (Editor); Andrew adds a shortcut in My Drive
 
-Kesh
+Keshav
 - [x] Push access to the repo; local clone; `uv` installed
-- [ ] Colab Secrets: `ANTHROPIC_API_KEY`, `MONTAGE_USER=kesh`
+- [ ] Colab Secrets: `ANTHROPIC_API_KEY`, `MONTAGE_USER=keshav`
 - [ ] Demo album in `montage_data/demo/<album>/`, songs in `montage_data/demo/songs/`
 
 Andrew

@@ -96,7 +96,7 @@ Trained weights land in the shared `montage_data/weights/` and are picked up by 
 
 - **This repo is public.** Never commit API keys, tokens, photos, videos, songs, datasets, or weights. `.gitignore` blocks them and `tests/test_repo_hygiene.py` fails the test run if anything slips through.
 - **Secrets** live only in each person's Colab Secrets: `ANTHROPIC_API_KEY`, `MONTAGE_USER`.
-- **Shared data** lives in one Google Drive folder, `montage_data`, owned by Kesh and shared with Andrew (Editor). The other person adds a shortcut to it in My Drive, so both see `/content/drive/MyDrive/montage_data`. Layout:
+- **Shared data** lives in one Google Drive folder, `montage_data`, owned by Keshav and shared with Andrew (Editor). The other person adds a shortcut to it in My Drive, so both see `/content/drive/MyDrive/montage_data`. Layout:
   ```
   montage_data/
     demo/<album>/   demo/songs/   demo/backups/
