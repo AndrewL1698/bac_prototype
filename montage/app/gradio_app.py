@@ -26,7 +26,7 @@ def demo_albums() -> list[str]:
     d = paths.data_root() / "demo"
     if not d.exists():
         return []
-    return sorted(p.name for p in d.iterdir() if p.is_dir() and p.name not in ("songs", "backups")
+    return sorted(p.name for p in d.iterdir() if p.is_dir() and p.name not in ("songs", "backups", "vote")
                   and any(f.suffix.lower() in MEDIA_EXT for f in p.iterdir()))
 
 

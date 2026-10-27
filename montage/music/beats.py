@@ -15,14 +15,40 @@ _beat_this = None
 CALLS = {"beat_this": 0, "librosa": 0}
 
 
+CKPT_NAME = "beat_this-final0.ckpt"
+
+
+def checkpoint_on_drive():
+    from montage import paths
+    return paths.weights_dir() / CKPT_NAME
+
+
 def _get_beat_this():
+    """Loaded once per process. Prefers the checkpoint cached on Drive (weights/); after a successful
+    download it is copied there, so new runtimes do not depend on the checkpoint host. A failure is
+    remembered for the rest of the process (the librosa fallback takes over immediately)."""
     global _beat_this
     with _lock:
+        if _beat_this is False:
+            raise RuntimeError("Beat This! failed to load earlier in this process")
         if _beat_this is None:
+            import shutil
+            from pathlib import Path
+
             import torch
             from beat_this.inference import Audio2Beats
-            _beat_this = Audio2Beats(checkpoint_path="final0", device="cuda" if torch.cuda.is_available() else "cpu",
-                                     dbn=False)
+
+            from montage import paths
+            local = checkpoint_on_drive()
+            try:
+                _beat_this = Audio2Beats(checkpoint_path=str(local) if local.exists() else "final0",
+                                         device="cuda" if torch.cuda.is_available() else "cpu", dbn=False)
+            except Exception:
+                _beat_this = False
+                raise
+            hub = Path(torch.hub.get_dir()) / "checkpoints" / CKPT_NAME
+            if not local.exists() and hub.exists():
+                paths.atomic_write(local, lambda tmp: shutil.copyfile(hub, tmp))
         return _beat_this
 
 

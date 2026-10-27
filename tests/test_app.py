@@ -44,13 +44,13 @@ def app(fixtures, tmp_path_factory):
         pytest.fail("app did not start: " + (root / "app.log").read_text()[-2000:])
     print(f"app.url after {time.time() - t0:.1f}s")
     from gradio_client import Client
-    yield Client(f"http://127.0.0.1:{PORT}", verbose=False), fixtures
+    yield Client(f"http://127.0.0.1:{PORT}", verbose=False), fixtures, data
     proc.terminate()
     proc.wait(timeout=20)
 
 
 def test_generate_and_recut(app):
-    client, _ = app
+    client, _, _ = app
     out = client.predict(None, "fixtures_album", None, "song_sections.wav", "Colorful and fun, end on the sunset",
                          0, 0, "", False, "full", api_name="/generate")
     video, status, note, plan_md = out[0], out[1], out[2], out[3]
@@ -64,8 +64,26 @@ def test_generate_and_recut(app):
 
 
 def test_too_few_files(app):
-    client, fixtures = app
+    client, fixtures, _ = app
     from gradio_client import handle_file
     files = [handle_file(str(p)) for p in sorted(fixtures.glob("photo_0*.jpg"))[:3]]
     with pytest.raises(Exception, match="at least 10"):
         client.predict(files, "", None, "song_sections.wav", "", 0, 0, "", False, "full", api_name="/generate")
+
+
+def test_rate_tab(app):
+    import json
+    client, fixtures, data = app
+    vote = data / "demo" / "vote"
+    vote.mkdir(parents=True, exist_ok=True)
+    for name in ("p_full.mp4", "p_naive.mp4"):
+        shutil.copy(fixtures / "vid_static_landscape.mp4", vote / name)
+    (vote / "pairs.json").write_text(json.dumps([{"pair_id": "p", "a": "p_full.mp4", "a_system": "full",
+                                                  "b": "p_naive.mp4", "b_system": "naive"}]))
+    left, right, msg = client.predict(api_name="/load_pair")
+    assert left and right and "vote" in msg.lower()
+    out = client.predict("tester", api_name="/vote_left")
+    assert "Thanks" in out
+    rows = (data / "eval" / "votes" / "apptest.csv").read_text().splitlines()
+    assert len(rows) == 2 and rows[1].split(",")[1] == "tester"
+    assert "Already counted" in client.predict("tester", api_name="/vote_tie")

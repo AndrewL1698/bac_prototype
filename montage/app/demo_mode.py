@@ -122,6 +122,7 @@ def checklist(report: dict | None = None) -> list[str]:
         f"[{'x' if os.environ.get('ANTHROPIC_API_KEY') else ' '}] Claude API key (director: {'Claude' if os.environ.get('ANTHROPIC_API_KEY') else 'rules'})",
         f"[{'x' if (w / cfg.music.emotion.head_weights).exists() else ' '}] emotion head weights (else heuristic arousal)",
         f"[{'x' if (w / cfg.importance.ranker_weights).exists() else ' '}] importance ranker weights (else heuristic)",
+        f"[{'x' if (w / 'beat_this-final0.ckpt').exists() else ' '}] Beat This! checkpoint cached on Drive (else librosa beats)",
     ]
     for a in albums():
         b = demo_root() / "backups" / f"{a.name}.mp4"
