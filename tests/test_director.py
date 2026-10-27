@@ -53,7 +53,7 @@ def test_rules_parse():
     assert p.closing_query == "the sunset"
     assert p.target_length_s == 45
     assert p.source == "rules"
-    assert all("blurry" not in q for q in p.vibe_queries)
+    assert all("blurry" not in q and "end on" not in q for q in p.vibe_queries)
 
 
 def test_rules_more():

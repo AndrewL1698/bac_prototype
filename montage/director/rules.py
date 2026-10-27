@@ -51,10 +51,10 @@ def plan_from_rules(brief: str) -> EditPlan:
     m = LEN_RE.search(brief)
     target = float(min(cfg.music.excerpt.max_length_s, max(cfg.music.excerpt.min_length_s, int(m.group(1))))) if m else 0.0
 
-    # Vibe query: the brief minus directive clauses (avoid / open / close / length), so CLIP is not
-    # pulled toward things the director asked to skip.
+    # Vibe query: the brief minus directive clauses (avoid / open / close / length): skipped things must
+    # not attract CLIP, and opening/closing shots have their own queries.
     vibe_text = brief
-    for rx in (AVOID_RE, LEN_RE):
+    for rx in (AVOID_RE, OPEN_RE, CLOSE_RE, LEN_RE):
         vibe_text = rx.sub("", vibe_text)
     vibe_text = re.sub(r"\s*,\s*(,\s*)+", ", ", vibe_text).strip(" ,.;")
     queries = [_cap_words(vibe_text)] if vibe_text else []
