@@ -14,6 +14,7 @@ _Keep this list current. Update it when a phase merges to `main`._
 - **Phase 1 (ingest + candidates):** `montage.candidates.build_media(paths)` probes, orders, and validates uploads, extracts analysis frames/motion pairs/proxies in one FFmpeg pass per video, detects scenes, and makes photo + 3 s video-window candidates with thumbnails (all cached).
 - **Phase 2 (music):** `montage.music.profile.analyze_song(path)` gives beats/downbeats (Beat This!, librosa fallback), 2 Hz energy/intensity/arousal curves, section boundaries (cached by song hash); `montage.music.excerpt.choose_excerpt` + `build_profile` produce a whole-bar 45-60 s `MusicProfile`; `summarize` writes the director's song summary.
 - **Phase 3 (visual features + heuristic importance):** `montage.features.extract.extract(assets, candidates, frames)` gives CLIP embeddings, aesthetic, quality, motion/shake, faces, mood, tags, near-dup clusters per candidate (per-asset cache on Drive); `montage.importance.blend.importance(features)` gives rank-normalized importance (heuristic now, learned ranker blended automatically when its weights exist).
+- **Phase 4 (director, rules):** `montage.director.make_plan(brief)` turns the brief into an `EditPlan` (rule-based for now); `montage.director.apply.compile_plan` turns a plan into planner directives (section intents, pacing, target arousal, CLIP query scores, excludes/must-includes).
 
 ## How it works (one paragraph)
 

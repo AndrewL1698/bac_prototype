@@ -44,7 +44,7 @@ Day 1
 - [x] **1. Ingest and candidates** (`spec/01_ingest_candidates.md`)
 - [x] **2. Music analysis**, heuristic emotion (`spec/02_music.md`)
 - [x] **3. Visual features, tags, heuristic importance, dedup** (`spec/03_visual_features.md`, `spec/04_importance.md` heuristic part)
-- [ ] **4. Director: rule-based fallback + plan compilation** (`spec/05_director.md` sections 1-4)
+- [x] **4. Director: rule-based fallback + plan compilation** (`spec/05_director.md` sections 1-4)
 - [ ] **5. Slots, costs, beam search, EDL** (`spec/06_planner.md`)
 - [ ] **6. Render**: preview + export, framing, Ken Burns (`spec/07_render.md`)
 - [ ] **7. Pipeline + CLI** end to end on fixtures and one real album (`spec/08_app.md` section 1)
@@ -61,7 +61,7 @@ Day 2
 
 | Phase | Person | Branch | Started (ET) | Notes |
 |---|---|---|---|---|
-| 4 (rule-based director, plan compilation) | Keshav | phase-4-director | 2026-10-27 01:10 | |
+| 5 (slots, costs, beam search, EDL) | Keshav | phase-5-planner | 2026-10-27 01:20 | |
 
 ## Decisions
 
@@ -81,6 +81,7 @@ Day 2
 - 2026-10-27 | Keshav | Energy curves average frames in 0.5 s bins centered on each grid time; MusicProfile.tempo is the detected tempo before half/double adjustment (beat_mode says which) | aligns with centered emotion windows; BPM shown to users matches the song
 - 2026-10-27 | Keshav | Tags and mood are computed from candidate embeddings at load time using cached text embeddings (one shared npz of CLIP text embeddings on Drive), not stored per asset | changing the tag vocabulary or mood prompts never re-runs the image encoder
 - 2026-10-27 | Keshav | Dedup: inside a cluster, the first window of each video keeps the cluster and its other windows become singletons | guarantees windows of one video never share a cluster even in mixed clusters
+- 2026-10-27 | Keshav | Rule-based vibe query is the brief minus its avoid/length clauses (not the raw brief) | the raw brief would pull CLIP toward things the director asked to skip
 
 ## Setup checklist
 

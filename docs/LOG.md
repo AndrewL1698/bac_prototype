@@ -54,3 +54,8 @@ Format:
 - Blockers: none.
 - Heads-up (Andrew, 10A): use `montage.importance.ranker.ranker_features(arrays)` for training features (arrays from `montage.features.extract.extract(...).arrays`, or the same keys from your own per-frame aggregation). `Ranker.load` expects `{type, state_dict, feat_mean, feat_std, blend_alpha, ...}` as in spec 10.
 - Results: cold features for 60 photos + 20 videos x 30 s (420 candidates): 39.9 s on the A100 (target < 90 s); ingest + candidates for those 80 files: 28.3 s.
+
+## 2026-10-27 01:20 ET | Keshav | phase 4 | branch phase-4-director (merged)
+- Done: `montage.director.rules.plan_from_rules` (pacing/chronology/avoid/open/close/length parsing; vibe query = brief minus avoid and length clauses, plus tag words found in the brief), `montage.director.context` (song summary, media inventory, EDL summary, tag-vocabulary hint), `montage.director.apply.compile_plan` -> `Directives` (anchor -> section mapping, per-section pacing and mood, target arousal per slot, z-scored query relevance, director score matrix D (N x K), plan/UI excludes, must-include, pins), `montage.director.make_plan` (LLM hook for 9A, rules fallback recorded as `director:rules`). Spec 05 Day-1 tests (rules parse, anchor mapping, target arousal, D shape + exclude) pass.
+- Next: phase 5 (slots, costs, beam search, EDL).
+- Blockers: none.
