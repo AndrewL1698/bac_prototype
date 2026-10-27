@@ -108,3 +108,9 @@ Format:
 - Next: Keshav: put the demo album + songs on Drive, then run `demo_mode --prepare` as a job and start the `app` job (see docs/DEMO.md). Track B: eval grid, metrics, report (spec 11 sections 1-4) and RESULTS.md.
 - Blockers: Beat This! checkpoint host (cloud.cp.jku.at) returned HTTP 500 today, so fresh runtimes use librosa beats until it recovers once (then the Drive copy is used forever). `montage_data/demo/` still empty.
 - Heads-up (Andrew): `montage/eval/vote.py` is in place (spec 11 section 5); the eval grid/metrics/report modules in `montage/eval/` are still yours.
+
+## 2026-10-27 12:30 ET | Keshav | render config | branch render-crop-025 (merged)
+- Done: `render.max_crop_loss` 0.2 -> 0.25 (Keshav's call), so 4:3 phone photos (25% loss) are face-aware cropped to fill the 16:9 frame instead of sitting on a blurred background. 5:4 and taller still get the blurred fill; 2.2:1 video is cropped. Framing table, planner and render tests updated (incl. a 4:3 photo crop shot with exact frame count) and pass on Colab.
+- Next: run `demo_mode --prepare` once the demo album and songs are on Drive.
+- Blockers: none.
+- Heads-up: config value change only (`render.max_crop_loss: 0.25`); spec 07's table row "2.2:1 video -> fill_blur" still differs (it is cropped; 19% loss).

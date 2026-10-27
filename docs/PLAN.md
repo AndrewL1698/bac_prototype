@@ -90,6 +90,7 @@ Day 2
 - 2026-10-27 | Keshav | Beat snapping uses error diffusion (remainder carried to the next shot, clipped to +/-0.5 in log2) | snapping to 1/2/4/8 alone made pacing changes below a factor of 2 invisible
 - 2026-10-27 | Keshav | A whole-cut speed note shifts global pacing and every explicit section pacing by the same step; if the LLM revision leaves pacing unchanged, the rule step (+/-0.4) is applied | section pacing overrides global pacing, so a global-only change could leave the cut unchanged
 - 2026-10-27 | Keshav | The live vote (eval/vote.py) and Rate tab are built with the demo parts of phase 11 (Track A); eval grid/metrics/report stay with Track B | the vote is part of the demo flow
+- 2026-10-27 | Keshav | render.max_crop_loss raised to 0.25: 4:3 photos are face-aware cropped to fill the frame (supersedes the 20% rule above); 5:4 and taller keep the blurred fill | most phone photos are 4:3; full-frame looks better in the montage
 
 ## Setup checklist
 
