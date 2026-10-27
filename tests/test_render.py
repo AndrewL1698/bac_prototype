@@ -213,3 +213,27 @@ def test_hdr_shots_and_frames(assets, tmp_path):
         assert 15 < luma < 235, luma
     fs = extract_frames(a)
     assert len(fs.times) >= 3 and all(p is not None for p in fs.pairs[:-1])
+
+
+@pytest.mark.media
+def test_hdr_proxy(assets, tmp_path):
+    from montage.render.proxy import ensure_proxy, proxy_path, render_source
+    from montage.render.shots import render_shot
+    a = assets["vid_hdr.mp4"]
+    p = ensure_proxy(a)
+    assert p == proxy_path(a) and p.exists()
+    src, needs_tonemap = render_source(a)
+    assert src == str(p) and needs_tonemap is False
+    out = render_shot(_shot(0, 0, 24, a, "native", 0.2), a, tmp_path / "px.mp4", 1280, 720, 23)
+    assert _probe_frames(out) == 24
+    assert 15 < _frame_at(out, 10).astype(float).mean() < 235
+    sdr = assets["vid_static_landscape.mp4"]
+    assert ensure_proxy(sdr) is None and render_source(sdr) == (sdr.src_path, False)
+
+
+@pytest.mark.media
+def test_relative_crop(assets, tmp_path):
+    from montage.render.shots import render_shot
+    a = assets["vid_portrait.mp4"]  # 1080x1920: forced 16:9 crop of the upper face area
+    out = render_shot(_shot(0, 0, 20, a, "crop", 1.0), a, tmp_path / "c.mp4", 1280, 720, 23, face=(0.5, 0.2))
+    assert _probe_frames(out) == 20
