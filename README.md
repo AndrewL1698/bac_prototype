@@ -29,25 +29,19 @@ The app **sees** your media (CLIP embeddings, an aesthetic score, mood, tags, sh
 
 ## Run the demo app (Colab, A100)
 
-_Available after Phase 8._
-
 1. Open a new Colab notebook, Runtime -> Change runtime type -> **A100 GPU**.
-2. In the key icon (Secrets) add `ANTHROPIC_API_KEY` (optional; without it the director uses rules) and `MONTAGE_USER` (your name, lowercase). Enable notebook access for both.
+2. In the key icon (Secrets) add, with notebook access enabled:
+   - `MONTAGE_USER`: your name, lowercase.
+   - `ANTHROPIC_API_KEY` (optional): without it the director uses rules.
+   - `APP_PASSWORD` (optional): password-protects the app (username `montage`). Recommended, because anyone with the link can use the app and your API credits.
 3. Make sure the shared `montage_data` Drive folder is in your My Drive (see "Data and secrets").
 4. Run one cell **from the Colab UI** (Secrets are only readable from cells you run yourself):
    ```
    !git clone -q https://github.com/AndrewL1698/bac_prototype /content/bac_prototype 2>/dev/null
-   %run /content/bac_prototype/scripts/colab_bootstrap.py --branch main
+   %run /content/bac_prototype/scripts/start_app.py
    ```
-   Approve the Drive and Secrets prompts. It prints GPU, FFmpeg, API-key status, and the first time starts a background `pip_install` job (check with `!python scripts/job_status.py pip_install`). Later remote runs (Claude Code via colab-mcp) reuse the saved settings; pass `--user <you>` if needed.
-5. Start the app in the background and get the link:
-   ```
-   %cd /content/bac_prototype
-   !python scripts/run_job.py --name app -- python -m montage.app.gradio_app --share
-   !python scripts/job_status.py app
-   ```
-   The share URL appears in the status output (also saved to `montage_data/jobs/<you>/app.url`). Open it on any device.
-6. In the app: pick a demo album and song (or upload), type a brief, **Generate**. Give notes and **Recut**. **Export 1080p** when happy.
+   It mounts Drive, syncs the code, installs requirements (first time), reads Secrets, stops any running app, starts the `app` job, and prints the link (about 1-2 minutes on a fresh runtime). The link is also saved to `montage_data/jobs/<you>/app.url`. Rerun the cell any time to restart the app; each restart gives a new link.
+5. In the app: pick a demo album and song (or upload), type a brief, **Generate**. Give notes and **Recut**. **Export 1080p** when happy.
 
 Keep the Colab tab open while you use the app.
 

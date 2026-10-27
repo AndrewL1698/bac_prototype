@@ -4,10 +4,10 @@ Presenter: Keshav. Everything runs in the Gradio app on the Colab A100; the back
 
 ## Before the demo (start 15 minutes early)
 
-1. Open the Colab notebook, Runtime -> A100. Run the bootstrap cell **from the Colab UI** so Secrets (API key) load:
+1. Open the Colab notebook, Runtime -> A100. Run the start cell **from the Colab UI** so Secrets (API key, optional `APP_PASSWORD`) load. It bootstraps the runtime and starts the app:
    ```
    !git clone -q https://github.com/AndrewL1698/bac_prototype /content/bac_prototype 2>/dev/null
-   %run /content/bac_prototype/scripts/colab_bootstrap.py --branch main
+   %run /content/bac_prototype/scripts/start_app.py
    ```
 2. Warm everything and render backups (about 3-6 minutes per album):
    ```
@@ -15,11 +15,7 @@ Presenter: Keshav. Everything runs in the Gradio app on the Colab A100; the back
    !cd /content/bac_prototype && python scripts/job_status.py demo_prep
    ```
    The last lines print a readiness checklist: GPU, Claude key, emotion/ranker weights, a backup per album, vote pairs, warm generate time (must be under 30 s).
-3. Start the app and get the link:
-   ```
-   !cd /content/bac_prototype && python scripts/run_job.py --name app -- python -m montage.app.gradio_app --share
-   !cd /content/bac_prototype && python scripts/job_status.py app
-   ```
+3. If demo prep changed anything you want the app to pick up (new album, new weights), rerun the start cell from step 1; it restarts the app and prints the new link.
 4. Open the share link on the laptop **and** on a phone. Do one warm Generate with the demo album so the first live one is instant.
 5. Laptop plugged in, sleep off, Colab tab open (do not close it), Do Not Disturb on.
 6. Have `montage_data/demo/backups/<album>.mp4` and the latest `runs/<run_id>/curves.png` open in a Drive tab as the fallback.
@@ -58,7 +54,7 @@ Tab **Rate**: **Load a pair**, watch Left and Right (order randomized), click **
 
 | Problem | Do this |
 |---|---|
-| Share link dead or Colab disconnected | Play `montage_data/demo/backups/<album>.mp4` from Drive; walk through `curves.png`. Restart: rerun bootstrap, then the `app` job (new link). |
+| Share link dead or Colab disconnected | Play `montage_data/demo/backups/<album>.mp4` from Drive; walk through `curves.png`. Restart: rerun the start cell (new link). |
 | Generate shows an error | Read it out (it is a friendly message), pick the demo album and song, Generate again. |
 | Claude API down / no key | Nothing to do: the status line says "Director: rules" and the cut still works. Say so. |
 | Slow first run | Talk through the pipeline; demo mode pre-warms caches so this should not happen. |
