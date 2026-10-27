@@ -44,9 +44,10 @@ def get_mert():
         if _mert is None:
             import torch
             from transformers import AutoModel, Wav2Vec2FeatureExtractor
-            name = get_config().music.emotion.model
-            model = AutoModel.from_pretrained(name, trust_remote_code=True).eval()
-            fe = Wav2Vec2FeatureExtractor.from_pretrained(name, trust_remote_code=True)
+            cfg = get_config().music.emotion
+            kw = {"trust_remote_code": True, "revision": cfg.revision} if cfg.revision else {"trust_remote_code": True}
+            model = AutoModel.from_pretrained(cfg.model, **kw).eval()
+            fe = Wav2Vec2FeatureExtractor.from_pretrained(cfg.model, **kw)
             if torch.cuda.is_available():
                 model = model.half().cuda()
             _mert = (model, fe)
@@ -78,28 +79,34 @@ def mert_available() -> bool:
     return bool(get_config().music.emotion.use_mert) and head_path().exists()
 
 
+def make_head(layers: int = 13, dim: int = 768, hidden: int = 256):
+    """Spec 09 head: softmax layer weights -> LayerNorm -> Linear -> GELU -> Dropout -> Linear -> tanh.
+    Outputs (valence, arousal). Shared by training/emotion/train.py and inference."""
+    import torch
+    import torch.nn as nn
+
+    class EmotionHead(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.layer_logits = nn.Parameter(torch.zeros(layers))
+            self.mlp = nn.Sequential(nn.LayerNorm(dim), nn.Linear(dim, hidden), nn.GELU(), nn.Dropout(0.2),
+                                     nn.Linear(hidden, 2), nn.Tanh())
+
+        def forward(self, feats):  # (B, 13, 768)
+            w = torch.softmax(self.layer_logits, 0)
+            return self.mlp((feats * w[None, :, None]).sum(1))
+
+    return EmotionHead()
+
+
 def _load_head():
-    """Head architecture from spec 09: softmax layer weights -> LayerNorm -> MLP -> tanh -> (valence, arousal)."""
     global _head
     with _lock:
         if _head is None:
             import torch
-            import torch.nn as nn
-
-            class EmotionHead(nn.Module):
-                def __init__(self, layers: int = 13, dim: int = 768, hidden: int = 256):
-                    super().__init__()
-                    self.layer_logits = nn.Parameter(torch.zeros(layers))
-                    self.mlp = nn.Sequential(nn.LayerNorm(dim), nn.Linear(dim, hidden), nn.GELU(), nn.Dropout(0.2),
-                                             nn.Linear(hidden, 2), nn.Tanh())
-
-                def forward(self, feats):  # (B, 13, 768)
-                    w = torch.softmax(self.layer_logits, 0)
-                    return self.mlp((feats * w[None, :, None]).sum(1))
-
-            ckpt = torch.load(head_path(), map_location="cpu")
+            ckpt = torch.load(head_path(), map_location="cpu", weights_only=False)
             sd = ckpt.get("state_dict", ckpt) if isinstance(ckpt, dict) else ckpt
-            head = EmotionHead()
+            head = make_head()
             head.load_state_dict(sd)
             _head = head.eval()
         return _head

@@ -75,9 +75,9 @@ def mert():
     import numpy as np
     import torch
     from transformers import AutoModel, Wav2Vec2FeatureExtractor
-    name = get_config().music.emotion.model
-    model = AutoModel.from_pretrained(name, trust_remote_code=True).eval()
-    fe = Wav2Vec2FeatureExtractor.from_pretrained(name, trust_remote_code=True)
+    cfg = get_config().music.emotion
+    model = AutoModel.from_pretrained(cfg.model, trust_remote_code=True, revision=cfg.revision).eval()
+    fe = Wav2Vec2FeatureExtractor.from_pretrained(cfg.model, trust_remote_code=True, revision=cfg.revision)
     dev = "cuda" if torch.cuda.is_available() else "cpu"
     model.to(dev)
     sr = fe.sampling_rate

@@ -162,3 +162,17 @@ def test_music_timing(fixtures, tmp_path, fresh_root):
     analyze_song(tmp_path / "long.wav")
     dt = time.time() - t0
     assert dt < 20, f"full-song analysis took {dt:.1f}s"
+
+
+def test_window_alignment_train_vs_inference(fixtures):
+    """Training windows (extract_mert) and inference windows (predict_emotion) come from the same function
+    with the same arguments, so for the same audio and time they are identical arrays."""
+    pytest.importorskip("librosa")
+    from montage.music.emotion import make_windows
+    from montage.music.load import load_audio
+    y = load_audio(fixtures / "click_120.wav", 24000)
+    times = np.array([15.0, 15.5, 30.25])
+    train_w = make_windows(y, times, sr=24000)   # as in training/emotion/extract_mert.py
+    infer_w = make_windows(y, times)              # as in predict_emotion (config mert_sr = 24000)
+    assert np.array_equal(train_w, infer_w)
+    assert train_w.shape == (3, 120000)

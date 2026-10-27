@@ -114,6 +114,7 @@ class StructureCfg(_B):
 class EmotionCfg(_B):
     use_mert: bool
     model: str
+    revision: str | None = None
     window_s: float
     align: str
     batch: int
