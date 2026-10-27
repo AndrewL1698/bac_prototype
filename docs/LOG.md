@@ -161,3 +161,9 @@ Format:
 - Next: Colab GPU/media tests, merge to main, rerun demo prep with the learned ranker and the fixed planner, restart the app.
 - Blockers: none.
 - Heads-up: planner behaviour changed on main: cuts are lengthened when an album has few distinct shots (the demo album has 57, so cuts above 51 shots now get longer calm sections), and `planner.w_dir` is 0.6. New eval row key `mean_adjacent_cos`; `render_check.json` rows gain `extra`.
+
+## 2026-10-27 19:29 ET | Keshav | session end: 10A and 11 merged, demo ready | branch main
+- Done: Colab tests on track-b: 132 passed, 4 skipped (3 Beat This!: its checkpoint host is down and no copy is on Drive; 1 opt-in timing test). Fixed on the way: a removal note that names a time ("lose the shot at 0:12") now always excludes the shot playing then, also when Claude revises the plan (Claude had excluded the wrong shot); the editor's note logs why it falls back; Beat This!-dependent test checks skip when the model cannot load. track-b rebased and fast-forwarded into main; remote track-b deleted. Demo prep rerun on main with the learned ranker and the fixed planner: backup and naive backup for Summer Trip (picked), vote pair, 8 HDR proxies, only fallback beats:librosa, warm generate 29.8 s (target < 30 s; was 28.0 s). App restarted (link printed in Colab and saved to jobs/keshav/app.url; password off).
+- Next: the demo. Optional: add the APP_PASSWORD Colab Secret and rerun the start cell. Warm generate sits right at the 30 s target. Beat This! comes back by itself if its host recovers (the checkpoint is then copied to Drive).
+- Blockers: none.
+- Results: see the 19:03 entry above and docs/RESULTS.md.

@@ -103,6 +103,8 @@ Day 2
 - 2026-10-27 | Keshav | planner.w_dir 1.0 -> 0.6 | eval sweep after the scarcity fix: brief adherence 0.85 -> 0.84, mood coupling 0.23 -> 0.37, quality lift 0.00 -> 0.01
 - 2026-10-27 | Keshav | The no_pairwise ablation is judged on mean adjacent CLIP similarity (new eval metric), not on mean similarity over all shot pairs | the pairwise term only scores neighbouring shots
 - 2026-10-27 | Keshav | 10B (CUFED) skipped | optional; the learned ranker already beats the heuristic, and the remaining time goes to the demo
+- 2026-10-27 | Keshav | A removal note that names a time ("lose the shot at 0:12") excludes the shot playing at that time in the current cut, also when Claude revises the plan (Claude's own exclude edits for that note are dropped) | Claude excluded the wrong shot in test_note_lose_shot; the cut knows exactly which shot plays when
+- 2026-10-27 | Keshav | Beat This! tests skip when its checkpoint cannot load (host down, no copy on Drive); the synthetic-song BPM and peak-excerpt checks only run with Beat This! | librosa reads the synthetic song at half tempo, so those checks measure the missing model, not our code
 
 ## Setup checklist
 
