@@ -114,3 +114,10 @@ Format:
 - Next: run `demo_mode --prepare` once the demo album and songs are on Drive.
 - Blockers: none.
 - Heads-up: config value change only (`render.max_crop_loss: 0.25`); spec 07's table row "2.2:1 video -> fill_blur" still differs (it is cropped; 19% loss).
+
+## 2026-10-27 13:20 ET | Keshav | session end | branch hdr-speed (not merged)
+- Done: demo media is on Drive. Keshav's full album now lives at `montage_data/demo_source/Summer Trip` (219 items, moved out of `demo/`, untouched); the demo album is `demo/Summer Trip (picked)` (60 items: 40 photos + 20 videos, 261 s of video, Dec 22-28), made with the new `scripts/pick_subset.py` (longest clips up to 60 s + photos spread over time). Songs: `demo/songs/Life is a Highway.mp3` (4:36) and `Calm - Spring Wilderness (4m30 cut).mp3` (a 4:30 cut with fade-out; the 90-min original is in `demo/songs_full/`). Album folders may now keep media in subfolders (on main).
+- Done: `demo_mode --prepare` ran on the album: 1080p backup + naive backup in `demo/backups/`, vote pair in `demo/vote/`. Cold generate: features 25 s, Claude director 4.8 s, plan 0.7 s, render 41.9 s; 1080p export 53 s.
+- Blocker: warm generate is 48.9 s (target < 30 s). Profiling shows the 8 iPhone HLG HDR clips dominate (1.7-2.3 s per shot vs ~1 s SDR; tonemapping + 10-bit HEVC decode). Tonemapping after framing (on branch `hdr-speed`) cut render 38.9 -> 32.4 s. Next fix, pushed but NOT yet verified on Colab (same branch): SDR render proxies per HDR clip (`montage/render/proxy.py`, cached at `cache/proxies/<hash>_v1.mp4`, built by demo prep), plus a crop filter written relative to the input size. Next session: run `tests/test_render.py` on Colab, rerun `demo_mode --prepare` (builds proxies), check warm generate < 30 s, then merge `hdr-speed`.
+- Blocker: the Beat This! checkpoint host (cloud.cp.jku.at) is still returning HTTP 500, so beats use librosa until one download succeeds (the checkpoint is then cached on Drive).
+- Heads-up: none for Track B.

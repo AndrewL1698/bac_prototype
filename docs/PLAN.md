@@ -63,7 +63,7 @@ Day 2
 
 | Phase | Person | Branch | Started (ET) | Notes |
 |---|---|---|---|---|
-| _(none: Keshav's Track A phases are merged)_ | | | | |
+| 11 demo polish (HDR render proxies, warm generate < 30 s) | Keshav | hdr-speed | 2026-10-27 13:00 | pushed, not verified on Colab yet |
 
 ## Decisions
 
