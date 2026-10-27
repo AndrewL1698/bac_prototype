@@ -86,3 +86,10 @@ Format:
 - Heads-up: `paths.load_colab_env()` no longer overrides variables already set in the environment (explicit env wins over `/content/montage_env.sh`).
 - Heads-up (security): never commit share URLs (anyone with the link can use the app). The app serves files only from `runs/` and scratch thumbnails; `/content/montage_env.sh`, `sessions/`, `jobs/` are blocked (verified 403).
 - Results: share link written to `montage_data/jobs/keshav/app.url` (not in the repo).
+
+## 2026-10-26 23:05 ET | Keshav | session end | branch phase-9a-llm
+- Done: Phases 0-8 merged to main (Day 1 goal: Gradio share link, upload media + song + brief -> beat-synced video with fallbacks only). Full write-up for Andrew: `docs/reports/2026-10-26_keshav_track_a.md`.
+- Done: Phase 9A built on `phase-9a-llm` (Claude structured-output director, LLM notes, LLM editor's note, contact sheet, error-diffusion beat snapping). 14/15 acceptance checks pass on Colab. Untested phase 11 demo drafts (`demo_mode --prepare`, `eval/vote.py`) are on `wip-phase-11-demo`.
+- Next: fix "faster -> more shots" (Claude raised pacing 0 -> 0.3; the cut stayed at 32 shots), merge 9A, then the demo parts of 11.
+- Blockers: `montage_data/demo/` has no album/songs yet (Keshav). MERT does not load under Colab's transformers 5.20 (Track B, 9B).
+- Heads-up: the times on tonight's phase 1-8 entries above were estimated and ran ahead of the clock (some say 2026-10-27). All of that work happened on 2026-10-26 between about 21:30 and 23:05 ET.

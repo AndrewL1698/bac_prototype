@@ -61,7 +61,7 @@ Day 2
 
 | Phase | Person | Branch | Started (ET) | Notes |
 |---|---|---|---|---|
-| 9A (LLM director, notes, editor's note) | Keshav | phase-9a-llm | 2026-10-27 03:50 | |
+| 9A (LLM director, notes, editor's note) | Keshav | phase-9a-llm | 2026-10-26 22:50 | built; open: faster note must add shots. Phase 11 demo drafts on wip-phase-11-demo |
 
 ## Decisions
 
