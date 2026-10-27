@@ -182,7 +182,8 @@ def _sanitize(plan: EditPlan, st: State) -> EditPlan:
 
 
 def plan_edit(s: Session, plan: EditPlan, seed: int = 0, system: str = "full", run_id: str | None = None,
-              preview: bool = True) -> EDL:
+              preview: bool = True, persist: bool = True) -> EDL:
+    """persist=False skips writing the run folder (evaluation grids plan many EDLs that are never rendered)."""
     from montage.director.apply import compile_plan
     from montage.importance.blend import importance
     from montage.planning import PlanInputs
@@ -202,6 +203,8 @@ def plan_edit(s: Session, plan: EditPlan, seed: int = 0, system: str = "full", r
             edl = _plan(inp, run_id, seed, system if system in ("naive", "beat_random", "greedy") else "full", preview)
     edl.system = system
     edl.notes = list(dict.fromkeys(edl.notes + st.notes))
+    if not persist:
+        return edl
     rd = paths.run_dir(run_id)
     cache.write_json(rd / "plan.json", json.loads(plan.model_dump_json()))
     paths.atomic_write(rd / "edl.json", edl.model_dump_json(indent=1))
