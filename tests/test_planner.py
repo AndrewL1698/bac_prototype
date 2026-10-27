@@ -224,8 +224,8 @@ def test_edl_fields():
     assert all(s.reason for s in edl.shots)
     for s in edl.shots:
         if s.kind == "photo":
-            # 4:3 loses 25% when cropped (> render.max_crop_loss 0.2), so it is fill_blur; photos get Ken Burns
-            assert s.framing == "fill_blur" and s.kenburns is not None
+            # 4:3 loses 25% when cropped (<= render.max_crop_loss 0.25): face-aware crop; photos get Ken Burns
+            assert s.framing == "crop" and s.kenburns is not None
         else:
             assert s.framing == "native" and s.src_out - s.src_in == pytest.approx(s.end - s.start, abs=1e-3)
 

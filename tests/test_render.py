@@ -24,11 +24,12 @@ def _asset(w, h, kind="photo", **kw):
 
 def test_framing_table():
     assert decide_framing(_asset(1920, 1080)) == "native"
-    assert decide_framing(_asset(1600, 1200)) == "fill_blur"   # 4:3 loses 25% > max_crop_loss 0.2 (PLAN decision)
+    assert decide_framing(_asset(1600, 1200)) == "crop"        # 4:3 loses 25% <= max_crop_loss 0.25
     assert decide_framing(_asset(1200, 1600)) == "fill_blur"   # 3:4
+    assert decide_framing(_asset(1500, 1200)) == "fill_blur"   # 5:4 loses 30% > 0.25
     assert decide_framing(_asset(1000, 1000)) == "fill_blur"   # 1:1
     assert decide_framing(_asset(3000, 1000)) == "pan"         # 3:1 photo
-    assert decide_framing(_asset(2200, 1000, "video")) == "crop"  # 2.2:1 loses 19% <= 0.2
+    assert decide_framing(_asset(2200, 1000, "video")) == "crop"  # 2.2:1 loses 19% <= 0.25
     assert decide_framing(_asset(3000, 1000, "video")) == "fill_blur"
     assert decide_framing(_asset(1700, 1080)) == "crop"        # 1.57:1 loses 11%
 
@@ -106,6 +107,7 @@ def test_shot_frame_count(assets, tmp_path):
              (assets["vid_portrait.mp4"], "fill_blur", 0.5, None, 23),
              (assets["vid_motion_landscape.mp4"], "native", 11.5, None, 40),   # runs past the source end: tpad
              (assets["photo_01_sunset.jpg"], "native", None, kb, 31),
+             (assets["photo_03_circles_4x3.jpg"], "crop", None, kb, 29),
              (assets["photo_04_stripes_portrait.jpg"], "fill_blur", None, kb, 17),
              (assets["photo_05_pano.jpg"], "pan", None, KenBurns(zoom_from=1, zoom_to=1, pan_x=1, pan_y=0), 45)]
     for j, (a, fr, src_in, k, n) in enumerate(cases):

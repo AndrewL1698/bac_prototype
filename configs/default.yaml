@@ -158,7 +158,7 @@ render:
   preview: {width: 1280, height: 720, crf: 23}
   export: {width: 1920, height: 1080, crf: 18}
   audio_bitrate: "192k"
-  max_crop_loss: 0.2
+  max_crop_loss: 0.25             # 4:3 (25% loss) is cropped to fill; anything wider/taller gets blurred fill
   pano_aspect: 2.5
   blur_sigma: 30
   blur_darken: -0.15
