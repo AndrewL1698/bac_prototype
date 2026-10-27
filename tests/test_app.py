@@ -57,7 +57,9 @@ def test_generate_and_recut(app):
     assert video and "shots" in status and "Director: rules" in status
     assert "Vibe" in plan_md and note
     out2 = client.predict("faster", api_name="/recut")
-    assert out2[0] and out2[0] != video
+    assert out2[0]
+    import json
+    assert json.loads(out2[4])["pacing"] > json.loads(out[4])["pacing"]  # plan JSON
     assert "faster" in out2[9]  # notes history
 
 
