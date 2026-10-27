@@ -198,3 +198,18 @@ def test_render_timing(assets, fixtures, tmp_path):
     t2 = time.time()
     print(json.dumps({"preview_s": round(t1 - t0, 1), "export_s": round(t2 - t1, 1), "frames": shots[-1].frame_end}))
     assert t1 - t0 < 25 and t2 - t1 < 60
+
+
+@pytest.mark.media
+def test_hdr_shots_and_frames(assets, tmp_path):
+    from montage.ingest.frames import extract_frames
+    from montage.render.shots import render_shot
+    a = assets["vid_hdr.mp4"]
+    assert a.is_hdr
+    for j, fr in enumerate(("native", "fill_blur")):
+        out = render_shot(_shot(j, 0, 24, a, fr, 0.2), a, tmp_path / f"hdr{j}.mp4", 1280, 720, 23)
+        assert _probe_frames(out) == 24
+        luma = _frame_at(out, 10).astype(float).mean()
+        assert 15 < luma < 235, luma
+    fs = extract_frames(a)
+    assert len(fs.times) >= 3 and all(p is not None for p in fs.pairs[:-1])
