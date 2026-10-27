@@ -126,7 +126,7 @@ planner:
   w_imp: 1.0
   w_mood: 0.8
   w_val: 0.3
-  w_dir: 1.0
+  w_dir: 0.6
   photo_min_s: 0.6
   w_photo_short: 0.5
   w_photo_hi: 0.3

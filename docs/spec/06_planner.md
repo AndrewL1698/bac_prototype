@@ -34,7 +34,7 @@ U(i,j) = - w_imp * imp_i
          + w_photo_hi * irank_j  if photo and videos exist               # irank_j: slot intensity rank
          - w_must          if i is must-include or pinned
 ```
-Defaults: w_imp 1.0, w_mood 0.8, w_val 0.3, w_dir 1.0, photo_min_s 0.6, w_photo_short 0.5, w_photo_hi 0.3, w_must 5.0.
+Defaults: w_imp 1.0, w_mood 0.8, w_val 0.3, w_dir 0.6, photo_min_s 0.6, w_photo_short 0.5, w_photo_hi 0.3, w_must 5.0.
 
 **Variety noise:** `U += planner.variety * std(U_finite) * Gumbel(seed)` (default variety 0.15). Same seed gives the same edit.
 
