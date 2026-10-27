@@ -47,3 +47,10 @@ Format:
 - Next: phase 3 (visual features, tags, heuristic importance, dedup).
 - Blockers: none.
 - Heads-up (Andrew, 9B): `montage/music/emotion.py` already has the shared helpers from spec 09: `make_windows(y24, times)` (5 s windows centered on each time, zero-padded) and `mert_window_features(windows)` -> (n, 13, 768) fp16, plus an `EmotionHead` loader matching the spec-09 architecture (reads `state_dict` from `weights/emotion_head.pt`). Import them in `training/emotion/extract_mert.py`; change the head loader if your checkpoint format differs. Cached analyses are recomputed automatically once the head file exists (emotion_source changes to `mert`).
+
+## 2026-10-27 01:10 ET | Keshav | phase 3 | branch phase-3-visual (merged)
+- Done: `montage.features` (CLIP ViT-L/14 with parallel preprocessing and a Drive-backed text-embedding cache, LAION aesthetic, quality, Farneback motion + shake, YuNet faces, CLIP mood poles + batch combine, zero-shot tags, near-dup clustering) with per-asset per-frame caching at `cache/features/f1/<hash>.npz`; `extract()` returns a `Features` object (FeatureTable + candidate arrays + per-frame views for in/out). `montage.importance` (heuristic score, hard rejects with relaxation, per-modality rank blend, `ranker_features` + `Ranker.load` matching spec 10's checkpoint format). Phase 3 tests 13/13 on Colab plus 4 local importance tests.
+- Next: phase 4 (rule-based director, plan compilation), phase 5 (planner).
+- Blockers: none.
+- Heads-up (Andrew, 10A): use `montage.importance.ranker.ranker_features(arrays)` for training features (arrays from `montage.features.extract.extract(...).arrays`, or the same keys from your own per-frame aggregation). `Ranker.load` expects `{type, state_dict, feat_mean, feat_std, blend_alpha, ...}` as in spec 10.
+- Results: cold features for 60 photos + 20 videos x 30 s (420 candidates): 39.9 s on the A100 (target < 90 s); ingest + candidates for those 80 files: 28.3 s.

@@ -43,7 +43,7 @@ Day 1
   - [ ] background downloads started: DEAM, SumMe/TVSum
 - [x] **1. Ingest and candidates** (`spec/01_ingest_candidates.md`)
 - [x] **2. Music analysis**, heuristic emotion (`spec/02_music.md`)
-- [ ] **3. Visual features, tags, heuristic importance, dedup** (`spec/03_visual_features.md`, `spec/04_importance.md` heuristic part)
+- [x] **3. Visual features, tags, heuristic importance, dedup** (`spec/03_visual_features.md`, `spec/04_importance.md` heuristic part)
 - [ ] **4. Director: rule-based fallback + plan compilation** (`spec/05_director.md` sections 1-4)
 - [ ] **5. Slots, costs, beam search, EDL** (`spec/06_planner.md`)
 - [ ] **6. Render**: preview + export, framing, Ken Burns (`spec/07_render.md`)
@@ -61,7 +61,7 @@ Day 2
 
 | Phase | Person | Branch | Started (ET) | Notes |
 |---|---|---|---|---|
-| 3 (visual features, heuristic importance) | Keshav | phase-3-visual | 2026-10-27 00:20 | |
+| 4 (rule-based director, plan compilation) | Keshav | phase-4-director | 2026-10-27 01:10 | |
 
 ## Decisions
 
@@ -79,6 +79,8 @@ Day 2
 - 2026-10-26 | Keshav | V-JEPA not used in v1 (no text alignment; photos dominate; tiny training set); possible later ablation | scope and timeline
 - 2026-10-26 | Keshav | Exact duplicate files (same content hash) are skipped at ingest with a note; very short clips (<1 s usable) still give one candidate if >= 0.5 s | avoids wasting slots, keeps every clip usable
 - 2026-10-27 | Keshav | Energy curves average frames in 0.5 s bins centered on each grid time; MusicProfile.tempo is the detected tempo before half/double adjustment (beat_mode says which) | aligns with centered emotion windows; BPM shown to users matches the song
+- 2026-10-27 | Keshav | Tags and mood are computed from candidate embeddings at load time using cached text embeddings (one shared npz of CLIP text embeddings on Drive), not stored per asset | changing the tag vocabulary or mood prompts never re-runs the image encoder
+- 2026-10-27 | Keshav | Dedup: inside a cluster, the first window of each video keeps the cluster and its other windows become singletons | guarantees windows of one video never share a cluster even in mixed clusters
 
 ## Setup checklist
 
