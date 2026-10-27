@@ -40,7 +40,7 @@ Day 1
   - [x] job runner + status, `colab_bootstrap.py`, `smoke_models.py`
   - [x] fixtures generator; pytest green
   - [x] Colab connected, bootstrapped, GPU verified
-  - [ ] background downloads started: DEAM, SumMe/TVSum
+  - [x] background downloads: DEAM (Hugging Face mirrors), SumMe/TVSum (Track B, 2026-10-27)
 - [x] **1. Ingest and candidates** (`spec/01_ingest_candidates.md`)
 - [x] **2. Music analysis**, heuristic emotion (`spec/02_music.md`)
 - [x] **3. Visual features, tags, heuristic importance, dedup** (`spec/03_visual_features.md`, `spec/04_importance.md` heuristic part)
@@ -53,18 +53,17 @@ Day 1
 Day 2
 - [x] **9A. LLM director**, notes/recut, pin/exclude, editor's note (`spec/05_director.md` sections 5-8, `spec/08_app.md` section 5)
 - [x] **9B. DEAM emotion head** trained + plugged in (`spec/09_train_emotion.md`)
-- [ ] **10A. Importance ranker** (SumMe/TVSum) trained + plugged in (`spec/10_train_importance.md`)
-- [ ] **10B. (optional) CUFED**, only if 9A-10A are done and more than 4 h remain
-- [ ] **11. Evaluation, naive-cut compare, demo mode, backups, DEMO.md, RESULTS.md** (`spec/11_eval_demo.md`)
+- [x] **10A. Importance ranker** (SumMe/TVSum) trained + plugged in (`spec/10_train_importance.md`) (merged 2026-10-27)
+- [ ] **10B. (optional) CUFED**, only if 9A-10A are done and more than 4 h remain (skipped, see Decisions)
+- [x] **11. Evaluation, naive-cut compare, demo mode, backups, DEMO.md, RESULTS.md** (`spec/11_eval_demo.md`)
   - [x] demo parts (Track A): demo mode, backups, Rate tab + vote analysis, DEMO.md (merged 2026-10-27; real-album prep run waits for the demo album)
-  - [ ] evaluation parts (Track B): eval grid, metrics, render check, report, RESULTS.md
+  - [x] evaluation parts (Track B): eval grid, metrics, render check, report, RESULTS.md (merged 2026-10-27; the live vote runs at the demo)
 
 ## Current work
 
 | Phase | Person | Branch | Started (ET) | Notes |
 |---|---|---|---|---|
-| 10A, 11 eval (Track B, taken over) | Keshav | track-b | 2026-10-27 14:45 | 9B merged; 10A features job running; 11 code on track-b |
-| _(none: Keshav's Track A work is merged; demo ready)_ | | | | |
+| _(none: all phases merged 2026-10-27; 10B skipped)_ | | | | |
 
 ## Decisions
 
@@ -97,6 +96,13 @@ Day 2
 - 2026-10-27 | Keshav | DEAM comes from public Hugging Face mirrors (audio: herrjyj/herrjyj-deam-assets DEAM_audio.zip; dynamic 2 Hz annotations: Rehead/DEAM_continuous_annotations, annotation columns only), validated against the DEAM layout | the official host cvml.unige.ch does not respond (from Colab or locally); no Kaggle credentials
 - 2026-10-27 | Keshav | Optional app password via Colab Secret APP_PASSWORD (Gradio login, username montage); one-command start scripts/start_app.py waits up to 120 s for the link | anyone with a share link could otherwise use the app and the API key; the start cell is human-run, so a longer wait is fine
 - 2026-10-27 | Keshav | MERT layer outputs are captured with forward hooks when transformers returns no hidden_states (5.20 with MERT's remote code); revision pinned to 12af15f | keeps the pinned model working across transformers versions
+- 2026-10-27 | Keshav | SumMe/TVSum features run 8 videos per pipeline call with the ingest limits lifted; SumMe "Uncut_Evening_Flight" is damaged inside the published Zenodo archive (md5 verified) and is left out (74 of 75 videos) | one video per call was too slow for the session; the archive is the only source
+- 2026-10-27 | Keshav | Ranker selection: best SumMe tau over {SumMe, TVSum, both} x {linear, MLP} in 5-fold CV by video (unless clearly worse on TVSum), then the blend alpha by the same CV: TVSum-trained MLP at alpha 0.75 | spec 10 picks by SumMe, the dataset closest to personal footage
+- 2026-10-27 | Keshav | Eval set: two albums from a separate trip that is not in the demo album, split by capture time (`scripts/make_eval_set.py`); songs: the two demo songs plus the most energetic DEAM full song | held out from the demo album; no extra media needed
+- 2026-10-27 | Keshav | Scarcity counts distinct shots (one per dup cluster, each video at most its non-overlapping windows), not candidates; in reuse mode a repeated dup cluster costs w_reuse per earlier use and is never adjacent | the first eval grid planned 47 cuts for 44 distinct shots, and reuse mode then filled them with near-identical photos (up to 69 duplicate pairs per cut)
+- 2026-10-27 | Keshav | planner.w_dir 1.0 -> 0.6 | eval sweep after the scarcity fix: brief adherence 0.85 -> 0.84, mood coupling 0.23 -> 0.37, quality lift 0.00 -> 0.01
+- 2026-10-27 | Keshav | The no_pairwise ablation is judged on mean adjacent CLIP similarity (new eval metric), not on mean similarity over all shot pairs | the pairwise term only scores neighbouring shots
+- 2026-10-27 | Keshav | 10B (CUFED) skipped | optional; the learned ranker already beats the heuristic, and the remaining time goes to the demo
 
 ## Setup checklist
 
@@ -114,4 +120,4 @@ Keshav
 Andrew
 - [ ] Local clone; `uv` installed
 - [ ] Colab Secrets: `ANTHROPIC_API_KEY`, `MONTAGE_USER=andrew`
-- [ ] Eval: 2 albums in `montage_data/eval/albums/`, 3 songs in `montage_data/eval/songs/` (Track B)
+- [x] Eval: 2 albums in `montage_data/eval/albums/`, 3 songs in `montage_data/eval/songs/` (Track B; done by Keshav, 2026-10-27)
