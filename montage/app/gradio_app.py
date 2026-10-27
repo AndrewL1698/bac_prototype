@@ -7,6 +7,7 @@ On Colab start it through the job runner: scripts/run_job.py --name app -- pytho
 import argparse
 import functools
 import json
+import os
 import traceback
 
 import gradio as gr
@@ -289,11 +290,15 @@ def main(argv: list[str] | None = None) -> int:
     allowed = [str(paths.data_root() / "runs"), str(paths.scratch_dir("thumbs")),
                str(paths.data_root() / "demo" / "vote"), str(paths.data_root() / "demo" / "backups")]
     blocked = [str(paths.COLAB_ENV_FILE), str(paths.data_root() / "sessions"), str(paths.data_root() / "jobs")]
+    # Optional password (Colab Secret APP_PASSWORD -> MONTAGE_APP_PASSWORD via the bootstrap). Never logged.
+    pw = os.environ.get("MONTAGE_APP_PASSWORD") or None
+    auth = (os.environ.get("MONTAGE_APP_USER") or "montage", pw) if pw else None
     demo.launch(share=args.share, server_name="0.0.0.0", server_port=args.port, prevent_thread_lock=True,
-                allowed_paths=allowed, blocked_paths=blocked, show_error=True)
+                allowed_paths=allowed, blocked_paths=blocked, show_error=True, auth=auth,
+                auth_message="Montage demo: sign in with the username and password you set." if auth else None)
     url = getattr(demo, "share_url", None) or getattr(demo, "local_url", None) or f"http://127.0.0.1:{args.port}"
     paths.atomic_write(paths.jobs_dir() / "app.url", url + "\n")
-    print(f"APP URL: {url}", flush=True)
+    print(f"APP URL: {url} (password {'on' if auth else 'off'})", flush=True)
     demo.block_thread()
     return 0
 

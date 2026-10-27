@@ -65,3 +65,18 @@ def test_report_noop_outside_job(monkeypatch):
     monkeypatch.delenv("MONTAGE_JOB_NAME", raising=False)
     jobs.report(0.3, "nothing")  # must not raise or write
     assert not jobs.is_job()
+
+
+def test_job_stop(fresh_root):
+    cmd = [sys.executable, "-c", "import time; time.sleep(60)"]
+    jobs.launch("longrun", cmd, env_file=None)
+    t0 = time.time()
+    while not (jobs.read_status("longrun") or {}).get("child_pid") and time.time() - t0 < 15:
+        time.sleep(0.1)
+    st = jobs.read_status("longrun")
+    assert jobs.is_active(st)
+    assert jobs.stop("longrun") is True
+    st = jobs.read_status("longrun")
+    assert st["state"] == "failed" and st["message"] == "stopped"
+    assert not jobs.pid_alive(st["pid"]) and not jobs.pid_alive(st.get("child_pid"))
+    assert jobs.stop("longrun") is False

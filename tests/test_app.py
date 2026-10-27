@@ -87,3 +87,30 @@ def test_rate_tab(app):
     rows = (data / "eval" / "votes" / "apptest.csv").read_text().splitlines()
     assert len(rows) == 2 and rows[1].split(",")[1] == "tester"
     assert "Already counted" in client.predict("tester", api_name="/vote_tie")
+
+
+def test_password(fixtures, tmp_path):
+    if not gpu_available():
+        pytest.skip("no GPU")
+    import secrets
+    from gradio_client import Client
+    pw = secrets.token_urlsafe(12)  # throwaway test credential for this local test app
+    data = tmp_path / "data"
+    env = {**os.environ, "MONTAGE_DATA_ROOT": str(data), "MONTAGE_SCRATCH": str(tmp_path / "scratch"),
+           "MONTAGE_USER": "pwtest", "MONTAGE_APP_PASSWORD": pw}
+    port = PORT + 2
+    proc = subprocess.Popen([sys.executable, "-m", "montage.app.gradio_app", "--port", str(port)], env=env,
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        url_file = data / "jobs" / "pwtest" / "app.url"
+        t0 = time.time()
+        while not url_file.exists() and time.time() - t0 < 120 and proc.poll() is None:
+            time.sleep(1)
+        assert url_file.exists()
+        url = f"http://127.0.0.1:{port}"
+        with pytest.raises(Exception):
+            Client(url, verbose=False)
+        assert Client(url, auth=("montage", pw), verbose=False) is not None
+    finally:
+        proc.terminate()
+        proc.wait(timeout=20)

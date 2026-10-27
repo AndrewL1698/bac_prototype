@@ -162,6 +162,32 @@ def launch(name: str, cmd: list[str], force: bool = False, env_file: str | Path 
     return st
 
 
+def stop(name: str, for_user: str | None = None, timeout: float = 15.0) -> bool:
+    """Stop a running job and everything it started (its process group). Returns True if one was running."""
+    st = read_status(name, for_user)
+    if not is_active(st) or not st.get("pid"):
+        return False
+    pid = int(st["pid"])
+    if os.name == "nt":
+        subprocess.run(["taskkill", "/T", "/F", "/PID", str(pid)], capture_output=True)
+    else:
+        import signal
+        for sig in (signal.SIGTERM, signal.SIGKILL):
+            try:
+                os.killpg(os.getpgid(pid), sig)
+            except (ProcessLookupError, PermissionError):
+                break
+            t0 = time.time()
+            while pid_alive(pid) and time.time() - t0 < timeout:
+                time.sleep(0.2)
+            if not pid_alive(pid):
+                break
+    st = read_status(name, for_user) or st
+    st.update(state="failed", message="stopped", exit_code=-15, updated=now_iso())
+    write_status(st, for_user)
+    return True
+
+
 def _watch(name: str, cmd: list[str]) -> int:
     st = read_status(name) or {"name": name, "user": paths.user(), "cmd": cmd, "started": now_iso()}
     st.update(pid=os.getpid(), state="running", updated=now_iso())
