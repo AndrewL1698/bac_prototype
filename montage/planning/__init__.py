@@ -50,7 +50,7 @@ def best_query(d: Directives, emb: np.ndarray, section: int, j: int, K: int) -> 
     qs = [q for q in qs if q][:8]
     if not qs:
         return None
-    sims = emb @ clip_encoder.encode_text(qs).T
+    sims = (np.atleast_2d(emb) @ clip_encoder.encode_text(qs).T)[0]
     k = int(np.argmax(sims))
     return qs[k] if sims[k] > 0.2 and len(qs[k].split()) <= 8 else None
 
