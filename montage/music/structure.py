@@ -16,9 +16,11 @@ def beat_sync_features(y: np.ndarray, sr: int, beats: np.ndarray) -> np.ndarray:
     chroma = librosa.feature.chroma_cqt(y=y, sr=sr, hop_length=HOP)
     n = min(mfcc.shape[1], chroma.shape[1])
     feats = np.vstack([mfcc[:, :n], chroma[:, :n]])
-    bf = np.clip(librosa.time_to_frames(beats, sr=sr, hop_length=HOP), 0, n - 1)
-    sync = librosa.util.sync(feats, list(bf), aggregate=np.mean, pad=True)  # segment k starts at bf[k-1]
-    X = sync[:, 1:len(beats) + 1].T
+    bf = np.maximum.accumulate(np.clip(librosa.time_to_frames(beats, sr=sr, hop_length=HOP), 0, n - 1))
+    X = np.zeros((len(beats), feats.shape[0]))
+    for i, a in enumerate(bf):  # one row per beat: mean over [beat i, beat i+1)
+        b = bf[i + 1] if i + 1 < len(bf) else n
+        X[i] = feats[:, a:max(b, a + 1)].mean(axis=1)
     mu, sd = X.mean(0), X.std(0)
     return (X - mu) / np.where(sd > 1e-9, sd, 1.0)
 
