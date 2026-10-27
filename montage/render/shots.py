@@ -36,7 +36,8 @@ def crop_filter(asset: Asset, face: tuple[float, float]) -> str:
 
 def video_filters(asset: Asset, framing: str, W: int, H: int, face: tuple[float, float]) -> str:
     c = get_config().render
-    pre = HDR_CHAIN + "," if asset.is_hdr and zscale_available() else ""
+    # HDR: tonemap the already-cropped/scaled W x H frame (not the full-resolution source)
+    post = "," + HDR_CHAIN if asset.is_hdr and zscale_available() else ""
     if framing == "crop":
         body = f"{crop_filter(asset, face)},scale={W}:{H}"
     elif framing == "fill_blur":
@@ -45,7 +46,7 @@ def video_filters(asset: Asset, framing: str, W: int, H: int, face: tuple[float,
                 f"[b]scale={W}:{H}:force_original_aspect_ratio=decrease[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2")
     else:
         body = f"scale={W}:{H}"
-    return f"{pre}{body},fps={c.fps},tpad=stop_mode=clone:stop_duration=1,setsar=1,format=yuv420p"
+    return f"{body}{post},fps={c.fps},tpad=stop_mode=clone:stop_duration=1,setsar=1,format=yuv420p"
 
 
 def render_video_shot(shot: Shot, asset: Asset, out: Path, W: int, H: int, crf: int,

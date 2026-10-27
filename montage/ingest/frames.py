@@ -113,18 +113,18 @@ def _video_frames(asset: Asset, d: Path, limit_s: float | None) -> FrameSet:
     fps = c.ingest.analysis_fps
     pair_fps = round(1.0 / c.ingest.motion_pair_dt_s)
     notes = []
-    pre = ""
+    post = ""
     if asset.is_hdr:
         if zscale_available():
-            pre = HDR_CHAIN + ","
+            post = "," + HDR_CHAIN  # tonemap AFTER fps + downscale: same look, a fraction of the pixels
         else:
             notes.append(f"{asset.filename}: HDR video without zscale; colors may look washed out")
     mdir = d / "_m"
     mdir.mkdir(exist_ok=True)
-    graph = (f"[0:v]{pre}split=3[a][b][c];"
-             f"[a]fps={fps},{short_side_scale(c.ingest.analysis_short_side)}[o1];"
-             f"[b]fps={pair_fps},{short_side_scale(c.ingest.motion_pair_short_side)}[o2];"
-             f"[c]fps={pair_fps},{short_side_scale(360)}[o3]")
+    graph = (f"[0:v]split=3[a][b][c];"
+             f"[a]fps={fps},{short_side_scale(c.ingest.analysis_short_side)}{post}[o1];"
+             f"[b]fps={pair_fps},{short_side_scale(c.ingest.motion_pair_short_side)}{post}[o2];"
+             f"[c]fps={pair_fps},{short_side_scale(360)}{post}[o3]")
     cmd = [c.render.ffmpeg_bin, "-y", "-v", "error", "-i", asset.src_path]
     if limit_s:
         cmd += ["-t", f"{limit_s:.3f}"]
