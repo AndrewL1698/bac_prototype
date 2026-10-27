@@ -48,7 +48,11 @@ def test_note_faster_adds_shots(session):
     before = pipeline.load_edl(s.runs[-1])
     r = pipeline.recut(s.session_id, note="faster")
     after = pipeline.load_edl(r.run_id)
-    print(len(before.shots), "->", len(after.shots), before.plan.pacing, "->", after.plan.pacing)
+    seg = lambda e: [(x.anchor, x.pacing) for x in e.plan.segments]  # noqa: E731
+    print(len(before.shots), "->", len(after.shots), before.plan.pacing, "->", after.plan.pacing,
+          "| segments", seg(before), "->", seg(after))
+    print("shot lengths before", [round(x.end - x.start, 2) for x in before.shots])
+    print("shot lengths after ", [round(x.end - x.start, 2) for x in after.shots])
     assert len(after.shots) > len(before.shots)
 
 

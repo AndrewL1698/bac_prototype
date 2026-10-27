@@ -103,6 +103,24 @@ def _edl() -> EDL:
                total_cost=0)
 
 
+def test_faster_shifts_segment_pacing():
+    from montage.types import SegmentDirective
+    edl = _edl()
+    prev = edl.plan.model_copy(update={"segments": [SegmentDirective(anchor="intro", section_index=-1,
+                                                                      content_queries=[], mood="calm", pacing=-0.5)]})
+    p = revise_rules(prev, edl, "faster")
+    assert p.pacing == pytest.approx(0.4) and p.segments[0].pacing == pytest.approx(-0.1)
+
+
+def test_llm_faster_guard(fake):
+    """If the LLM revision does not move pacing for a 'faster' note, the rule step is applied."""
+    from montage.director.notes import revise_plan
+    fake(GOOD)  # returns pacing 0 regardless of the note
+    prev = llm.repair(json.loads(json.dumps(GOOD)), None)
+    plan, fb = revise_plan(prev, None, "faster please", CTX)
+    assert fb == [] and plan.source == "llm" and plan.pacing == pytest.approx(0.4)
+
+
 def test_notes_rules():
     edl = _edl()
     p = revise_rules(edl.plan, edl, "lose the shot at 0:12")

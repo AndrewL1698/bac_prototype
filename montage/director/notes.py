@@ -20,6 +20,28 @@ def _clamp(x: float) -> float:
     return max(-1.0, min(1.0, x))
 
 
+def shift_pacing(p: EditPlan, delta: float) -> None:
+    """Whole-cut speed change: move global pacing AND every explicit section pacing by the same step
+    (a section's own pacing overrides the global one, so changing only the global would miss it)."""
+    p.pacing = _clamp(p.pacing + delta)
+    for seg in p.segments:
+        if seg.pacing:
+            seg.pacing = _clamp(seg.pacing + delta)
+
+
+def speed_direction(note: str) -> float:
+    """+1 for a 'faster' note, -1 for 'slower', 0 otherwise."""
+    f, s = bool(FASTER.search(note)), bool(SLOWER.search(note))
+    return 1.0 if f and not s else -1.0 if s and not f else 0.0
+
+
+def _pacing_moved(prev: EditPlan, new: EditPlan, direction: float) -> bool:
+    if (new.pacing - prev.pacing) * direction > 1e-6:
+        return True
+    old = {(s.anchor, s.section_index): s.pacing for s in prev.segments}
+    return any((s.pacing - old.get((s.anchor, s.section_index), 0.0)) * direction > 1e-6 for s in new.segments)
+
+
 def _shot_at(edl: EDL, t: float):
     return next((s for s in edl.shots if s.start <= t < s.end), None)
 
@@ -38,7 +60,7 @@ def revise_rules(prev: EditPlan, edl: EDL | None, note: str) -> EditPlan:
             p.exclude.append(shot.asset_id)
     elif delta:
         if part is None:
-            p.pacing = _clamp(p.pacing + delta)
+            shift_pacing(p, delta)
         else:
             anchor = {"start": "intro", "end": "outro", "middle": "build"}[part]
             seg = next((s for s in p.segments if s.anchor == anchor), None)
@@ -70,7 +92,12 @@ def revise_plan(prev: EditPlan, edl: EDL | None, note: str, ctx: dict | None = N
     if llm_enabled():
         try:
             from montage.director.llm import revise_from_llm
-            return revise_from_llm(prev, edl, note, ctx or {}), []
+            plan = revise_from_llm(prev, edl, note, ctx or {})
+            d = speed_direction(note)
+            part_named = any(w in PARTS for w in re.findall(r"[a-z]+", note.lower()))
+            if d and not part_named and not _pacing_moved(prev, plan, d):
+                shift_pacing(plan, 0.4 * d)  # guarantee a speed note always changes the cut
+            return plan, []
         except Exception:  # noqa: BLE001  optional component
             pass
     return revise_rules(prev, edl, note), ["director:rules"]

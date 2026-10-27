@@ -24,7 +24,7 @@ REVISE_INSTRUCTIONS = """The director watched the current cut and gave a note. R
 - Resolve time references ("at 0:12", "the shot after the beach") with the time-coded cut list.
 - "more of X" adds X to the relevant queries (vibe or the named part); "less X" / "no X" adds X to avoid_queries.
 - "lose / remove / cut the shot at T" adds that shot's asset id to exclude.
-- "too fast" / "slower" lowers pacing (for the named part only if the note names one, e.g. "the middle" = build and peak); "too slow" / "faster" raises it.
+- "too fast" / "slower" lowers pacing (for the named part only if the note names one, e.g. "the middle" = build and peak); "too slow" / "faster" raises it. A speed note for the whole cut moves the global pacing AND every segment's non-zero pacing by the same amount (about 0.4), because a segment's own pacing overrides the global value.
 - Update the rationale to say what changed, in one sentence."""
 
 EDITOR_NOTE_PROMPT = """Write exactly two short sentences, in plain language, explaining this cut to the director, with timestamps (m:ss) for the key moments, e.g. "Opened on the sunrise beach shots, held the party clips for the drop at 0:32." Mention how the plan shaped the cut. No lists, no preamble."""
