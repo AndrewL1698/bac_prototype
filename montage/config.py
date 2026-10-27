@@ -151,6 +151,7 @@ class ExcerptCfg(_B):
 
 
 class MusicCfg(_B):
+    use_beat_this: bool = True
     min_song_s: float
     max_bpm: float
     min_bpm: float

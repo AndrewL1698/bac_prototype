@@ -69,6 +69,7 @@ importance:
   ranker_weights: "importance_ranker.pt"
 
 music:
+  use_beat_this: true            # false = librosa beats only (fallback / tests)
   min_song_s: 40
   max_bpm: 160
   min_bpm: 70

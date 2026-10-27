@@ -81,6 +81,8 @@ def adjust_mode(beats: np.ndarray, downbeats: np.ndarray, tempo: float) -> tuple
 def analyze_beats(y: np.ndarray, sr: int) -> dict:
     source = "librosa"
     try:
+        if not get_config().music.use_beat_this:
+            raise RuntimeError("disabled by config")
         beats, downbeats = beat_this_beats(y, sr)
         if len(beats) < 8:
             raise RuntimeError(f"only {len(beats)} beats")
