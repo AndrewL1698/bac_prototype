@@ -11,8 +11,13 @@ EPS = 1e-6
 SNAP = np.array([1, 2, 4, 8])
 
 
-def _snap_beats(x: float) -> int:
-    return int(SNAP[np.argmin(np.abs(np.log2(SNAP) - np.log2(max(x, 1e-3))))])
+def _snap_beats(x: float, carry: float = 0.0) -> tuple[int, float]:
+    """Nearest of {1, 2, 4, 8} beats in log2 space, with error diffusion: the rounding remainder carries to
+    the next shot (clipped to +/-0.5), so the AVERAGE shot length follows pacing smoothly while every
+    individual shot stays a whole 1/2/4/8 beats."""
+    lx = np.log2(max(x, 1e-3))
+    k = int(np.argmin(np.abs(np.log2(SNAP) - (lx + carry))))
+    return int(SNAP[k]), float(np.clip(carry + lx - np.log2(SNAP[k]), -0.5, 0.5))
 
 
 def _grid_mean(grid: np.ndarray, vals: np.ndarray, a: float, b: float) -> float:
@@ -44,6 +49,7 @@ def walk(profile: MusicProfile, pacing: list[float], extra_doublings: dict[int, 
                 bound_k.append(k)
     cuts, forced = [0], [False]
     k = 0
+    carry = 0.0
     while k < B:
         t = bt[k]
         d = bt[k + 1] - t if k + 1 < B else med
@@ -51,7 +57,8 @@ def walk(profile: MusicProfile, pacing: list[float], extra_doublings: dict[int, 
         level = float(np.clip((z + 1) / 2.5, 0, 1))
         sec = sec_of(t)
         p = pacing[sec] if 0 <= sec < len(pacing) else 0.0
-        n = _snap_beats(8 * 2 ** (-3 * level) * 2 ** (-p)) * 2 ** extra.get(sec, 0)
+        n, carry = _snap_beats(8 * 2 ** (-3 * level) * 2 ** (-p), carry)
+        n *= 2 ** extra.get(sec, 0)
         while n < 64 and k + n < B and t_at(k + n) - t < cfg.min_shot_s:
             n *= 2
         while n > 1 and t_at(min(k + n, B)) - t > cfg.max_shot_s + EPS:

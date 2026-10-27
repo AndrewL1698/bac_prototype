@@ -104,6 +104,13 @@ def test_slots_pacing():
     assert len(fast) > len(slow)
 
 
+def test_slots_pacing_small_steps():
+    """A +0.5 pacing note must shorten the average shot even though shots snap to 1/2/4/8 beats."""
+    prof = make_profile()
+    counts = [len(build_slots(prof, [p] * 3, 500)[0]) for p in (-0.5, 0.0, 0.5)]
+    assert counts[0] < counts[1] < counts[2], counts
+
+
 def test_slots_scarcity():
     slots, reuse, notes = build_slots(make_profile(), [0.0] * 3, 10)
     assert len(slots) <= 9 or reuse
