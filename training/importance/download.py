@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import json
 import tarfile
+import zipfile
+import zlib
 from collections import Counter
 from pathlib import Path
 
@@ -27,6 +29,7 @@ def raw_dir() -> Path:
 
 
 ARCHIVE_EXT = (".zip", ".tar", ".tgz", ".tar.gz")
+CORRUPT: list[str] = []
 
 
 def _tag(name: str, default: str = "") -> str:
@@ -41,7 +44,6 @@ def _is_archive(name: str) -> bool:
 def extract_nested(archive: Path, out: Path, tag: str = "", depth: int = 0) -> int:
     """Walk zip/tar archives recursively (the Zenodo tar holds SumMe.zip and tvsum50_ver_1_1.tar); keep videos
     as raw/<dataset>/videos/<name> and h5 label files as raw/<name>. Returns the number of files kept."""
-    import zipfile
     kept = 0
     scratch = paths.scratch_dir("downloads") / f"nested_{depth}"
     scratch.mkdir(parents=True, exist_ok=True)
@@ -70,8 +72,14 @@ def extract_nested(archive: Path, out: Path, tag: str = "", depth: int = 0) -> i
             target = out / base if suffix == ".h5" else out / (t or "unknown") / "videos" / base
             if not target.exists() or target.stat().st_size != size:
                 target.parent.mkdir(parents=True, exist_ok=True)
-                with opener() as src:
-                    paths.atomic_write(target, src.read())
+                try:
+                    with opener() as src:
+                        paths.atomic_write(target, src.read())
+                except (zlib.error, zipfile.BadZipFile, EOFError, tarfile.ReadError) as e:
+                    # e.g. SumMe "Uncut_Evening_Flight" (.mp4 and .webm) is damaged inside the published archive
+                    log.warning("skipping damaged archive member %s: %s", name, e)
+                    CORRUPT.append(name)
+                    continue
             kept += 1
             if kept % 5 == 0:
                 jobs.report(0.7 + 0.29 * min(1.0, kept / 77), f"extracted {kept} files ({t})")
@@ -88,7 +96,7 @@ def main() -> int:
         files = [p for p in out.rglob("*") if p.is_file() and p.name != done_marker.name]
         summary = {"kept": n, "n_files": len(files), "by_ext": dict(Counter(p.suffix.lower() for p in files)),
                    "videos": {d: len(list((out / d / "videos").glob("*"))) for d in ("summe", "tvsum")},
-                   "h5": [p.name for p in files if p.suffix == ".h5"]}
+                   "h5": [p.name for p in files if p.suffix == ".h5"], "corrupt_in_source": CORRUPT}
         paths.atomic_write(done_marker, json.dumps(summary, indent=1))
     summary = json.loads(done_marker.read_text())
     print("SumMe/TVSum extracted:", json.dumps(summary), flush=True)

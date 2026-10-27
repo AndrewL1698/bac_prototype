@@ -67,9 +67,14 @@ def find_files() -> tuple[dict[str, Path], dict[str, list[Path]]]:
     root = raw_dir()
     h5 = {dataset_of(p): p for p in root.rglob("*.h5") if dataset_of(p) in ("summe", "tvsum")}
     vids: dict[str, list[Path]] = {"summe": [], "tvsum": []}
-    for p in root.rglob("*"):
+    best: dict[tuple[str, str], Path] = {}
+    for p in sorted(root.rglob("*")):  # SumMe ships each video as .mp4 and .webm: keep one, prefer .mp4
         if p.is_file() and p.suffix.lower() in VIDEO_EXT and dataset_of(p) in vids:
-            vids[dataset_of(p)].append(p)
+            key = (dataset_of(p), _norm(p.stem))
+            if key not in best or p.suffix.lower() == ".mp4":
+                best[key] = p
+    for (ds, _), p in sorted(best.items()):
+        vids[ds].append(p)
     return h5, vids
 
 
@@ -77,11 +82,17 @@ def build_mapping() -> dict:
     import h5py
     out_path = datasets_dir("importance") / "mapping.json"
     if out_path.exists():
-        return json.loads(out_path.read_text())
+        m = json.loads(out_path.read_text())
+        m.pop("_missing", None)
+        return m
     h5_files, vids = find_files()
     log.info("h5 files: %s; videos: %s", {k: str(v.name) for k, v in h5_files.items()},
              {k: len(v) for k, v in vids.items()})
     mapping: dict[str, dict] = {}
+    missing: dict[str, dict] = {}
+    marker = raw_dir() / "_extracted.json"
+    corrupt = {_norm(Path(c).stem) for c in (json.loads(marker.read_text()).get("corrupt_in_source", [])
+                                              if marker.exists() else [])}
     for ds, h5p in sorted(h5_files.items()):
         probes = {str(v): _count_frames(v) for v in vids[ds]}
         by_name = {_norm(Path(v).stem): v for v in probes}
@@ -99,6 +110,10 @@ def build_mapping() -> dict:
                     if len(cands) > 1:  # break ties by expected duration (n_frames / fps)
                         cands.sort(key=lambda v: abs(probes[v][2] - n_frames / max(probes[v][1], 1e-6)))
                     match, how = (cands[0], "frames") if cands else (None, "none")
+                if match is None and name and _norm(name) in corrupt:
+                    log.warning("%s/%s (%s): video damaged in the published archive; not mapped", ds, k, name)
+                    missing[f"{ds}/{k}"] = {"video_name": name, "reason": "damaged in source archive (md5 verified)"}
+                    continue
                 if match is None or match in used:
                     raise SystemExit(f"cannot map {ds}/{k} (n_frames={n_frames}, name={name}) one to one")
                 used.add(match)
@@ -106,8 +121,8 @@ def build_mapping() -> dict:
                 mapping[f"{ds}/{k}"] = {"dataset": ds, "h5": str(h5p), "entry": k, "video": match, "how": how,
                                         "n_frames_h5": n_frames, "n_frames_video": n, "fps": fps, "duration": dur}
     counts = {ds: sum(1 for m in mapping.values() if m["dataset"] == ds) for ds in ("summe", "tvsum")}
-    log.info("mapped %s", counts)
-    paths.atomic_write(out_path, json.dumps(mapping, indent=1))
+    log.info("mapped %s; not mapped (damaged at source): %s", counts, list(missing))
+    paths.atomic_write(out_path, json.dumps({**mapping, "_missing": missing}, indent=1))
     return mapping
 
 
