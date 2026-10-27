@@ -102,6 +102,12 @@ def prepare() -> dict:
     vote = demo_root() / "vote"
     backups.mkdir(parents=True, exist_ok=True)
     vote.mkdir(parents=True, exist_ok=True)
+    from montage.ingest.assets import ingest
+    from montage.render.proxy import ensure_proxies
+    for a in al:
+        n = ensure_proxies(ingest([a]))
+        log.info("%s: %d HDR render proxies ready", a.name, n)
+        report.setdefault("proxies", {})[a.name] = n
     for a in al:
         song = album_song(a, so)
         res = pipeline.generate([str(a)], str(song), album_brief(a), seed=0)

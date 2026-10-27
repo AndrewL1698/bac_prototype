@@ -20,24 +20,23 @@ def encode_args(crf: int) -> list[str]:
 
 
 def crop_filter(asset: Asset, face: tuple[float, float]) -> str:
-    """crop=w:h:x:y on the DISPLAY frame (FFmpeg autorotates before filters), centered on the face."""
-    w, h = asset.width, asset.height
-    if w / h > T:
-        ch, cw = h, int(round(h * T))
-    else:
-        cw, ch = w, int(round(w / T))
-    cw, ch = cw - cw % 2, ch - ch % 2
-    cx = (face[0] if face[0] >= 0 else 0.5) * w
-    cy = (face[1] if face[1] >= 0 else 0.5) * h
-    x = int(min(max(cx - cw / 2, 0), w - cw))
-    y = int(min(max(cy - ch / 2, 0), h - ch))
-    return f"crop={cw}:{ch}:{x}:{y}"
+    """Largest 16:9 crop of the DISPLAY frame (FFmpeg autorotates before filters), centered on the face.
+    Written relative to the input size, so it also fits a downscaled proxy."""
+    cx = face[0] if face[0] >= 0 else 0.5
+    cy = face[1] if face[1] >= 0 else 0.5
+    w = r"trunc(min(iw\,ih*16/9)/2)*2"
+    h = r"trunc(min(ih\,iw*9/16)/2)*2"
+    x = rf"min(max({cx:.4f}*iw-ow/2\,0)\,iw-ow)"
+    y = rf"min(max({cy:.4f}*ih-oh/2\,0)\,ih-oh)"
+    return f"crop=w={w}:h={h}:x={x}:y={y}"
 
 
-def video_filters(asset: Asset, framing: str, W: int, H: int, face: tuple[float, float]) -> str:
+def video_filters(asset: Asset, framing: str, W: int, H: int, face: tuple[float, float],
+                  needs_tonemap: bool | None = None) -> str:
     c = get_config().render
-    # HDR: tonemap the already-cropped/scaled W x H frame (not the full-resolution source)
-    post = "," + HDR_CHAIN if asset.is_hdr and zscale_available() else ""
+    hdr = asset.is_hdr if needs_tonemap is None else needs_tonemap
+    # HDR without a proxy: tonemap the already-cropped/scaled W x H frame (not the full-resolution source)
+    post = "," + HDR_CHAIN if hdr and zscale_available() else ""
     if framing == "crop":
         body = f"{crop_filter(asset, face)},scale={W}:{H}"
     elif framing == "fill_blur":
@@ -51,10 +50,12 @@ def video_filters(asset: Asset, framing: str, W: int, H: int, face: tuple[float,
 
 def render_video_shot(shot: Shot, asset: Asset, out: Path, W: int, H: int, crf: int,
                       face: tuple[float, float] = (-1.0, -1.0)) -> Path:
+    from montage.render.proxy import render_source
     c = get_config().render
     n = shot.frame_end - shot.frame_start
-    cmd = [c.ffmpeg_bin, "-y", "-v", "error", "-ss", f"{shot.src_in or 0.0:.3f}", "-i", asset.src_path,
-           "-t", f"{n / c.fps + 0.25:.3f}", "-vf", video_filters(asset, shot.framing, W, H, face),
+    src, needs_tonemap = render_source(asset)
+    cmd = [c.ffmpeg_bin, "-y", "-v", "error", "-ss", f"{shot.src_in or 0.0:.3f}", "-i", src,
+           "-t", f"{n / c.fps + 0.25:.3f}", "-vf", video_filters(asset, shot.framing, W, H, face, needs_tonemap),
            "-frames:v", str(n), *encode_args(crf), str(out)]
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode != 0:
