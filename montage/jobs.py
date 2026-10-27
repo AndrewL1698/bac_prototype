@@ -46,7 +46,15 @@ def read_status(name: str, for_user: str | None = None) -> dict | None:
 
 
 def write_status(st: dict, for_user: str | None = None) -> None:
-    paths.atomic_write(status_path(st["name"], for_user or st.get("user")), json.dumps(st, indent=1))
+    target = status_path(st["name"], for_user or st.get("user"))
+    for attempt in range(20):  # Windows refuses os.replace while a reader has the file open
+        try:
+            paths.atomic_write(target, json.dumps(st, indent=1))
+            return
+        except PermissionError:
+            if attempt == 19:
+                raise
+            time.sleep(0.05)
 
 
 def pid_alive(pid: int | None) -> bool:
