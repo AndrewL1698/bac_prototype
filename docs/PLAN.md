@@ -104,7 +104,7 @@ Shared
 Keshav
 - [x] Push access to the repo; local clone; `uv` installed
 - [x] Colab Secrets: `ANTHROPIC_API_KEY`, `MONTAGE_USER=keshav`
-- [ ] Demo album in `montage_data/demo/<album>/`, songs in `montage_data/demo/songs/`
+- [x] Demo album in `montage_data/demo/<album>/`, songs in `montage_data/demo/songs/` (Summer Trip (picked), 2 songs; 2026-10-27)
 
 Andrew
 - [ ] Local clone; `uv` installed
