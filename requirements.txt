@@ -1,0 +1,24 @@
+# Do NOT add torch/torchvision/torchaudio: Colab ships CUDA builds; reinstalling breaks them.
+# opencv: Colab ships opencv-python (with FaceDetectorYN); adding the headless wheel next to it breaks cv2.
+open_clip_torch
+transformers
+nnAudio
+librosa
+soundfile
+scenedetect[opencv]
+pillow
+pillow-heif
+numpy
+scipy
+scikit-learn
+pydantic>=2
+pyyaml
+gradio
+gradio_client
+matplotlib
+anthropic
+mir_eval
+tqdm
+joblib
+pytest
+beat-this

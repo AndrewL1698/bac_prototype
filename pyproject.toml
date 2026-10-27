@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "montage"
+version = "0.1.0"
+description = "AI music video editor prototype (bac_prototype)"
+requires-python = ">=3.10"
+# Runtime deps live in requirements.txt (Colab ships torch; never reinstall it).
+
+[tool.setuptools.packages.find]
+include = ["montage*", "training*", "scripts*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "gpu: needs a CUDA GPU (run on Colab)",
+    "media: needs FFmpeg and generated fixtures (run on Colab)",
+    "api: needs ANTHROPIC_API_KEY",
+]
+filterwarnings = ["ignore::DeprecationWarning"]

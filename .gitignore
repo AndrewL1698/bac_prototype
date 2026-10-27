@@ -57,3 +57,6 @@ venv/
 Thumbs.db
 .vscode/
 .idea/
+
+# claude code worktrees (local only)
+.claude/worktrees/
