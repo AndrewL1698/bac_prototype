@@ -1,0 +1,90 @@
+# PLAN: phases, owners, current work, decisions
+
+This is the plan of record. Progress history goes in `docs/LOG.md`; this file shows where things stand right now.
+
+How to use it: claim a phase in **Current work** before starting (person, branch, start time), tick the box and clear your row when it is merged to `main`, and record any judgment calls under **Decisions**.
+
+## Goal and schedule
+
+A live workshop demo of the AI music video editor in two days.
+- **Day 1:** working app end to end using fallbacks only (no trained models, rule-based director).
+- **Day 2:** LLM director, trained models, evaluation, demo prep.
+
+**Never cut:** phases 0-8 and 9A (core pipeline, app, director).
+**Cut in this order if time runs short:**
+1. CUFED (10B)
+2. Thumbnail contact sheet for the director
+3. Extra ablations (keep full vs naive vs beat_random)
+4. Pin/exclude buttons (notes still work)
+5. Learned importance (10A; ship heuristic only)
+6. MERT emotion head (9B; ship heuristic arousal)
+
+## Two tracks (so two people can work in parallel)
+
+| Track | Phases | Depends on |
+|---|---|---|
+| **A: pipeline and demo** | 0 (scaffold) -> 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9A -> 11 (demo mode, DEMO.md) | nothing external |
+| **B: data, models, evaluation** | 0 (downloads + smoke tests) -> 9B -> 10A -> (10B) -> 11 (eval grid, metrics, report) | 9B needs only the window helpers in `montage/music/emotion.py` (B writes them first, per spec 09). 10A feature extraction needs phase 3 merged; until then B writes download, label mapping, and training code. 11 eval needs 5-7 merged. |
+
+Phase 0 is shared: whoever starts first builds the scaffold (config, types, paths, jobs, fixtures) and merges it fast; the other starts dataset downloads as soon as the job runner is on `main`.
+
+Assign people to tracks here (proposed; swap if you prefer):
+- Track A: Kesh (demoing, so owns the app and demo flow)
+- Track B: Andrew
+
+## Phases
+
+Day 1
+- [ ] **0. Setup and Colab ops** (`spec/00_setup.md`)
+  - [ ] scaffold: pyproject, requirements, config loader, paths, types, log, `test_repo_hygiene.py`
+  - [ ] job runner + status, `colab_bootstrap.py`, `smoke_models.py`
+  - [ ] fixtures generator; pytest green
+  - [ ] Colab connected, bootstrapped, GPU verified
+  - [ ] background downloads started: DEAM, SumMe/TVSum
+- [ ] **1. Ingest and candidates** (`spec/01_ingest_candidates.md`)
+- [ ] **2. Music analysis**, heuristic emotion (`spec/02_music.md`)
+- [ ] **3. Visual features, tags, heuristic importance, dedup** (`spec/03_visual_features.md`, `spec/04_importance.md` heuristic part)
+- [ ] **4. Director: rule-based fallback + plan compilation** (`spec/05_director.md` sections 1-4)
+- [ ] **5. Slots, costs, beam search, EDL** (`spec/06_planner.md`)
+- [ ] **6. Render**: preview + export, framing, Ken Burns (`spec/07_render.md`)
+- [ ] **7. Pipeline + CLI** end to end on fixtures and one real album (`spec/08_app.md` section 1)
+- [ ] **8. Gradio app v1** (`spec/08_app.md` sections 2-4)
+
+Day 2
+- [ ] **9A. LLM director**, notes/recut, pin/exclude, editor's note (`spec/05_director.md` sections 5-8, `spec/08_app.md` section 5)
+- [ ] **9B. DEAM emotion head** trained + plugged in (`spec/09_train_emotion.md`)
+- [ ] **10A. Importance ranker** (SumMe/TVSum) trained + plugged in (`spec/10_train_importance.md`)
+- [ ] **10B. (optional) CUFED**, only if 9A-10A are done and more than 4 h remain
+- [ ] **11. Evaluation, naive-cut compare, demo mode, backups, DEMO.md, RESULTS.md** (`spec/11_eval_demo.md`)
+
+## Current work
+
+| Phase | Person | Branch | Started (ET) | Notes |
+|---|---|---|---|---|
+| _(none yet)_ | | | | |
+
+## Decisions
+
+(append: `YYYY-MM-DD | who | decision | why`)
+
+- 2026-10-26 | Kesh | Output is 16:9 1080p; portrait/square media uses blurred-background fill; near-16:9 media is face-aware cropped when the crop loses <= 20% | demo looks consistent and never crops heads
+- 2026-10-26 | Kesh | Director = user's free-text brief + notes, compiled by Claude (Haiku 5.5, structured outputs) into an EditPlan; rule-based fallback | user acts as director, system does the rest
+- 2026-10-26 | Kesh | V-JEPA not used in v1 (no text alignment; photos dominate; tiny training set); possible later ablation | scope and timeline
+
+## Setup checklist
+
+Shared
+- [x] Spec pack committed on `main` (Kesh, 2026-10-26)
+- [x] Drive folder `montage_data` created in Kesh's My Drive with `demo/`, `demo/songs/`, `eval/albums/`, `eval/songs/`
+- [ ] colab-mcp registered for Claude Code at project scope: Kesh runs the `claude mcp add --scope project` command from `KICKOFF.md` step 4 and commits `.mcp.json` and `.claude/settings.json` (each person then approves the server once)
+- [ ] `montage_data` shared with Andrew (Editor); Andrew adds a shortcut in My Drive
+
+Kesh
+- [x] Push access to the repo; local clone; `uv` installed
+- [ ] Colab Secrets: `ANTHROPIC_API_KEY`, `MONTAGE_USER=kesh`
+- [ ] Demo album in `montage_data/demo/<album>/`, songs in `montage_data/demo/songs/`
+
+Andrew
+- [ ] Local clone; `uv` installed
+- [ ] Colab Secrets: `ANTHROPIC_API_KEY`, `MONTAGE_USER=andrew`
+- [ ] Eval: 2 albums in `montage_data/eval/albums/`, 3 songs in `montage_data/eval/songs/` (Track B)

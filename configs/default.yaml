@@ -1,0 +1,182 @@
+# montage default configuration. Every weight and threshold lives here.
+# Override with MONTAGE_CONFIG=<extra.yaml> or CLI --set a.b=value.
+
+seed: 0
+
+ingest:
+  min_assets: 10
+  max_assets: 100
+  max_total_video_s: 1200
+  max_per_video_s: 120
+  analysis_fps: 2
+  analysis_short_side: 448
+  motion_pair_short_side: 320
+  motion_pair_dt_s: 0.0667        # 1/15 s
+  workers: 8
+
+candidates:
+  window_s: 3.0
+  hop_s: 1.5
+  min_window_s: 1.0
+  edge_trim_s: 0.3
+  min_scene_s: 1.0
+  scene_detector: adaptive        # adaptive | content
+  thumb_width: 256
+
+features:
+  version: "f1"                   # bump to invalidate the feature cache
+  clip_model: "ViT-L-14"
+  clip_pretrained: "openai"
+  clip_batch: 128
+  aesthetic_weights: "sac+logos+ava1-l14-linearMSE.pth"   # in DATA_ROOT/weights
+  yunet_model: "face_detection_yunet_2023mar.onnx"        # in DATA_ROOT/weights
+  face_score: 0.7
+  tags_file: "configs/tags.txt"
+  tags_top_k: 5
+  tag_min_cos: 0.2
+
+mood:
+  templates: ["a photo of {}", "a video still of {}"]
+  prompts:
+    arousal_high: ["an energetic, exciting moment", "people dancing at a party", "fast action and movement", "a cheering crowd", "an adrenaline-filled moment"]
+    arousal_low: ["a calm, peaceful scene", "a quiet, still moment", "a serene landscape", "a relaxing slow afternoon", "a soft, gentle scene"]
+    valence_pos: ["a happy, joyful moment", "friends laughing together", "a bright cheerful day", "a celebration", "a warm, loving moment"]
+    valence_neg: ["a sad, melancholic scene", "a gloomy, dark day", "a lonely moment", "a tense, somber scene", "a cold, empty place"]
+  arousal_weights: {clip: 0.5, motion: 0.3, color: 0.2}
+  valence_weights: {clip: 0.6, brightness: 0.2, color: 0.2}
+  photo_motion_z: -0.5
+
+dedup:
+  cos_threshold: 0.92
+
+importance:
+  heuristic:
+    aes: 1.0
+    sharp: 0.6
+    exp: 0.4
+    bright: 0.3
+    face_count: 0.5
+    face_area: 0.3
+    color: 0.3
+    motion: 0.4
+    shake: 0.5
+    junk: 3.0
+  junk_tags: ["screenshot", "text document", "receipt", "meme"]
+  reject_sharpness_pct: 10
+  abs_min_sharpness: 3.0          # log1p(var(Laplacian)); tune on real data, log the choice
+  reject_exposure_clip: 0.5
+  blend_alpha: 0.5                # overridden by the ranker checkpoint if present
+  ranker_weights: "importance_ranker.pt"
+
+music:
+  min_song_s: 40
+  max_bpm: 160
+  min_bpm: 70
+  analysis_sr: 22050
+  mert_sr: 24000
+  structure:
+    kernel_beats: 16
+    min_section_beats: 16
+    peak_k: 0.5
+  emotion:
+    use_mert: true
+    model: "m-a-p/MERT-v1-95M"
+    window_s: 5.0
+    align: "centered"
+    batch: 64
+    head_weights: "emotion_head.pt"
+  intensity:
+    w_arousal: 0.5
+    w_rms: 0.3
+    w_onset: 0.2
+    smooth_s: 1.5
+  sections:
+    slope_thr: 0.05
+  excerpt:
+    default_length_s: 50
+    min_length_s: 45
+    max_length_s: 60
+    fade_out_s: 1.5
+    silence_db: -40
+    peak_target_frac: 0.7
+    peak_width: 0.15
+    weights: {mean: 1.0, peak: 1.0, start: 0.3, end: 0.3, silence: 1.0}
+
+director:
+  use_llm: true
+  model: "claude-haiku-5-5"
+  max_tokens: 2000
+  timeout_s: 30
+  max_queries: 6
+  max_query_words: 8
+  send_thumbnails: false
+  editor_note: true
+  weights: {vibe: 0.6, seg: 1.2, avoid: 1.5, avoid_margin: 0.5, open: 1.5, close: 1.5}
+  mood_targets: {calm: 0.15, neutral: 0.5, energetic: 0.85}
+  energy_bias_scale: 0.25
+  contact_sheet: {cell_px: 128, max_cells: 100}
+
+planner:
+  min_shot_s: 0.5
+  max_shot_s: 4.0
+  max_fill_ratio: 0.9
+  boundary_novelty_scale: 0.5
+  w_imp: 1.0
+  w_mood: 0.8
+  w_val: 0.3
+  w_dir: 1.0
+  photo_min_s: 0.6
+  w_photo_short: 0.5
+  w_photo_hi: 0.3
+  w_must: 5.0
+  variety: 0.15
+  w_rep: 2.0
+  rep_tau: 0.75
+  w_src: 1.5
+  w_jump: 0.6
+  w_contrast: 0.6
+  w_chrono: 1.0
+  chrono_tol_s: 60
+  w_reuse: 2.0
+  max_per_cluster: 1
+  max_windows_per_video: 3
+  min_photo_frac: 0.3
+  max_photo_frac: 0.7
+  w_ratio: 2.0
+  min_pool: 60
+  expand_top: 32
+  beam_width: 128
+  naive_cut_s: 2.0
+  inout: {w_aes: 0.4, w_motion: 0.4, w_rel: 0.2, drift_penalty: 0.1, step_s: 0.1}
+  # ablation switches (set by eval systems)
+  use_forced_cuts: true
+
+render:
+  fps: 30
+  preset: "veryfast"
+  preview: {width: 1280, height: 720, crf: 23}
+  export: {width: 1920, height: 1080, crf: 18}
+  audio_bitrate: "192k"
+  max_crop_loss: 0.2
+  pano_aspect: 2.5
+  blur_sigma: 30
+  blur_darken: -0.15
+  kb_base: 0.04
+  kb_gain: 0.08
+  kb_max_pan: 0.03
+  fill_blur_oversize: 1.15
+  workers: 8
+  ffmpeg_bin: "ffmpeg"
+  ffprobe_bin: "ffprobe"
+
+app:
+  port: 7860
+  share: true
+  default_seed: 0
+
+eval:
+  beat_tol_s: 0.07
+  pace_window_s: 4.0
+  seeds: 3
+  systems: ["full", "naive", "beat_random", "greedy", "no_learned", "no_mood", "no_pairwise", "no_director", "no_forced"]
+  default_brief: "A fun recap of these moments, matched to the music."

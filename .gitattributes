@@ -1,0 +1,7 @@
+# Append-only progress log: keep both sides' lines on merge instead of conflicting.
+docs/LOG.md merge=union
+
+# Normalize line endings (Windows + Linux collaborators)
+* text=auto eol=lf
+*.bat text eol=crlf
+*.ps1 text eol=crlf

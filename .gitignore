@@ -1,0 +1,59 @@
+# Public repo: never commit data, media, weights, or secrets.
+
+# data and outputs
+data/
+weights/
+runs/
+scratch/
+tests/fixtures/
+*.npz
+*.npy
+*.pt
+*.pth
+*.onnx
+*.ckpt
+*.safetensors
+*.h5
+*.zip
+*.tgz
+
+# media
+*.mp4
+*.mov
+*.m4v
+*.avi
+*.mkv
+*.wav
+*.mp3
+*.m4a
+*.aac
+*.flac
+*.heic
+*.heif
+*.jpg
+*.jpeg
+*.png
+*.webp
+!docs/img/*.png
+
+# secrets
+.env
+.claude/settings.local.json
+.env.*
+*.key
+secrets*.json
+
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# os / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
