@@ -46,7 +46,7 @@ Day 1
 - [x] **3. Visual features, tags, heuristic importance, dedup** (`spec/03_visual_features.md`, `spec/04_importance.md` heuristic part)
 - [x] **4. Director: rule-based fallback + plan compilation** (`spec/05_director.md` sections 1-4)
 - [x] **5. Slots, costs, beam search, EDL** (`spec/06_planner.md`)
-- [ ] **6. Render**: preview + export, framing, Ken Burns (`spec/07_render.md`)
+- [x] **6. Render**: preview + export, framing, Ken Burns (`spec/07_render.md`)
 - [ ] **7. Pipeline + CLI** end to end on fixtures and one real album (`spec/08_app.md` section 1)
 - [ ] **8. Gradio app v1** (`spec/08_app.md` sections 2-4)
 
@@ -61,7 +61,7 @@ Day 2
 
 | Phase | Person | Branch | Started (ET) | Notes |
 |---|---|---|---|---|
-| 6 (render) | Keshav | phase-6-render | 2026-10-27 02:00 | |
+| 7 (pipeline + CLI) | Keshav | phase-7-pipeline | 2026-10-27 02:45 | |
 
 ## Decisions
 

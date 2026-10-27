@@ -65,3 +65,9 @@ Format:
 - Next: phase 6 (render).
 - Blockers: none.
 - Heads-up: `render.max_crop_loss` stays 0.2 per the PLAN decision, so 4:3 photos (25% loss) get fill_blur and 2.2:1 video (19%) gets crop. Spec 07's framing table says the opposite for both, and no single threshold satisfies both; flagged to Keshav as a taste call. Local Windows test runs set `KMP_DUPLICATE_LIB_OK=TRUE` in `tests/conftest.py` (numpy MKL vs torch OpenMP clash).
+
+## 2026-10-27 02:45 ET | Keshav | phase 6 | branch phase-6-render (merged)
+- Done: `montage.render`: photo shots in Python (fill_blur composition at 1.15x, largest-16:9 face-centered base rect, smoothstep subpixel Ken Burns via warpAffine, panorama pans) piped as rgb24 to FFmpeg; video shots with seek + crop/native/fill_blur filter graphs, HDR tonemap chain, tpad to guarantee exactly n frames; identical libx264 settings (veryfast, yuv420p, 30 fps, timescale 15360) so `concat -c copy` works; song excerpt with fade-out; mux + ffprobe verification (video packets == frames, audio within 1 frame). Phase 6 tests 7/7 on Colab (framing table, exact shot frame counts incl. past-end tpad, fill_blur no black, rotated upright vs reference, Ken Burns monotonic zoom, scene-detected cuts at EDL frames +/- 1).
+- Next: phase 7 (pipeline + CLI), phase 8 (Gradio app).
+- Blockers: `montage_data/demo/` is empty: Keshav to add a demo album folder and songs for the phase 7 real-album check and the demo.
+- Results: 40-shot render (1575 frames): preview 13.7 s (target < 25 s), 1080p export 22.0 s (target < 60 s).
