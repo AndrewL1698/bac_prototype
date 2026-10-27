@@ -80,7 +80,8 @@ def figures(summ: dict) -> list[str]:
          "Variety and shot quality")
     abl = [s for s in systems if s.startswith("no_")]
     if "full" in summ and abl:
-        ms = ["pace_coupling", "mood_coupling", "quality_lift", "boundary_hit_rate", "director_adherence", "diversity"]
+        ms = ["pace_coupling", "mood_coupling", "quality_lift", "boundary_hit_rate", "director_adherence", "diversity",
+              "mean_adjacent_cos"]
         fig, ax = plt.subplots(figsize=(16, 9), dpi=100)
         w = 0.8 / len(abl)
         for k, s in enumerate(abl):
