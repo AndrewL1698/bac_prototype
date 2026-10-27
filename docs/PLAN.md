@@ -47,7 +47,7 @@ Day 1
 - [x] **4. Director: rule-based fallback + plan compilation** (`spec/05_director.md` sections 1-4)
 - [x] **5. Slots, costs, beam search, EDL** (`spec/06_planner.md`)
 - [x] **6. Render**: preview + export, framing, Ken Burns (`spec/07_render.md`)
-- [ ] **7. Pipeline + CLI** end to end on fixtures and one real album (`spec/08_app.md` section 1)
+- [x] **7. Pipeline + CLI** end to end on fixtures and one real album (`spec/08_app.md` section 1)
 - [ ] **8. Gradio app v1** (`spec/08_app.md` sections 2-4)
 
 Day 2
@@ -61,7 +61,7 @@ Day 2
 
 | Phase | Person | Branch | Started (ET) | Notes |
 |---|---|---|---|---|
-| 7 (pipeline + CLI) | Keshav | phase-7-pipeline | 2026-10-27 02:45 | |
+| 8 (Gradio app v1) | Keshav | phase-8-app | 2026-10-27 03:15 | |
 
 ## Decisions
 
@@ -84,6 +84,7 @@ Day 2
 - 2026-10-27 | Keshav | Rule-based vibe query is the brief minus its avoid/length clauses (not the raw brief) | the raw brief would pull CLIP toward things the director asked to skip
 - 2026-10-27 | Keshav | Framing keeps max_crop_loss 0.2 (4:3 photos -> fill_blur, 2.2:1 video -> crop), contradicting spec 07's table on those two rows | the table is internally inconsistent; the PLAN decision wins until Keshav decides otherwise
 - 2026-10-27 | Keshav | Video crop placement uses the candidate's face center from features, passed to the renderer as a side table (not in the EDL schema) | EDL schema stays unchanged
+- 2026-10-27 | Keshav | App/CLI user errors raise gr.Error / exit 2 with the friendly message (spec said gr.Warning) | a Warning toast does not stop the handler or reach gradio_client, so the error path could not be tested
 
 ## Setup checklist
 

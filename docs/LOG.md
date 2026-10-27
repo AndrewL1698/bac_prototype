@@ -71,3 +71,10 @@ Format:
 - Next: phase 7 (pipeline + CLI), phase 8 (Gradio app).
 - Blockers: `montage_data/demo/` is empty: Keshav to add a demo album folder and songs for the phase 7 real-album check and the demo.
 - Results: 40-shot render (1575 frames): preview 13.7 s (target < 25 s), 1080p export 22.0 s (target < 60 s).
+
+## 2026-10-27 03:15 ET | Keshav | phase 7 | branch phase-7-pipeline (merged)
+- Done: `montage/pipeline.py` (Session persisted under `sessions/`, in-process state with rebuild-from-cache, `analyze`, `make_plan`, `plan_edit` with systems full/naive/beat_random/greedy/no_learned/no_mood/no_pairwise/no_director/no_forced, `render_edl`, `generate`, `recut` with notes/pins/excludes, `export`), `montage/cli.py` (generate/recut/export, `--set`), run artifacts (plan.json, edl.json, meta.json, result.json, preview.mp4, curves.png, costs.png, storyboard.jpg), rule-based notes (`director/notes.py`: faster/slower overall or by part, more X, less/no X, "lose the shot at m:ss") and the editor's-note template (`director/editor_note.py`; LLM versions come in 9A). Phase 7 tests on Colab with every optional component off (rules director, heuristic emotion, librosa beats, heuristic importance): generate end to end, recut "faster" (pacing up, shots >= before), "lose the shot at 0:ss" removes that asset, 1080p export, 3-file upload -> friendly error.
+- Next: phase 8 (Gradio app).
+- Blockers: real-album timing check waits for Keshav's demo album in `montage_data/demo/<album>/` (+ songs in `demo/songs/`).
+- Heads-up: new config key `music.use_beat_this` (default true; false = librosa only). Shared contract: `montage.pipeline` API as in spec 08 section 1 (`generate` returns RunResult; `session_for_run(run_id)` gives its Session).
+- Results: fixtures cold generate (15 files, 50 s preview): ingest 3.1 s, features 13.4 s, music 4.2 s, plan 0.2 s, render 9.7 s.

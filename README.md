@@ -17,6 +17,7 @@ _Keep this list current. Update it when a phase merges to `main`._
 - **Phase 4 (director, rules):** `montage.director.make_plan(brief)` turns the brief into an `EditPlan` (rule-based for now); `montage.director.apply.compile_plan` turns a plan into planner directives (section intents, pacing, target arousal, CLIP query scores, excludes/must-includes).
 - **Phase 5 (planner):** `montage.planning.plan_edit(PlanInputs, run_id, seed, system)` builds the beat grid, scores every candidate/slot pair, runs the constrained beam search (or a naive/beat_random/greedy baseline), picks in/out points, and writes an `EDL` with frame-exact cuts and a reason per shot.
 - **Phase 6 (render):** `montage.render.assemble.render_edl(edl, assets, song_path, preview)` renders frame-exact 720p previews or 1080p exports (Ken Burns photos, face-aware crop or blurred fill for odd aspect ratios, HDR tonemapping), muxes the song excerpt, and verifies frame and audio counts.
+- **Phase 7 (pipeline + CLI):** `python -m montage.cli generate --media DIR --song FILE --brief "..."` (and `recut --session ID --note ...`, `export --run ID`) runs the whole thing; outputs land in `montage_data/runs/<run_id>/` (preview.mp4, edl.json, plan.json, curves.png, storyboard.jpg).
 
 ## How it works (one paragraph)
 
