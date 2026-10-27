@@ -76,7 +76,11 @@ def pid_alive(pid: int | None) -> bool:
         return False
     except PermissionError:
         return True
-    return True
+    try:  # a killed-but-unreaped process (zombie) is not alive
+        with open(f"/proc/{int(pid)}/stat") as f:
+            return f.read().rsplit(")", 1)[1].split()[0] != "Z"
+    except (OSError, IndexError):
+        return True
 
 
 def is_active(st: dict | None) -> bool:
