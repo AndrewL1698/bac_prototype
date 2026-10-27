@@ -11,11 +11,17 @@ import pytest
 from conftest import gpu_available
 
 
-def _synthetic(n_groups=12, per=40, seed=0):
+def _synthetic(n_groups=24, per=60, seed=0):
+    """Feature scales like the real ranker_features: L2-normalized 768-d embedding + 8 scalar columns."""
     rng = np.random.default_rng(seed)
-    X = rng.normal(size=(n_groups * per, 776)).astype(np.float32)
-    w = rng.normal(size=776)
-    y = X @ w + rng.normal(scale=2.0, size=len(X))
+    n = n_groups * per
+    emb = rng.normal(size=(n, 768))
+    emb /= np.linalg.norm(emb, axis=1, keepdims=True)
+    scal = rng.normal(size=(n, 8))
+    X = np.concatenate([emb, scal], 1).astype(np.float32)
+    u = rng.normal(size=768)
+    u /= np.linalg.norm(u)
+    y = 1.5 * scal[:, 0] + 1.0 * scal[:, 2] + 25.0 * emb @ u + rng.normal(scale=1.0, size=n)
     G = np.repeat([f"g{i}" for i in range(n_groups)], per)
     for g in np.unique(G):  # labels only matter within a group: min-max per group
         m = G == g
@@ -27,7 +33,7 @@ def test_ranknet_learns_within_group_order():
     pytest.importorskip("torch")
     from training.importance.train import fit, mean_tau
     X, y, G = _synthetic()
-    tr = np.isin(G, [f"g{i}" for i in range(9)])
+    tr = np.isin(G, [f"g{i}" for i in range(18)])
     r = fit(X[tr], y[tr], G[tr], "linear", seed=0, val=(X[~tr], y[~tr], G[~tr]), epochs=15)
     assert mean_tau(r.score(X[~tr]), y[~tr], G[~tr]) > 0.5
 
