@@ -121,3 +121,10 @@ Format:
 - Blocker: warm generate is 48.9 s (target < 30 s). Profiling shows the 8 iPhone HLG HDR clips dominate (1.7-2.3 s per shot vs ~1 s SDR; tonemapping + 10-bit HEVC decode). Tonemapping after framing (on branch `hdr-speed`) cut render 38.9 -> 32.4 s. Next fix, pushed but NOT yet verified on Colab (same branch): SDR render proxies per HDR clip (`montage/render/proxy.py`, cached at `cache/proxies/<hash>_v1.mp4`, built by demo prep), plus a crop filter written relative to the input size. Next session: run `tests/test_render.py` on Colab, rerun `demo_mode --prepare` (builds proxies), check warm generate < 30 s, then merge `hdr-speed`.
 - Blocker: the Beat This! checkpoint host (cloud.cp.jku.at) is still returning HTTP 500, so beats use librosa until one download succeeds (the checkpoint is then cached on Drive).
 - Heads-up: none for Track B.
+
+## 2026-10-27 14:00 ET | Keshav | 11 demo polish | branch hdr-speed (merged)
+- Done: HDR speed-ups for iPhone HLG clips. (1) Analysis frames tonemap after fps + downscale, so a 40 s HDR clip extracts in seconds instead of ~90 s. (2) New `montage/render/proxy.py`: every HDR video gets a tonemapped SDR H.264 proxy (short side <= 1080, GOP 15), built once by `demo_mode --prepare` and cached on Drive at `cache/proxies/<hash>_v1.mp4`; renders use the proxy when present, else the original with tonemap after framing. (3) The crop filter is written relative to the input size (`iw`/`ih`), so it fits proxies and originals alike. Tests on Colab: 22/22 render + ingest, including HDR shots, HDR proxy render, relative crop.
+- Results (Summer Trip (picked), 60 items, 8 HDR clips): 8 proxies in ~3 min (one-time); preview render 41.9 -> 21.8 s; 1080p export 53 -> 32 s; **warm generate 48.9 -> 28.0 s (target < 30 s)**. Readiness checklist green except optional weights (Track B) and the Beat This! checkpoint (host still HTTP 500; librosa beats in use).
+- Next: start the app from main; demo is ready (see docs/DEMO.md).
+- Blockers: none for the demo. Beat This! host down (fallback works).
+- Heads-up: new cache folder `cache/proxies/` on Drive (about 0.7 GB for this album).

@@ -63,7 +63,7 @@ Day 2
 
 | Phase | Person | Branch | Started (ET) | Notes |
 |---|---|---|---|---|
-| 11 demo polish (HDR render proxies, warm generate < 30 s) | Keshav | hdr-speed | 2026-10-27 13:00 | pushed, not verified on Colab yet |
+| _(none: Keshav's Track A work is merged; demo ready)_ | | | | |
 
 ## Decisions
 
@@ -91,6 +91,7 @@ Day 2
 - 2026-10-27 | Keshav | A whole-cut speed note shifts global pacing and every explicit section pacing by the same step; if the LLM revision leaves pacing unchanged, the rule step (+/-0.4) is applied | section pacing overrides global pacing, so a global-only change could leave the cut unchanged
 - 2026-10-27 | Keshav | The live vote (eval/vote.py) and Rate tab are built with the demo parts of phase 11 (Track A); eval grid/metrics/report stay with Track B | the vote is part of the demo flow
 - 2026-10-27 | Keshav | render.max_crop_loss raised to 0.25: 4:3 photos are face-aware cropped to fill the frame (supersedes the 20% rule above); 5:4 and taller keep the blurred fill | most phone photos are 4:3; full-frame looks better in the montage
+- 2026-10-27 | Keshav | HDR videos render from a cached SDR proxy (built once in demo prep; originals used when no proxy exists); tonemapping otherwise happens after downscale/framing | per-frame full-resolution tonemapping made warm generate 49 s on an iPhone album; now 28 s
 
 ## Setup checklist
 
