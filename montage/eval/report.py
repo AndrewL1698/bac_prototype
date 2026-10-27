@@ -15,11 +15,13 @@ from montage.log import get_logger
 
 log = get_logger("eval_report")
 METRICS = ["beat_hit_rate", "downbeat_hit_rate", "mean_offset_ms", "boundary_hit_rate", "pace_coupling",
-           "mood_coupling", "diversity", "max_adjacent_cos", "dup_violations", "coverage", "same_source_adjacent",
+           "mood_coupling", "diversity", "max_adjacent_cos", "mean_adjacent_cos", "dup_violations", "coverage",
+           "same_source_adjacent",
            "quality_lift", "director_adherence", "n_shots"]
 ORDER = ["full", "naive", "beat_random", "greedy", "no_learned", "no_mood", "no_pairwise", "no_director", "no_forced"]
 HIGHER_BETTER = {"beat_hit_rate": True, "downbeat_hit_rate": True, "boundary_hit_rate": True, "pace_coupling": True,
-                 "mood_coupling": True, "diversity": False, "max_adjacent_cos": False, "dup_violations": False,
+                 "mood_coupling": True, "diversity": False, "max_adjacent_cos": False, "mean_adjacent_cos": False,
+                 "dup_violations": False,
                  "coverage": True, "same_source_adjacent": False, "quality_lift": True, "director_adherence": True,
                  "mean_offset_ms": False}
 
@@ -110,7 +112,7 @@ def takeaways(summ: dict, render: dict | None) -> list[str]:
         hurt, flat = [], []
         for s in [s for s in summ if s.startswith("no_")]:
             key = {"no_mood": "mood_coupling", "no_director": "director_adherence", "no_learned": "quality_lift",
-                   "no_pairwise": "diversity", "no_forced": "boundary_hit_rate"}.get(s)
+                   "no_pairwise": "mean_adjacent_cos", "no_forced": "boundary_hit_rate"}.get(s)
             if not key:
                 continue
             d = summ[s][key][0] - f[key][0]
@@ -121,8 +123,11 @@ def takeaways(summ: dict, render: dict | None) -> list[str]:
         if flat:
             t.append("No clear effect (honest result) for: " + ", ".join(flat) + ".")
     if render:
+        extra = render.get("extra_in") or {}
         t.append(f"Render check: detected cuts match the EDL within one frame (precision {render['precision']:.2f}, "
-                 f"recall {render['recall']:.2f}): no drift between plan and video.")
+                 f"recall {render['recall']:.2f}): no drift between plan and video."
+                 + (f" The {sum(extra.values())} unmatched detections fall inside shots ("
+                    + ", ".join(f"{v} {k}" for k, v in extra.items()) + "), not at cut points." if extra else ""))
     return t
 
 
@@ -153,8 +158,8 @@ def build() -> dict:
         h = emo["test"]["head"]
         lines += ["## Models", "", f"- Emotion head (DEAM test): valence CCC {h['valence']['ccc']:.3f}, arousal CCC "
                   f"{h['arousal']['ccc']:.3f}. Details: `eval/emotion/report.md`."]
-    if imp:
-        ch = imp["cv"][imp["chosen"]]
+    if imp:  # the deployed scorer is the blend, so report its cross-validated numbers
+        ch = imp["cv"].get(f"blend_alpha_{imp['blend_alpha']:g}", imp["cv"][imp["chosen"]])
         lines += [f"- Importance ranker ({imp['chosen']}, blend alpha {imp['blend_alpha']:g}): SumMe tau "
                   f"{ch['summe']['tau']:.3f}, TVSum tau {ch['tvsum']['tau']:.3f} (heuristic "
                   f"{imp['cv']['heuristic']['summe']['tau']:.3f} / {imp['cv']['heuristic']['tvsum']['tau']:.3f}). "

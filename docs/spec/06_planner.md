@@ -14,7 +14,7 @@ Beat duration d = local inter-beat interval.
 4. **Walk** from beat 0 (excerpt starts on a downbeat): next cut at beat k + n.
 5. **Forced cuts** at section boundaries (already on downbeats): if the next cut would pass a boundary, cut at the boundary instead. If that shot would be shorter than `min_shot_s`, move the previous cut to the boundary instead (merge). Mark the slot starting at a boundary `forced=True`.
 6. The last slot ends exactly at the excerpt end.
-7. **Scarcity.** If K > floor(`planner.max_fill_ratio` (0.9) * n_usable): double the beats of the lowest-intensity sections first and rebuild; repeat. If K still exceeds n_usable at max lengths, set `reuse_mode=True` (beam allows reuse; EDL note).
+7. **Scarcity.** n_usable counts the shots that can appear together without repeats (`planning.distinct_shots`): each `dup_cluster` at most `max_per_cluster` times, each video at most its non-overlapping windows (`max_windows_per_video`). Near-duplicate bursts and overlapping video windows are not spare footage. If K > floor(`planner.max_fill_ratio` (0.9) * n_usable): double the beats of the lowest-intensity sections first and rebuild; repeat. If K still exceeds n_usable at max lengths, set `reuse_mode=True` (beam allows reuse; EDL note).
 8. Per slot: `intensity`, `arousal`, `valence` = means over the slot from the grid; `section_idx`; `on_downbeat` (start within half a frame of a downbeat); `boundary_strength` = 1.0 if forced else 0.5 * novelty at the start time (0 for slot 0).
 
 ## 2. Precomputed cost terms (`planning/costs.py`)
@@ -50,7 +50,7 @@ Defaults: w_rep 2.0, rep_tau 0.75, w_src 1.5, w_jump 0.6, w_contrast 0.6, w_chro
 
 ## 3. Constraints
 
-- Each candidate at most once (unless `reuse_mode`, then reuse costs `w_reuse` 2.0 and never adjacent).
+- Each candidate at most once (unless `reuse_mode`: then every repeat of a shot or of its `dup_cluster` costs `w_reuse` 2.0 per earlier use, and two shots of one cluster are never adjacent).
 - Each `dup_cluster` at most `planner.max_per_cluster` (1).
 - Each video asset at most `planner.max_windows_per_video` (3) shots, and chosen windows of one asset must not overlap in source time.
 - Photo fraction: soft target band [`min_photo_frac`, `max_photo_frac`] (0.3, 0.7), shrunk to what is available. Penalty `w_ratio * dist_outside_band^2 * K` added when scoring complete sequences; states already above the max pay the incremental share.

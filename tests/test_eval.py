@@ -86,3 +86,9 @@ def test_report_builds(fresh_root):
     out = report.build()
     assert (root / "report.md").exists() and len(out["figures"]) == 3
     assert out["takeaways"] and "full" in out["summary"]
+
+
+def test_render_check_matching():
+    from montage.eval.render_check import match, unmatched
+    assert unmatched([10, 50, 101], [10, 100]) == [50]
+    assert match([10, 50, 101], [10, 100]) == (pytest.approx(2 / 3), 1.0)

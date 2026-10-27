@@ -83,6 +83,7 @@ def compute(edl: EDL, profile: MusicProfile, features, importance: np.ndarray, n
         "mood_coupling": mood,
         "diversity": float(cos[iu].mean()) if len(iu[0]) else float("nan"),
         "max_adjacent_cos": float(adj.max()) if len(adj) else float("nan"),
+        "mean_adjacent_cos": float(adj.mean()) if len(adj) else float("nan"),
         "dup_violations": same_dup,
         "coverage": float(len({s.asset_id for s in edl.shots}) / max(n_assets, 1)),
         "same_source_adjacent": int(sum(edl.shots[j].asset_id == edl.shots[j + 1].asset_id for j in range(K - 1))),

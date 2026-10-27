@@ -29,6 +29,15 @@ class Constraints:
     band: tuple[float, float]  # photo fraction band
 
 
+def video_shot_cap(starts: np.ndarray, ends: np.ndarray) -> int:
+    """Most shots one video can give: non-overlapping windows (greedy by start), at most max_windows_per_video."""
+    count, last_end = 0, -1.0
+    for i in np.argsort(starts):
+        if starts[i] >= last_end - 1e-6:
+            count, last_end = count + 1, ends[i]
+    return min(count, get_config().planner.max_windows_per_video)
+
+
 def make_constraints(pool: np.ndarray, cands: list[Candidate], dup: np.ndarray, must_assets: list[str], K: int) -> Constraints:
     c = get_config().planner
     M = len(pool)
@@ -47,12 +56,7 @@ def make_constraints(pool: np.ndarray, cands: list[Candidate], dup: np.ndarray, 
     video_cap = 0
     for a in np.unique(asset[is_video]):
         idx = np.where((asset == a) & is_video)[0]
-        order = idx[np.argsort(s[idx])]
-        count, last_end = 0, -1.0
-        for i in order:
-            if s[i] >= last_end - 1e-6:
-                count, last_end = count + 1, e[i]
-        video_cap += min(count, c.max_windows_per_video)
+        video_cap += video_shot_cap(s[idx], e[idx])
     lo = min(c.min_photo_frac, n_photo / max(K, 1))
     hi = max(c.max_photo_frac, 1 - video_cap / max(K, 1))
     return Constraints(cluster, asset, is_video, overlap, must_asset, len(must_assets), (lo, min(1.0, hi)))
@@ -90,10 +94,14 @@ def beam_search(cm: CostModel, cons: Constraints, reuse_mode: bool = False) -> B
         new_pc = pc[:, None] + photo[None, :]
         base = base + ratio_pen(new_pc, False) - ratio_pen(pc, False)[:, None]
         mask = base >= INF / 2
-        if reuse_mode:
-            base = base + c.w_reuse * used
-            if j > 0:
-                mask |= np.arange(M)[None, :] == seqs[:, -1][:, None]
+        if reuse_mode:  # a repeat (the same shot or a near-duplicate from its dup cluster) costs w_reuse per earlier use
+            base = base + c.w_reuse * (used + clc[:, cons.cluster])
+            if j > 0:  # and never back-to-back
+                last = seqs[:, -1]
+                if n_cl > 1:
+                    mask |= cons.cluster[None, :] == cons.cluster[last][:, None]
+                else:
+                    mask |= np.arange(M)[None, :] == last[:, None]
         else:
             mask |= used > 0
             mask |= clc[:, cons.cluster] >= c.max_per_cluster

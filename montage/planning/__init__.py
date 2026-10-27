@@ -11,7 +11,7 @@ from montage.director.apply import Directives
 from montage.features import clip_encoder
 from montage.importance.heuristic import hard_rejects
 from montage.planning import baselines
-from montage.planning.beam import make_constraints, solve
+from montage.planning.beam import make_constraints, solve, video_shot_cap
 from montage.planning.costs import INF, build_costs, rank01
 from montage.planning.edl import assemble, make_reason
 from montage.planning.inout import choose_in
@@ -29,6 +29,24 @@ class PlanInputs:
     heuristic: np.ndarray       # (N,) raw heuristic (for rejects)
     profile: MusicProfile
     directives: Directives
+
+
+def distinct_shots(cands: list[Candidate], dup: np.ndarray, usable: np.ndarray) -> int:
+    """Usable shots that can appear in one edit without repeats: each dup cluster at most max_per_cluster times,
+    each video at most its non-overlapping windows. Scarcity is judged on this count, not on candidates, so
+    near-duplicate bursts and overlapping video windows do not pass for spare footage."""
+    idx = np.where(usable)[0]
+    _, sizes = np.unique(dup[idx], return_counts=True)
+    n = int(np.minimum(sizes, get_config().planner.max_per_cluster).sum())
+    videos: dict[str, list[int]] = {}
+    for i in idx:
+        if cands[i].kind == "video":
+            videos.setdefault(cands[i].asset_id, []).append(i)
+    for ids in videos.values():
+        cap = video_shot_cap(np.array([cands[i].src_start or 0.0 for i in ids]),
+                             np.array([cands[i].src_end or 0.0 for i in ids]))
+        n -= max(0, len({int(dup[i]) for i in ids}) - cap)
+    return max(n, 0)
 
 
 def select_pool(score: np.ndarray, usable: np.ndarray, required: np.ndarray, K: int) -> np.ndarray:
@@ -66,12 +84,12 @@ def plan_edit(inp: PlanInputs, run_id: str, seed: int = 0, system: str = "full",
     rej = hard_rejects(arr, inp.heuristic, n_needed=0)
     usable = ~d.excluded & (~rej | d.pinned | must_c)
     pacing = d.section_pacing if system not in ("naive",) else None
-    slots, reuse, slot_notes = build_slots(prof, pacing, int(usable.sum()))
+    slots, reuse, slot_notes = build_slots(prof, pacing, distinct_shots(cands, arr["dup_cluster"], usable))
     K = len(slots)
     if int(usable.sum()) < K:  # bring back the best rejects before reusing shots
         rej = hard_rejects(arr, inp.heuristic, n_needed=K)
         usable = ~d.excluded & (~rej | d.pinned | must_c)
-        slots, reuse, slot_notes = build_slots(prof, pacing, int(usable.sum()))
+        slots, reuse, slot_notes = build_slots(prof, pacing, distinct_shots(cands, arr["dup_cluster"], usable))
         K = len(slots)
     notes += slot_notes
     if usable.sum() == 0:

@@ -145,6 +145,30 @@ def test_cluster_limit():
     assert sum(c in {f"a{i:03d}" for i in range(6)} for c in chosen) <= 1
 
 
+def _clusters(inp, edl) -> list[int]:
+    idx = {c.id: i for i, c in enumerate(inp.candidates)}
+    return [int(inp.features.arrays["dup_cluster"][idx[s.candidate_id]]) for s in edl.shots]
+
+
+def test_scarcity_counts_dup_clusters():
+    """80 photos in 20 near-duplicate clusters: cuts are lengthened to fit 20 distinct shots, nothing repeats."""
+    inp = make_inputs(n_photo=80, n_video=0)
+    inp.features.arrays["dup_cluster"][:] = np.arange(80) % 20
+    cl = _clusters(inp, plan_edit(inp, "r", seed=0))
+    assert len(cl) <= 18 and len(cl) == len(set(cl))
+
+
+def test_reuse_spreads_near_duplicates():
+    """Fewer distinct shots than cuts even at the longest cuts: repeats spread over clusters, never back-to-back."""
+    inp = make_inputs(n_photo=40, n_video=0)
+    inp.features.arrays["dup_cluster"][:] = np.arange(40) % 6
+    edl = plan_edit(inp, "r", seed=0)
+    cl = _clusters(inp, edl)
+    assert any("reused" in n for n in edl.notes)
+    assert all(a != b for a, b in zip(cl, cl[1:]))
+    assert np.bincount(cl).max() <= -(-len(cl) // 6) + 1
+
+
 def test_pins():
     inp = make_inputs(pins=["a005"])
     inp.importance[5] = 0.0

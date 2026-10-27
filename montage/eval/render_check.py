@@ -5,6 +5,7 @@ PySceneDetect ContentDetector, and match them to the EDL's frame boundaries with
 
 Precision = detected cuts that match an EDL cut (should be ~1.0: no cut where the EDL put none, i.e. no drift).
 Recall = EDL cuts that were detected (visually similar neighbouring shots can be missed, so < 1.0 is expected).
+Unmatched detections are listed with the shot they fall in (e.g. a camera cut or flash inside a video clip).
 """
 
 from __future__ import annotations
@@ -37,6 +38,15 @@ def match(detected: list[int], expected: list[int], tol: int = 1) -> tuple[float
     return prec, rec
 
 
+def unmatched(detected: list[int], expected: list[int], tol: int = 1) -> list[int]:
+    exp = np.asarray(expected)
+    return [int(d) for d in detected if not len(exp) or np.min(np.abs(exp - d)) > tol]
+
+
+def shot_at(edl, frame: int) -> int:
+    return next((j for j, s in enumerate(edl.shots) if s.frame_start <= frame < s.frame_end), len(edl.shots) - 1)
+
+
 def main() -> int:
     from montage import pipeline
     from montage.eval.run_grid import albums, eval_root, key, plan_for, songs
@@ -51,16 +61,20 @@ def main() -> int:
         detected = detect_cuts(video)
         expected = [s.frame_start for s in edl.shots[1:]]
         prec, rec = match(detected, expected)
+        extra = [{"frame": f, "shot": shot_at(edl, f), "kind": edl.shots[shot_at(edl, f)].kind}
+                 for f in unmatched(detected, expected)]
         rows.append({"album": album.name, "song": song.stem, "edl_cuts": len(expected), "detected": len(detected),
-                     "precision": prec, "recall": rec, "video": video})
+                     "precision": prec, "recall": rec, "extra": extra, "video": video})
         log.info("%s: precision %.3f recall %.3f (%d detected / %d cuts)", key(album, song), prec, rec,
                  len(detected), len(expected))
         jobs.report((i + 1) / len(pairs), f"{i + 1}/{len(pairs)} rendered")
+    extra_kinds = [x["kind"] for r in rows for x in r["extra"]]
     summary = {"rows": rows, "precision": float(np.mean([r["precision"] for r in rows])),
-               "recall": float(np.mean([r["recall"] for r in rows]))}
+               "recall": float(np.mean([r["recall"] for r in rows])),
+               "extra_in": {k: extra_kinds.count(k) for k in sorted(set(extra_kinds))}}
     paths.atomic_write(eval_root() / "render_check.json", json.dumps(summary, indent=1))
-    print(f"render check: precision {summary['precision']:.3f}, recall {summary['recall']:.3f} over {len(rows)} renders",
-          flush=True)
+    print(f"render check: precision {summary['precision']:.3f}, recall {summary['recall']:.3f} over {len(rows)} renders; "
+          f"unmatched detections inside shots: {summary['extra_in']}", flush=True)
     return 0
 
 
