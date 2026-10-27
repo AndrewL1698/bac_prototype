@@ -48,7 +48,7 @@ Day 1
 - [x] **5. Slots, costs, beam search, EDL** (`spec/06_planner.md`)
 - [x] **6. Render**: preview + export, framing, Ken Burns (`spec/07_render.md`)
 - [x] **7. Pipeline + CLI** end to end on fixtures and one real album (`spec/08_app.md` section 1)
-- [ ] **8. Gradio app v1** (`spec/08_app.md` sections 2-4)
+- [x] **8. Gradio app v1** (`spec/08_app.md` sections 2-4)
 
 Day 2
 - [ ] **9A. LLM director**, notes/recut, pin/exclude, editor's note (`spec/05_director.md` sections 5-8, `spec/08_app.md` section 5)
@@ -61,7 +61,7 @@ Day 2
 
 | Phase | Person | Branch | Started (ET) | Notes |
 |---|---|---|---|---|
-| 8 (Gradio app v1) | Keshav | phase-8-app | 2026-10-27 03:15 | |
+| 9A (LLM director, notes, editor's note) | Keshav | phase-9a-llm | 2026-10-27 03:50 | |
 
 ## Decisions
 

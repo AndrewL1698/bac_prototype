@@ -78,3 +78,11 @@ Format:
 - Blockers: real-album timing check waits for Keshav's demo album in `montage_data/demo/<album>/` (+ songs in `demo/songs/`).
 - Heads-up: new config key `music.use_beat_this` (default true; false = librosa only). Shared contract: `montage.pipeline` API as in spec 08 section 1 (`generate` returns RunResult; `session_for_run(run_id)` gives its Session).
 - Results: fixtures cold generate (15 files, 50 s preview): ingest 3.1 s, features 13.4 s, music 4.2 s, plan 0.2 s, render 9.7 s.
+
+## 2026-10-27 03:40 ET | Keshav | phase 8 | branch phase-8-app (merged)
+- Done: `montage/app/gradio_app.py`: inputs (multi-file upload or demo-album dropdown, song upload or demo-song dropdown, brief, advanced: seed/length/excerpt start/thumbnail toggle/system), Generate, Export 1080p, preview player, honest status line (director/emotion/importance/beats fallbacks, shots, BPM), editor's note, readable plan + raw JSON, notes + Recut, storyboard gallery with why-this-shot and Pin/Exclude (applied on the next recut), Under-the-hood tab (curves with beats/sections/cuts, per-shot score bars, stage timings), Compare tab (naive cut beside the current cut). Queue with concurrency 1; user errors show as friendly gr.Error. Phase 8 tests on Colab via gradio_client: generate on a demo album returns a video + plan, recut "faster" raises pacing and records the note, 3 uploaded files -> "Need at least 10" error. App started as job `app`; `app.url` appeared in ~20 s.
+- Next: Keshav: open the share link and try your own media + song. Me: phase 9A (LLM director, notes via LLM, editor's note, contact sheet), then demo parts of 11.
+- Blockers: none for the app; `montage_data/demo/` still has no album/songs (needed for demo mode and backups in phase 11).
+- Heads-up: `paths.load_colab_env()` no longer overrides variables already set in the environment (explicit env wins over `/content/montage_env.sh`).
+- Heads-up (security): never commit share URLs (anyone with the link can use the app). The app serves files only from `runs/` and scratch thumbnails; `/content/montage_env.sh`, `sessions/`, `jobs/` are blocked (verified 403).
+- Results: share link written to `montage_data/jobs/keshav/app.url` (not in the repo).

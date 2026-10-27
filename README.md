@@ -18,6 +18,7 @@ _Keep this list current. Update it when a phase merges to `main`._
 - **Phase 5 (planner):** `montage.planning.plan_edit(PlanInputs, run_id, seed, system)` builds the beat grid, scores every candidate/slot pair, runs the constrained beam search (or a naive/beat_random/greedy baseline), picks in/out points, and writes an `EDL` with frame-exact cuts and a reason per shot.
 - **Phase 6 (render):** `montage.render.assemble.render_edl(edl, assets, song_path, preview)` renders frame-exact 720p previews or 1080p exports (Ken Burns photos, face-aware crop or blurred fill for odd aspect ratios, HDR tonemapping), muxes the song excerpt, and verifies frame and audio counts.
 - **Phase 7 (pipeline + CLI):** `python -m montage.cli generate --media DIR --song FILE --brief "..."` (and `recut --session ID --note ...`, `export --run ID`) runs the whole thing; outputs land in `montage_data/runs/<run_id>/` (preview.mp4, edl.json, plan.json, curves.png, storyboard.jpg).
+- **Phase 8 (Gradio app):** `python -m montage.app.gradio_app --share` (as job `app` on Colab): upload media + song + brief -> beat-synced preview, editor's note, plan, storyboard with why-this-shot and pin/exclude, notes + Recut, Export 1080p, under-the-hood curves/timings, naive-cut comparison. Day 1 uses fallbacks only (rule-based director).
 
 ## How it works (one paragraph)
 
