@@ -24,16 +24,37 @@ from training.common import datasets_dir
 from training.importance.labels import build_mapping, load_labels
 
 log = get_logger("vsum_feats")
-LIFT = {"ingest.min_assets": 1, "ingest.max_total_video_s": 1e9, "ingest.max_per_video_s": 1e9}
+LIFT = {"ingest.min_assets": 1, "ingest.max_assets": 1000, "ingest.max_total_video_s": 1e9,
+        "ingest.max_per_video_s": 1e9}
+BATCH = 8
 
 
 def video_features(video: str):
     """(candidates, Features) for one video via the app's own code path."""
+    return videos_features([video])[video]
+
+
+def videos_features(videos: list[str]) -> dict:
+    """{video: (candidates, Features)} for several videos in ONE pipeline call (frames extract in parallel,
+    CLIP sees full batches). The ranker inputs are per-candidate and the heuristic is recomputed within each
+    video, so batching does not change anything the ranker sees."""
+    from types import SimpleNamespace
     from montage.candidates import build_media
     from montage.features.extract import extract
     with config.override(LIFT):
-        ms = build_media([video])
-        return ms.candidates, extract(ms.assets, ms.candidates, ms.frames)
+        ms = build_media(videos)
+        f = extract(ms.assets, ms.candidates, ms.frames)
+    by_path = {str(a.src_path): a.id for a in ms.assets}
+    out = {}
+    for v in videos:
+        aid = by_path.get(str(v))
+        idx = [i for i, c in enumerate(ms.candidates) if c.asset_id == aid]
+        cands = [ms.candidates[i] for i in idx]
+        ids = [c.id for c in cands]
+        sub = SimpleNamespace(arrays={k: (np.asarray(a)[idx] if np.ndim(a) else a) for k, a in f.arrays.items()},
+                              table=SimpleNamespace(tags={c: f.table.tags.get(c, []) for c in ids}), ids=ids)
+        out[v] = (cands, sub)
+    return out
 
 
 def window_rows(vl, cands, f) -> dict | None:
@@ -59,17 +80,22 @@ def main() -> int:
     labels = load_labels(mapping)
     per_video = datasets_dir("importance") / "per_video"
     per_video.mkdir(exist_ok=True)
-    for i, vl in enumerate(labels):
-        out = per_video / f"{vl.key.replace('/', '__')}.npz"
-        if not out.exists():
-            cands, f = video_features(vl.video)
-            rows = window_rows(vl, cands, f)
+    out_of = lambda vl: per_video / f"{vl.key.replace('/', '__')}.npz"  # noqa: E731
+    todo = [vl for vl in labels if not out_of(vl).exists() and not out_of(vl).with_suffix(".skip.json").exists()]
+    log.info("%d of %d videos still need features", len(todo), len(labels))
+    for b in range(0, len(todo), BATCH):
+        batch = todo[b:b + BATCH]
+        feats = videos_features([vl.video for vl in batch])
+        for vl in batch:
+            cands, f = feats[vl.video]
+            rows = window_rows(vl, cands, f) if cands else None
             if rows is None:
                 log.warning("%s: fewer than 3 labeled windows; skipped", vl.key)
-                cache.write_json(out.with_suffix(".skip.json"), {"reason": "few labeled windows"})
+                cache.write_json(out_of(vl).with_suffix(".skip.json"), {"reason": "few labeled windows"})
                 continue
-            cache.save_npz(out, **rows)
-        jobs.report((i + 1) / len(labels), f"{i + 1}/{len(labels)} videos ({vl.key})")
+            cache.save_npz(out_of(vl), **rows)
+        done = len(labels) - len(todo) + b + len(batch)
+        jobs.report(done / len(labels), f"{done}/{len(labels)} videos")
     parts = {k: [] for k in ("X", "y", "heuristic", "aesthetic", "t_mid", "group", "dataset")}
     for vl in labels:
         z = cache.load_npz(per_video / f"{vl.key.replace('/', '__')}.npz")
