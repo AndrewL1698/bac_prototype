@@ -63,6 +63,7 @@ Day 2
 
 | Phase | Person | Branch | Started (ET) | Notes |
 |---|---|---|---|---|
+| 0 downloads, 9B, 10A, 11 eval (Track B, taken over) | Keshav | track-b | 2026-10-27 14:45 | Andrew unavailable until the demo |
 | _(none: Keshav's Track A work is merged; demo ready)_ | | | | |
 
 ## Decisions
@@ -92,6 +93,9 @@ Day 2
 - 2026-10-27 | Keshav | The live vote (eval/vote.py) and Rate tab are built with the demo parts of phase 11 (Track A); eval grid/metrics/report stay with Track B | the vote is part of the demo flow
 - 2026-10-27 | Keshav | render.max_crop_loss raised to 0.25: 4:3 photos are face-aware cropped to fill the frame (supersedes the 20% rule above); 5:4 and taller keep the blurred fill | most phone photos are 4:3; full-frame looks better in the montage
 - 2026-10-27 | Keshav | HDR videos render from a cached SDR proxy (built once in demo prep; originals used when no proxy exists); tonemapping otherwise happens after downscale/framing | per-frame full-resolution tonemapping made warm generate 49 s on an iPhone album; now 28 s
+- 2026-10-27 | Keshav | Keshav takes over Track B (downloads, 9B, 10A, 11 evaluation) | Andrew is unavailable until the demo
+- 2026-10-27 | Keshav | DEAM comes from public Hugging Face mirrors (audio: herrjyj/herrjyj-deam-assets DEAM_audio.zip; dynamic 2 Hz annotations: Rehead/DEAM_continuous_annotations, annotation columns only), validated against the DEAM layout | the official host cvml.unige.ch does not respond (from Colab or locally); no Kaggle credentials
+- 2026-10-27 | Keshav | Optional app password via Colab Secret APP_PASSWORD (Gradio login, username montage); one-command start scripts/start_app.py waits up to 120 s for the link | anyone with a share link could otherwise use the app and the API key; the start cell is human-run, so a longer wait is fine
 
 ## Setup checklist
 

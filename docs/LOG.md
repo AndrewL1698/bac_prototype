@@ -128,3 +128,10 @@ Format:
 - Next: start the app from main; demo is ready (see docs/DEMO.md).
 - Blockers: none for the demo. Beat This! host down (fallback works).
 - Heads-up: new cache folder `cache/proxies/` on Drive (about 0.7 GB for this album).
+
+## 2026-10-27 14:45 ET | Keshav | app polish + Track B takeover | branch app-start (merged)
+- Done: optional app password: Colab Secret `APP_PASSWORD` -> `MONTAGE_APP_PASSWORD` (written to `/content/montage_env.sh` by the bootstrap, never logged) -> Gradio login (username `montage`, override with `MONTAGE_APP_USER`). One-command start: `%run scripts/start_app.py` bootstraps, waits for requirements, stops the running app (`jobs.stop`, new `scripts/job_stop.py`), starts the `app` job and prints the link. `pid_alive` now treats zombies as dead. Tests on Colab: password required (unauthenticated client refused, authenticated client works), job stop, app tests.
+- Done: Keshav takes over Track B (Andrew is unavailable until the demo): dataset downloads, 9B, 10A, 11 evaluation. Recorded in PLAN.
+- Next: DEAM + SumMe/TVSum downloads, then 9B and 10A training, then the eval grid.
+- Blockers: the official DEAM host (cvml.unige.ch) does not respond; using public Hugging Face mirrors instead (see PLAN Decisions).
+- Heads-up (Andrew): Track B is now being done by Keshav's session; please do not start the same phases without checking PLAN "Current work".
