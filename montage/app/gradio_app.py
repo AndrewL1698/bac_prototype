@@ -182,6 +182,34 @@ def build_app():
                     " (applies on the next Recut)"), ui
         return fn
 
+    def on_load_pair(rs):
+        import random
+        from montage.app.demo_mode import demo_root, load_pairs
+        pairs = load_pairs()
+        if not pairs:
+            raise gr.Error("No vote pairs yet: run demo_mode --prepare first.", title="Nothing to rate")
+        rs = dict(rs or {})
+        k = rs.get("next", 0) % len(pairs)
+        pr = pairs[k]
+        a = (str(demo_root() / "vote" / pr["a"]), pr["a_system"])
+        b = (str(demo_root() / "vote" / pr["b"]), pr["b_system"])
+        left, right = (a, b) if random.random() < 0.5 else (b, a)
+        rs.update(next=k + 1, pair_id=pr["pair_id"], left_system=left[1], right_system=right[1], voted=False)
+        return left[0], right[0], "Watch both, then vote.", rs
+
+    def vote_handler(choice):
+        def fn(name, rs):
+            from montage.eval.vote import analyze, record_vote, summary_line
+            rs = dict(rs or {})
+            if not rs.get("pair_id"):
+                return "Load a pair first.", rs
+            if rs.get("voted"):
+                return "Already counted. Load another pair to vote again.", rs
+            record_vote(name, rs["pair_id"], rs["left_system"], rs["right_system"], choice)
+            rs["voted"] = True
+            return f"Thanks! Votes so far: {summary_line(analyze())}", rs
+        return fn
+
     with gr.Blocks(title="Montage: AI music video editor") as demo:
         gr.Markdown("# Montage\nYou direct, the music sets the timing, the system does the rest.")
         ui = gr.State({})
@@ -230,7 +258,19 @@ def build_app():
                 naive_video = gr.Video(label="Naive cut (random shots, fixed 2 s cuts)")
                 cur_video = gr.Video(label="Current cut")
         with gr.Tab("Rate"):
-            gr.Markdown("Blind A/B voting arrives with the demo tools (phase 11).")
+            gr.Markdown("Which cut is better? Two versions of the same album and song; the order is random.")
+            rate_state = gr.State({})
+            with gr.Row():
+                rater = gr.Textbox(label="Your name (optional)", scale=3)
+                load_pair = gr.Button("Load a pair", scale=1)
+            with gr.Row():
+                left_video = gr.Video(label="Left")
+                right_video = gr.Video(label="Right")
+            with gr.Row():
+                left_btn = gr.Button("Left better")
+                tie_btn = gr.Button("Tie")
+                right_btn = gr.Button("Right better")
+            vote_md = gr.Markdown("")
 
         outs = [video, status, note_md, plan_md, plan_json, gallery, curves, costs, timings, notes_md, ui]
         gen_btn.click(on_generate, [files, album, song_file, song_choice, brief, seed, target_len, excerpt_start,
@@ -242,6 +282,9 @@ def build_app():
         pin_btn.click(toggle("pins"), [ui], [shot_md, ui])
         excl_btn.click(toggle("excluded"), [ui], [shot_md, ui])
         video.change(lambda v, u: {**(u or {}), "current_video": v}, [video, ui], [ui])
+        load_pair.click(on_load_pair, [rate_state], [left_video, right_video, vote_md, rate_state], api_name="load_pair")
+        for btn, choice in ((left_btn, "left"), (tie_btn, "tie"), (right_btn, "right")):
+            btn.click(vote_handler(choice), [rater, rate_state], [vote_md, rate_state], api_name=f"vote_{choice}")
     return demo
 
 
@@ -257,7 +300,8 @@ def main(argv: list[str] | None = None) -> int:
     demo.queue(default_concurrency_limit=1)
     # Serve only generated outputs (videos/plots in runs/, storyboard thumbnails). Never the whole Drive
     # folder or /content: /content/montage_env.sh holds the API key and the share link is public.
-    allowed = [str(paths.data_root() / "runs"), str(paths.scratch_dir("thumbs"))]
+    allowed = [str(paths.data_root() / "runs"), str(paths.scratch_dir("thumbs")),
+               str(paths.data_root() / "demo" / "vote"), str(paths.data_root() / "demo" / "backups")]
     blocked = [str(paths.COLAB_ENV_FILE), str(paths.data_root() / "sessions"), str(paths.data_root() / "jobs")]
     demo.launch(share=args.share, server_name="0.0.0.0", server_port=args.port, prevent_thread_lock=True,
                 allowed_paths=allowed, blocked_paths=blocked, show_error=True)
