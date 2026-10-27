@@ -48,15 +48,31 @@ def mount_drive() -> bool:
     return DRIVE.exists()
 
 
+_SECRETS_REACHABLE = True
+
+
 def read_secret(name: str) -> str | None:
-    try:
-        from google.colab import userdata
-        v = userdata.get(name)
-        if v:
-            return v
-    except Exception:  # noqa: BLE001  (missing secret, no notebook access, not in kernel)
-        pass
+    global _SECRETS_REACHABLE
+    if _SECRETS_REACHABLE:
+        try:
+            from google.colab import userdata
+            v = userdata.get(name)
+            if v:
+                return v
+        except Exception as e:  # noqa: BLE001  (missing secret, no notebook access, not in kernel)
+            if "Timeout" in type(e).__name__:  # not run from the Colab UI: don't wait again
+                _SECRETS_REACHABLE = False
     return os.environ.get(name) or None
+
+
+def parse_env(path: Path) -> dict[str, str]:
+    out = {}
+    if path.exists():
+        for line in path.read_text().splitlines():
+            if line.startswith("export ") and "=" in line:
+                k, v = line[len("export "):].split("=", 1)
+                out[k] = v.strip().strip("'\"")
+    return out
 
 
 def git_sync(branch: str) -> str:
@@ -156,6 +172,7 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--branch", default="main")
     ap.add_argument("--foreground-install", action="store_true")
+    ap.add_argument("--user", default=None, help="MONTAGE_USER if the Colab secret is unavailable")
     args = ap.parse_args(argv)
 
     drive_ok = mount_drive() and DATA_ROOT.exists()
@@ -165,8 +182,11 @@ def main(argv: list[str] | None = None) -> int:
     commit = git_sync(args.branch)
     if str(REPO_DIR) not in sys.path:
         sys.path.insert(0, str(REPO_DIR))
-    user = (read_secret("MONTAGE_USER") or "anon").strip().lower()
-    api_key = read_secret("ANTHROPIC_API_KEY")
+    # Secrets are only released to cells run from the Colab UI; when run remotely (colab-mcp)
+    # fall back to --user and to values a previous UI run saved in montage_env.sh.
+    saved = parse_env(ENV_FILE)
+    user = (read_secret("MONTAGE_USER") or args.user or saved.get("MONTAGE_USER") or "anon").strip().lower()
+    api_key = read_secret("ANTHROPIC_API_KEY") or saved.get("ANTHROPIC_API_KEY")
     Path("/content/scratch").mkdir(parents=True, exist_ok=True)
     ffver, zs_ok = ensure_ffmpeg()
     write_env(user, api_key)
