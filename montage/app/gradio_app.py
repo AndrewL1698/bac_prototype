@@ -7,6 +7,7 @@ On Colab start it through the job runner: scripts/run_job.py --name app -- pytho
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import traceback
 from pathlib import Path
@@ -93,6 +94,7 @@ def build_app():
                 str(rd / "costs.png") if (rd / "costs.png").exists() else None, timings, notes, ui)
 
     def friendly(fn):
+        @functools.wraps(fn)  # keeps the signature so Gradio still injects gr.Progress
         def wrapped(*a, **k):
             try:
                 return fn(*a, **k)
@@ -103,7 +105,6 @@ def build_app():
             except Exception as e:  # noqa: BLE001
                 log.error("unexpected error: %s\n%s", e, traceback.format_exc())
                 raise gr.Error(f"Something went wrong ({type(e).__name__}). See the app log.")
-        wrapped.__name__ = fn.__name__
         return wrapped
 
     @friendly
