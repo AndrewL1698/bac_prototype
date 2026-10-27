@@ -11,6 +11,7 @@ Prototype for the BAC project: an **AI music video editor**. Upload 30-80 photos
 _Keep this list current. Update it when a phase merges to `main`._
 
 - **Phase 0 (scaffold):** config (`montage.config`, dotted `--set` overrides), data contracts (`montage.types`), shared-Drive paths with atomic writes, background jobs (`scripts/run_job.py`, `scripts/job_status.py`), Colab bootstrap, synthetic test media (`scripts/make_fixtures.py`), model smoke tests (`scripts/smoke_models.py`: CLIP, LAION aesthetic, Beat This!, YuNet, Claude API, FFmpeg pass; MERT pending), `pytest -q` green.
+- **Phase 1 (ingest + candidates):** `montage.candidates.build_media(paths)` probes, orders, and validates uploads, extracts analysis frames/motion pairs/proxies in one FFmpeg pass per video, detects scenes, and makes photo + 3 s video-window candidates with thumbnails (all cached).
 
 ## How it works (one paragraph)
 

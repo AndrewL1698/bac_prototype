@@ -35,3 +35,9 @@ Format:
 - Blockers: MERT smoke FAIL under transformers 5.20 ("object of type 'NoneType' has no len()"); Track B to find a working pin (see PLAN Decisions). colab-mcp's notebook tools do not load in the Claude desktop app; Keshav's session drives Colab through a small local bridge built on the colab-mcp package instead.
 - Heads-up: bootstrap is `%run scripts/colab_bootstrap.py --branch <b>` (see README). Colab Secrets cannot be read by remotely-run cells; run the bootstrap cell once from the Colab UI to save `ANTHROPIC_API_KEY`/`MONTAGE_USER` into `/content/montage_env.sh`. CLIP loads with QuickGELU (`force_quick_gelu=True`).
 - Results: smoke {clip PASS (sims 0.27/0.31), aesthetic PASS (4.9/4.5), mert FAIL, beat_this PASS, yunet PASS, claude PASS, ffmpeg PASS}.
+
+## 2026-10-26 23:45 ET | Keshav | phase 1 | branch phase-1-ingest (merged)
+- Done: `montage.ingest` (probe with display sizes/rotation/HDR/EXIF dates, probe cache by content hash, count validation, duplicate-file skip), `montage.ingest.frames` (one FFmpeg pass per video: 2 fps analysis frames at 448 px, 15 fps motion pairs at 320 px, 360p proxy; HDR tonemap chain), `montage.candidates` (PySceneDetect on the proxy, 3 s / 1.5 s windows with edge trim and `src_max_end`, thumbnails, `build_media()` orchestrator). Phase 1 tests 12/12 pass on Colab; cold ingest + candidates of all 15 fixtures well under 30 s.
+- Next: phase 2 (music analysis).
+- Blockers: none.
+- Heads-up: frames, thumbnails and proxies live on scratch (`/content/scratch/frames/<hash>/`, `thumbs/`); probe and scene results are cached on Drive under `cache/assets/` and `cache/scenes/`.
