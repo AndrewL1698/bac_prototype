@@ -22,17 +22,34 @@ from montage.log import get_logger
 log = get_logger("demo")
 
 
+MEDIA_EXT = {".jpg", ".jpeg", ".png", ".heic", ".heif", ".webp", ".mp4", ".mov", ".m4v", ".avi", ".mkv"}
+SONG_EXT = {".mp3", ".m4a", ".wav", ".aac", ".flac", ".ogg"}
+NOT_ALBUMS = {"songs", "songs_full", "backups", "vote"}
+
+
 def demo_root() -> Path:
     return paths.data_root() / "demo"
 
 
+def demo_albums() -> list[str]:
+    """Folders in demo/ holding media (possibly in subfolders), except the reserved ones."""
+    d = demo_root()
+    if not d.exists():
+        return []
+    return sorted(p.name for p in d.iterdir() if p.is_dir() and p.name not in NOT_ALBUMS
+                  and any(f.suffix.lower() in MEDIA_EXT for f in p.rglob("*")))
+
+
+def demo_songs() -> list[str]:
+    d = demo_root() / "songs"
+    return sorted(p.name for p in d.iterdir() if p.suffix.lower() in SONG_EXT) if d.exists() else []
+
+
 def albums() -> list[Path]:
-    from montage.app.gradio_app import demo_albums
     return [demo_root() / a for a in demo_albums()]
 
 
 def songs() -> list[Path]:
-    from montage.app.gradio_app import demo_songs
     return [demo_root() / "songs" / s for s in demo_songs()]
 
 

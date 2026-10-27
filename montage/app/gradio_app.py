@@ -12,27 +12,13 @@ import traceback
 import gradio as gr
 
 from montage import paths
+from montage.app.demo_mode import demo_albums, demo_songs  # noqa: F401  (also re-exported for callers)
 from montage.log import get_logger
 from montage.types import UserError
 
 log = get_logger("app")
 BRIEF_PLACEHOLDER = ("Warm, nostalgic summer recap. Open slow on the beach at sunrise, build through the road trip, "
                      "save the party for the drop, end on the sunset. Skip anything blurry.")
-MEDIA_EXT = {".jpg", ".jpeg", ".png", ".heic", ".heif", ".webp", ".mp4", ".mov", ".m4v", ".avi", ".mkv"}
-SONG_EXT = {".mp3", ".m4a", ".wav", ".aac", ".flac", ".ogg"}
-
-
-def demo_albums() -> list[str]:
-    d = paths.data_root() / "demo"
-    if not d.exists():
-        return []
-    return sorted(p.name for p in d.iterdir() if p.is_dir() and p.name not in ("songs", "backups", "vote")
-                  and any(f.suffix.lower() in MEDIA_EXT for f in p.iterdir()))
-
-
-def demo_songs() -> list[str]:
-    d = paths.data_root() / "demo" / "songs"
-    return sorted(p.name for p in d.iterdir() if p.suffix.lower() in SONG_EXT) if d.exists() else []
 
 
 def status_line(res, edl, st) -> str:

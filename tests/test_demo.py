@@ -46,6 +46,17 @@ def test_record_vote_roundtrip(fresh_root, monkeypatch):
         record_vote("x", "p", "full", "naive", "maybe")
 
 
+def test_demo_albums_nested(fresh_root):
+    from montage.app.demo_mode import demo_albums
+    nested = fresh_root / "demo" / "Summer Trip" / "export"
+    nested.mkdir(parents=True)
+    (nested / "IMG_0001.HEIC").write_bytes(b"x")
+    for name in ("songs", "songs_full", "backups", "vote"):
+        (fresh_root / "demo" / name).mkdir(parents=True, exist_ok=True)
+        (fresh_root / "demo" / name / "x.mp4").write_bytes(b"x")
+    assert demo_albums() == ["Summer Trip"]
+
+
 @pytest.mark.gpu
 @pytest.mark.media
 def test_demo_prepare(fixtures, tmp_path, monkeypatch):
