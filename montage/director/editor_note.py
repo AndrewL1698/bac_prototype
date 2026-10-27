@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from montage.log import get_logger
 from montage.music.profile import mmss
 from montage.types import EDL, MusicProfile
+
+log = get_logger("editor_note")
 
 
 def template_note(edl: EDL, profile: MusicProfile) -> str:
@@ -21,6 +24,6 @@ def editor_note(edl: EDL, profile: MusicProfile, ctx: dict | None = None) -> tup
         try:
             from montage.director.llm import note_from_llm
             return note_from_llm(edl, profile, ctx or {}), []
-        except Exception:  # noqa: BLE001  optional component
-            pass
+        except Exception as e:  # noqa: BLE001  optional component
+            log.warning("editor's note falls back to the template: %s", e)
     return template_note(edl, profile), []

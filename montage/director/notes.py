@@ -12,6 +12,7 @@ SLOWER = re.compile(r"\b(slower|calmer|slow (it )?down|too fast|less frantic)\b"
 MORE = re.compile(r"\bmore (?:of )?(?:the )?([^,.;:!?\n]+)", re.I)
 LESS = re.compile(r"\b(?:less|no|lose|drop|remove|without) (?:of )?(?:the )?([^,.;:!?\n]+)", re.I)
 TIME = re.compile(r"\bat (\d{1,2}):(\d{2})\b")
+REMOVE = re.compile(r"\b(lose|drop|remove|cut|no|skip|without)\b", re.I)
 PARTS = {"beginning": "start", "start": "start", "intro": "start", "opening": "start", "middle": "middle",
          "end": "end", "ending": "end", "outro": "end"}
 
@@ -46,6 +47,14 @@ def _shot_at(edl: EDL, t: float):
     return next((s for s in edl.shots if s.start <= t < s.end), None)
 
 
+def time_targets(edl: EDL | None, note: str) -> list[str]:
+    """Assets of the shots a removal note names by time ("lose the shot at 0:12"), looked up in the current cut."""
+    if edl is None or not REMOVE.search(note):
+        return []
+    shots = [_shot_at(edl, int(m.group(1)) * 60 + int(m.group(2))) for m in TIME.finditer(note)]
+    return list(dict.fromkeys(s.asset_id for s in shots if s))
+
+
 def revise_rules(prev: EditPlan, edl: EDL | None, note: str) -> EditPlan:
     from montage.types import SegmentDirective
     cfg = get_config().director
@@ -54,10 +63,8 @@ def revise_rules(prev: EditPlan, edl: EDL | None, note: str) -> EditPlan:
     delta = 0.4 if FASTER.search(text) else -0.4 if SLOWER.search(text) else 0.0
     part = next((PARTS[w] for w in re.findall(r"[a-z]+", text.lower()) if w in PARTS), None)
     tm = TIME.search(text)
-    if tm and edl is not None and re.search(r"\b(lose|drop|remove|cut|no|skip|without)\b", text, re.I):
-        shot = _shot_at(edl, int(tm.group(1)) * 60 + int(tm.group(2)))
-        if shot and shot.asset_id not in p.exclude:
-            p.exclude.append(shot.asset_id)
+    if tm and edl is not None and REMOVE.search(text):
+        p.exclude = list(dict.fromkeys(p.exclude + time_targets(edl, text)))
     elif delta:
         if part is None:
             shift_pacing(p, delta)
@@ -93,6 +100,9 @@ def revise_plan(prev: EditPlan, edl: EDL | None, note: str, ctx: dict | None = N
         try:
             from montage.director.llm import revise_from_llm
             plan = revise_from_llm(prev, edl, note, ctx or {})
+            targets = time_targets(edl, note)
+            if targets:  # the cut decides which shot a time code names; the model misreads time codes
+                plan.exclude = list(dict.fromkeys(prev.exclude + targets))
             d = speed_direction(note)
             part_named = any(w in PARTS for w in re.findall(r"[a-z]+", note.lower()))
             if d and not part_named and not _pacing_moved(prev, plan, d):

@@ -58,6 +58,16 @@ def truth(fixtures) -> dict:
     return json.loads((fixtures / "truth.json").read_text())
 
 
+def beat_this_available() -> bool:
+    """False when the Beat This! checkpoint cannot be loaded (e.g. its host is down and none is cached)."""
+    try:
+        from montage.music.beats import _get_beat_this
+        _get_beat_this()
+        return True
+    except Exception:
+        return False
+
+
 def gpu_available() -> bool:
     try:
         import torch

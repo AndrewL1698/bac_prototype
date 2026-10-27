@@ -121,6 +121,15 @@ def test_llm_faster_guard(fake):
     assert fb == [] and plan.source == "llm" and plan.pacing == pytest.approx(0.4)
 
 
+def test_llm_time_note_guard(fake):
+    """'lose the shot at 0:12' removes the shot playing at 0:12 in the cut, whatever shot the model named."""
+    from montage.director.notes import revise_plan
+    fake({**GOOD, "exclude": ["a000"]})
+    edl = _edl()
+    plan, fb = revise_plan(edl.plan, edl, "lose the shot at 0:12", {**CTX, "asset_ids": [f"a00{j}" for j in range(5)]})
+    assert fb == [] and plan.exclude == ["a003"]  # 10-13 s
+
+
 def test_notes_rules():
     edl = _edl()
     p = revise_rules(edl.plan, edl, "lose the shot at 0:12")
