@@ -62,12 +62,28 @@ def mert_window_features(windows: np.ndarray, batch: int | None = None) -> np.nd
     batch = batch or cfg.emotion.batch
     dev = next(model.parameters()).device
     dtype = next(model.parameters()).dtype
+    # Newer transformers can drop `hidden_states` for remote-code models (MERT returns None under 5.20).
+    # Hooks record the same 13 tensors: the encoder input (input to layer 0) plus each layer's output.
+    caps: list = []
+    layers = model.encoder.layers
+    hooks = [layers[0].register_forward_pre_hook(lambda mod, args: caps.append(args[0]))]
+    hooks += [layer.register_forward_hook(lambda mod, inp, o: caps.append(o[0] if isinstance(o, tuple) else o))
+              for layer in layers]
     out = []
-    for i in range(0, len(windows), batch):
-        x = fe(list(windows[i:i + batch]), sampling_rate=cfg.mert_sr, return_tensors="pt")
-        with torch.no_grad():
-            hs = model(input_values=x["input_values"].to(dev, dtype), output_hidden_states=True).hidden_states
-        out.append(torch.stack(hs, 1).mean(2).float().cpu().numpy().astype(np.float16))
+    try:
+        for i in range(0, len(windows), batch):
+            x = fe(list(windows[i:i + batch]), sampling_rate=cfg.mert_sr, return_tensors="pt")
+            caps.clear()
+            with torch.no_grad():
+                hs = model(input_values=x["input_values"].to(dev, dtype), output_hidden_states=True).hidden_states
+            if hs is None:
+                if len(caps) != len(layers) + 1:
+                    raise RuntimeError(f"captured {len(caps)} MERT layer outputs, expected {len(layers) + 1}")
+                hs = caps
+            out.append(torch.stack(list(hs), 1).mean(2).float().cpu().numpy().astype(np.float16))
+    finally:
+        for h in hooks:
+            h.remove()
     return np.concatenate(out) if out else np.zeros((0, 13, 768), np.float16)
 
 
