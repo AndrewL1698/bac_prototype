@@ -16,6 +16,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 REPO_URL = "https://github.com/AndrewL1698/bac_prototype"
@@ -37,8 +38,11 @@ def sh(cmd: list[str] | str, check: bool = False, **kw) -> subprocess.CompletedP
 
 
 def mount_drive() -> bool:
-    if DRIVE.exists():
-        return True
+    mnt = Path("/content/drive")
+    if os.path.ismount(mnt):
+        return DRIVE.exists()
+    if mnt.exists():  # a plain local folder (left by a run without Drive) blocks the mount: move it aside
+        shutil.move(str(mnt), f"/content/drive_local_{int(time.time())}")
     try:
         from google.colab import drive  # only works in the notebook kernel (%run)
         drive.mount("/content/drive")
@@ -182,6 +186,10 @@ def main(argv: list[str] | None = None) -> int:
     drive_ok = mount_drive() and DATA_ROOT.exists()
     if DRIVE.exists() and not DATA_ROOT.exists():
         print(SHARE_HELP)
+        return 1
+    if not drive_ok:  # without Drive the app would run on an empty local folder (no demo albums, songs, or weights)
+        print("Google Drive is not connected. Rerun this cell from the Colab page and approve the Drive pop-up "
+              "(choose the Google account that has montage_data).")
         return 1
     commit = git_sync(args.branch)
     if str(REPO_DIR) not in sys.path:

@@ -172,3 +172,8 @@ Format:
 - Done: APP_PASSWORD Colab Secret added; app restarted with the start cell and login is enforced (username `montage`; unauthenticated config/API requests get 401). New link printed in Colab and saved to jobs/keshav/app.url.
 - Next: the demo.
 - Blockers: none.
+
+## 2026-10-28 10:30 ET | Keshav | maintenance | branch main
+- Done: the start cell now refuses to start the app when Google Drive is not mounted (it used to start on an empty local folder, so the demo album and song pickers were empty) and moves aside a stray local /content/drive folder before mounting.
+- Next: rerun the start cell on a fresh runtime and approve the Drive pop-up.
+- Blockers: none
