@@ -177,3 +177,9 @@ Format:
 - Done: the start cell now refuses to start the app when Google Drive is not mounted (it used to start on an empty local folder, so the demo album and song pickers were empty) and moves aside a stray local /content/drive folder before mounting.
 - Next: rerun the start cell on a fresh runtime and approve the Drive pop-up.
 - Blockers: none
+
+## 2026-10-29 ET | Andrew | planning (8-week extension proposal) | branch main
+- Done: reviewed the pipeline and wrote a DRAFT roadmap proposal in `docs/ROADMAP.md`: 10 pipeline weaknesses with fixes, new features (Spotify-history song picking with an image-set <-> music contrastive model, people-aware editing, learned editing preferences, timeline editor last), and a 4-track x 8-week schedule. No code changes.
+- Next: team review of `docs/ROADMAP.md` (Keshav + the two new devs); agree on track owners, then move phases into PLAN.md and write specs.
+- Blockers: none
+- Heads-up: proposal only. Nothing in ROADMAP.md is claimed or agreed yet; PLAN.md is still the plan of record.

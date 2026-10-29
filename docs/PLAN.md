@@ -4,6 +4,8 @@ This is the plan of record. Progress history goes in `docs/LOG.md`; this file sh
 
 How to use it: claim a phase in **Current work** before starting (person, branch, start time), tick the box and clear your row when it is merged to `main`, and record any judgment calls under **Decisions**.
 
+> **Proposed next stage (draft, Andrew, 2026-10-29):** an 8-week, four-person extension (Spotify-history song picking, deeper ML, timeline editor) is proposed in [`ROADMAP.md`](ROADMAP.md). It is not agreed or claimed yet; please review it before starting new work.
+
 ## Goal and schedule
 
 A live workshop demo of the AI music video editor in two days.
