@@ -86,6 +86,11 @@ Goal: "Pick the song for me." The user uploads photos plus their Spotify listeni
 - **12.6 App tab "Pick a song for me":** upload history -> shortlist with reasons -> choose -> upload or match the audio -> the existing Generate flow. The history is held under the session's DATA_ROOT folder only.
 - **12.7 Local library matching:** match the chosen track to a file in a user-given music folder using ID3 tags (`mutagen`) plus fuzzy matching on names (`rapidfuzz`). Check the audio's duration against the excerpt length.
 - **Stage B (contrastive image-set <-> music model)** is its own phase (ROADMAP F1 step 5) and gets its own spec.
+- **Long-term change (ROADMAP F1 steps 2 and 6):** the play-count ranking in sections 3-5 is temporary.
+  - **Window:** the period becomes an age-scaled window centered on the album's median capture date: about a month for photos from a year ago, a season for photos from five years ago (config table `songpick.window_by_age_days`).
+  - **Ranking:** songs are ranked by sentiment match: album valence/arousal vs the song's valence/arousal from tags, or from the MERT head once audio exists.
+  - **Affinity:** period affinity only decides eligibility and breaks ties.
+  - **Code impact:** `choose_period` and the `score` formula change; the `SongPick`/`TrackCandidate` fields stay the same (`vibe` carries the sentiment match).
 
 ## 7. Config (`songpick` in `configs/default.yaml`)
 
