@@ -44,6 +44,7 @@ class _Acc:
     last_window: datetime | None = None
     uri: str | None = None
     album: str = ""
+    duration_ms: int | None = None
 
 
 def _fmt_day(d: datetime) -> str:
@@ -80,6 +81,7 @@ def score_tracks(events: list[ListeningEvent], period: tuple[datetime, datetime]
         a.event = e
         a.uri = e.uri or a.uri
         a.album = e.album or a.album
+        a.duration_ms = e.duration_ms or a.duration_ms
         w = play_weight(e)
         a.total += w
         inside = in_period(e, period) if period is not None else True
@@ -119,6 +121,7 @@ def score_tracks(events: list[ListeningEvent], period: tuple[datetime, datetime]
             key=track_key(a.event.artist, a.event.track), track=a.event.track, artist=a.event.artist,
             album=a.album, uri=a.uri, plays_window=round(a.window, 4), plays_total=round(a.total, 4),
             n_plays_window=a.n_window, n_skips_window=a.n_skips, lift=round(lift, 4),
-            affinity=round(aff, 6), score=round(aff, 6), reason=_reason(a, lift, period)))
+            affinity=round(aff, 6), score=round(aff, 6), reason=_reason(a, lift, period),
+            duration_ms=a.duration_ms))
     out.sort(key=lambda c: (-c.affinity, -c.n_plays_window, c.key))
     return out

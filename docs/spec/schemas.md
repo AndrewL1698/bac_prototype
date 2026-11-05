@@ -194,6 +194,19 @@ class ListeningEvent(BaseModel):
     album: str = ""
     uri: str | None = None           # "spotify:track:..." when the export has it
     skipped: bool = False            # export's `skipped`, or reason_end == "fwdbtn"
+    source: Literal["export", "recent"] = "export"   # data export, or Spotify sign-in "recently played"
+    duration_ms: int | None = None   # track length when known (sign-in data)
+
+
+class TopTrack(BaseModel):
+    """One entry of a Spotify sign-in top-tracks list (no play dates; Spotify only gives the rank)."""
+    track: str
+    artist: str
+    album: str = ""
+    uri: str | None = None
+    duration_ms: int | None = None
+    time_range: Literal["short_term", "medium_term", "long_term"]   # about 4 weeks / 6 months / 1 year
+    rank: int                        # 1 = most played in that range
 
 class TrackCandidate(BaseModel):
     key: str                         # "artist|track", lowercased, whitespace collapsed
@@ -210,6 +223,8 @@ class TrackCandidate(BaseModel):
     vibe: float | None = None        # [0,1] from a vibe stage (later phases); None = not computed
     score: float                     # final rank score
     reason: str                      # short human-readable "why this song"
+    duration_ms: int | None = None   # track length when known (sign-in data)
+    sources: list[str] = []          # "export", "recent", "top:<time_range>"
 
 class SongPick(BaseModel):
     period_start: datetime | None    # naive; None when the album has no capture dates
@@ -220,6 +235,7 @@ class SongPick(BaseModel):
     candidates: list[TrackCandidate] # shortlist, best first
     vibe_source: Literal["none", "tags", "contrastive"] = "none"
     notes: list[str] = []            # warnings (widened period, few plays, no dates)
+    sources: list[str] = []          # listening data used: "export", "recent", "top:<time_range>"
 ```
 
 ## On-disk layout per run

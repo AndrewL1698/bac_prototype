@@ -190,6 +190,29 @@ songpick:                         # phase 12: pick a song from the user's listen
   min_window_plays: 2             # a candidate needs at least this many real plays in the period
   shortlist_size: 5
   alpha: 1.0                      # score = alpha * affinity + (1 - alpha) * vibe; 1.0 until a vibe stage exists
+  w_sources: {export: 1.0, recent: 1.0, top: 1.0}   # per-source affinities (each max-normalized) are summed with these weights
+  spotify:                        # "Connect Spotify" (OAuth with PKCE; read-only listening data)
+    client_id_env: "SPOTIFY_CLIENT_ID"
+    redirect_uri: "https://andrewl1698.github.io/bac_prototype/spotify/callback.html"
+    scopes: ["user-read-recently-played", "user-top-read"]
+    return_hosts: [".gradio.live", "127.0.0.1", "localhost"]   # where the callback page may send the browser back
+    auth_ttl_s: 600               # a sign-in must finish within 10 minutes
+    timeout_s: 10
+    top_limit: 50
+    range_days: {short_term: 28, medium_term: 182, long_term: 365}   # how far back each top-tracks list reaches
+    range_weight: {short_term: 1.0, medium_term: 0.7, long_term: 0.5} # narrower ranges say more about "that time"
+  youtube:                        # opt-in audio fetch for the picked song (user ticks a box each session)
+    enabled: false                # default state of the app checkbox
+    max_results: 6                # search results considered
+    duration_tol_s: 10            # a result this close to Spotify's track length counts as the same recording
+    min_song_s: 60
+    max_song_s: 900
+    min_match: 0.55               # minimum match score to accept a result
+    topic_bonus: 0.25             # "<Artist> - Topic" channels are official audio
+    bad_words: ["live", "cover", "remix", "karaoke", "sped up", "slowed", "nightcore", "8d", "instrumental", "reverb"]
+    bad_penalty: 0.4
+    duration_penalty: 0.4
+    cookies_file: ""              # optional cookies.txt path (outside the repo) if YouTube asks to confirm you're not a bot
 
 app:
   port: 7860

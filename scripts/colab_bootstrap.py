@@ -148,7 +148,8 @@ def ensure_ffmpeg() -> tuple[str, bool]:
     return ver, zs and tm
 
 
-def write_env(user: str, api_key: str | None, app_password: str | None = None) -> None:
+def write_env(user: str, api_key: str | None, app_password: str | None = None,
+              spotify_client_id: str | None = None) -> None:
     lines = [
         f"export MONTAGE_DATA_ROOT={DATA_ROOT}",
         "export MONTAGE_SCRATCH=/content/scratch",
@@ -159,6 +160,8 @@ def write_env(user: str, api_key: str | None, app_password: str | None = None) -
         lines.append(f"export ANTHROPIC_API_KEY='{api_key}'")
     if app_password:
         lines.append(f"export MONTAGE_APP_PASSWORD='{app_password}'")
+    if spotify_client_id:
+        lines.append(f"export SPOTIFY_CLIENT_ID='{spotify_client_id}'")
     ENV_FILE.touch(mode=0o600, exist_ok=True)
     os.chmod(ENV_FILE, 0o600)
     ENV_FILE.write_text("\n".join(x for x in lines if x) + "\n")
@@ -167,6 +170,8 @@ def write_env(user: str, api_key: str | None, app_password: str | None = None) -
         os.environ["ANTHROPIC_API_KEY"] = api_key
     if app_password:
         os.environ["MONTAGE_APP_PASSWORD"] = app_password
+    if spotify_client_id:
+        os.environ["SPOTIFY_CLIENT_ID"] = spotify_client_id
 
 
 def gpu_info() -> tuple[str, bool]:
@@ -200,14 +205,15 @@ def main(argv: list[str] | None = None) -> int:
     user = (read_secret("MONTAGE_USER") or args.user or saved.get("MONTAGE_USER") or "anon").strip().lower()
     api_key = read_secret("ANTHROPIC_API_KEY") or saved.get("ANTHROPIC_API_KEY")
     app_password = read_secret("APP_PASSWORD") or saved.get("MONTAGE_APP_PASSWORD")
+    spotify_id = read_secret("SPOTIFY_CLIENT_ID") or saved.get("SPOTIFY_CLIENT_ID")
     Path("/content/scratch").mkdir(parents=True, exist_ok=True)
     ffver, zs_ok = ensure_ffmpeg()
-    write_env(user, api_key, app_password)
+    write_env(user, api_key, app_password, spotify_id)
     req = ensure_requirements(args.foreground_install)
     gpu, cuda = gpu_info()
     print(f"bootstrap: branch {args.branch}@{commit} | user {user} | GPU {gpu} | CUDA {'ok' if cuda else 'NO'} | "
           f"FFmpeg {ffver} zscale {'ok' if zs_ok else 'missing'} | API key {'yes' if api_key else 'no'} | "
-          f"app password {'yes' if app_password else 'no'} | "
+          f"app password {'yes' if app_password else 'no'} | Spotify {'yes' if spotify_id else 'no'} | "
           f"requirements {req} | {'shared Drive ok' if drive_ok else 'shared Drive MISSING'}")
     return 0
 

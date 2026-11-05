@@ -283,6 +283,32 @@ class EvalCfg(_B):
     default_brief: str
 
 
+class SpotifyCfg(_B):
+    client_id_env: str
+    redirect_uri: str
+    scopes: list[str]
+    return_hosts: list[str]
+    auth_ttl_s: float
+    timeout_s: float
+    top_limit: int
+    range_days: dict[str, float]
+    range_weight: dict[str, float]
+
+
+class YoutubeCfg(_B):
+    enabled: bool
+    max_results: int
+    duration_tol_s: float
+    min_song_s: float
+    max_song_s: float
+    min_match: float
+    topic_bonus: float
+    bad_words: list[str]
+    bad_penalty: float
+    duration_penalty: float
+    cookies_file: str
+
+
 class SongpickCfg(_B):
     min_play_ms: int
     full_play_ms: int
@@ -299,6 +325,9 @@ class SongpickCfg(_B):
     min_window_plays: int
     shortlist_size: int
     alpha: float
+    w_sources: dict[str, float]
+    spotify: SpotifyCfg
+    youtube: YoutubeCfg
 
 class Config(_B):
     seed: int
