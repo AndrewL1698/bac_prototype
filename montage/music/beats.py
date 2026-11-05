@@ -55,18 +55,33 @@ def _get_beat_this():
             raise RuntimeError(f"Beat This! failed to load {time.time() - _failed_at:.0f} s ago "
                                f"(retrying after {retry_s:.0f} s)")
         try:
-            ckpt, source = ensure_checkpoint()
-            import torch
-            from beat_this.inference import Audio2Beats
-            _beat_this = Audio2Beats(checkpoint_path=str(ckpt),
-                                     device="cuda" if torch.cuda.is_available() else "cpu", dbn=False)
+            model, ckpt, source = _load_model()
         except Exception:
             _failed_at = time.time()
             raise
-        _failed_at = None
+        _beat_this, _failed_at = model, None
         LOADED_FROM.update(checkpoint=str(ckpt), source=source)
         log.info("Beat This! loaded from %s (source: %s)", ckpt, source)
         return _beat_this
+
+
+def _load_model():
+    import torch   # imports first: no checkpoint download where the package is missing
+    from beat_this.inference import Audio2Beats
+    ckpt, source = ensure_checkpoint()
+    model = Audio2Beats(checkpoint_path=str(ckpt), device="cuda" if torch.cuda.is_available() else "cpu", dbn=False)
+    return model, ckpt, source
+
+
+def beat_this_ready() -> bool:
+    """True when Beat This! is enabled and loads (loading once per process; fast False inside the retry window)."""
+    if not get_config().music.use_beat_this:
+        return False
+    try:
+        _get_beat_this()
+        return True
+    except Exception:  # noqa: BLE001  optional component
+        return False
 
 
 def beat_this_beats(y: np.ndarray, sr: int) -> tuple[np.ndarray, np.ndarray]:

@@ -142,6 +142,24 @@ def test_music_cache(fixtures):
     assert fa.beat_source in ("beat_this", "librosa")
 
 
+def test_librosa_cache_redone_when_beat_this_loads(fixtures, fresh_root, monkeypatch):
+    """A song analyzed while Beat This! was down keeps librosa beats only until Beat This! loads."""
+    from montage import config
+    from montage.music import beats
+    from montage.music.profile import analyze_song
+    pytest.importorskip("librosa")
+    with config.override({"music.use_beat_this": False}):
+        assert analyze_song(fixtures / "click_120.wav").beat_source == "librosa"
+    fake = lambda y, sr: (np.arange(0.5, len(y) / sr, 0.5), np.arange(0.5, len(y) / sr, 2.0))  # noqa: E731
+    monkeypatch.setattr(beats, "_beat_this", fake)
+    with config.override({"music.use_beat_this": True}):
+        fa = analyze_song(fixtures / "click_120.wav")
+        assert fa.beat_source == "beat_this"
+        before = dict(beats.CALLS)
+        assert analyze_song(fixtures / "click_120.wav").beat_source == "beat_this"   # now cached
+        assert beats.CALLS == before
+
+
 @pytest.mark.media
 def test_summary(fixtures):
     from montage.music.excerpt import choose_excerpt

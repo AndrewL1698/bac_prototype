@@ -71,7 +71,7 @@ def test_failed_load_retries_after_window(monkeypatch):
 
     monkeypatch.setattr(beats, "_beat_this", None)
     monkeypatch.setattr(beats, "_failed_at", None)
-    monkeypatch.setattr(beats, "ensure_checkpoint", boom)
+    monkeypatch.setattr(beats, "_load_model", boom)
     with pytest.raises(IOError):
         beats._get_beat_this()
     with pytest.raises(RuntimeError, match="retrying after"):
