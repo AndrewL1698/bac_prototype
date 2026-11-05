@@ -203,3 +203,8 @@ Format:
 - Blockers: Track 1 ownership not agreed yet; `montage_data` not yet shared with Andrew.
 - Heads-up: on the branch only. New schemas `ListeningEvent`, `TrackCandidate`, `SongPick` (types.py and schemas.md; no existing model changed). New config section `songpick` (`SongpickCfg`, required in `Config`).
 - Heads-up: `tests/test_jobs.py::test_job_stop` fails on macOS (pre-existing, also on main; jobs.py is untouched). It passes on Colab/Linux.
+
+## 2026-11-04 ET | Andrew | planning (song-pick long-term ranking) | branch main
+- Done: ROADMAP F1 revised. The phase 12 play-count affinity is marked temporary. Long term, the song pick ranks by **song-sentiment match** (photo valence/arousal + CLIP vs song valence/arousal from tags, then from the MERT head once audio exists) among songs from an **age-scaled time window**. The window is centered on the album's median date: about a month for photos from a year ago, a season for photos from five years ago, up to about half a year for older ones (config table `songpick.window_by_age_days`, tuned in the human study). Affinity stays as eligibility and tie-break. Schedule: window in week 2, sentiment ranking in week 6.
+- Next: team review of ROADMAP.md.
+- Blockers: none.
