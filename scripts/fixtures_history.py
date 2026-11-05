@@ -93,3 +93,37 @@ def write_history(out_dir: Path, seed: int = 0) -> dict:
     (out_dir / "StreamingHistory_music_0.json").write_text(json.dumps(account_rows(seed)))
     return {"album_dates": ALBUM_DATES, "top_pick": list(TOP_PICK), "favourite": list(FAVOURITE),
             "skipped": list(SKIPPED), "n_rows": len(rows)}
+
+
+# ---------- Spotify sign-in API responses (synthetic, same shapes as the Web API) ----------
+
+def _api_track(artist: str, track: str, duration_ms: int = 200_000) -> dict:
+    return {"type": "track", "name": track, "duration_ms": duration_ms,
+            "uri": "spotify:track:" + hashlib.sha1(f"{artist}|{track}".encode()).hexdigest()[:22],
+            "artists": [{"name": artist}], "album": {"name": f"{artist} Album"}}
+
+
+def spotify_recent_json(now: datetime, seed: int = 0) -> dict:
+    """/me/player/recently-played: 50 plays over the last 10 days; "Summer Anthem" dominates the last 3 days."""
+    rng = random.Random(seed + 2)
+    items = []
+    for i in range(50):
+        if i < 14:
+            artist, track, ago = *TOP_PICK, rng.uniform(0, 3)
+        else:
+            (artist, track), ago = rng.choice(BACKGROUND + [FAVOURITE]), rng.uniform(0, 10)
+        ts = now - timedelta(days=ago)
+        items.append({"track": _api_track(artist, track, 195_000 if track == TOP_PICK[1] else 210_000),
+                      "played_at": ts.strftime("%Y-%m-%dT%H:%M:%S.000Z")})
+    items.sort(key=lambda x: x["played_at"], reverse=True)  # the API lists newest first
+    return {"items": items, "limit": 50}
+
+
+def spotify_top_json(time_range: str) -> dict:
+    """/me/top/tracks: the favourite tops the 1-year list; "Summer Anthem" tops the 4-week list."""
+    order = {
+        "short_term": [TOP_PICK] + BACKGROUND[:9] + [FAVOURITE],
+        "medium_term": [BACKGROUND[3], TOP_PICK] + BACKGROUND[4:12] + [FAVOURITE],
+        "long_term": [FAVOURITE] + BACKGROUND[:12],
+    }[time_range]
+    return {"items": [_api_track(a, t) for a, t in order], "limit": 50}

@@ -1,0 +1,311 @@
+"""Phase 12.5-12.7: Spotify sign-in (PKCE, callback, API parsing), multi-source suggestions, opt-in
+YouTube matching, and the app handlers. No network: HTTP and yt-dlp are replaced at their seams."""
+
+from __future__ import annotations
+
+from datetime import datetime, timedelta
+from pathlib import Path
+
+import pytest
+
+from montage import config
+from montage.app import songpick_ui
+from montage.songpick import spotify, youtube
+from montage.songpick.pick import ranges_for_period, suggest
+from montage.types import UserError
+from scripts.fixtures_history import (BACKGROUND, FAVOURITE, TOP_PICK, spotify_recent_json, spotify_top_json,
+                                      write_history)
+
+NOW = datetime(2026, 11, 5, 12, 0, 0)
+APP = "https://abc123def.gradio.live/"
+
+
+@pytest.fixture
+def client_id(monkeypatch):
+    monkeypatch.setenv("SPOTIFY_CLIENT_ID", "test-client-id")
+    spotify._pending.clear()
+    yield "test-client-id"
+    spotify._pending.clear()
+
+
+def fake_api(calls: list):
+    """A stand-in for spotify._request that serves the synthetic Web API."""
+    def _request(method, url, **kw):
+        calls.append((method, url, kw))
+        if url == spotify.TOKEN_URL:
+            return 200, {"access_token": "tok", "expires_in": 3600, "token_type": "Bearer"}, {}
+        if url.endswith("/me/player/recently-played"):
+            return 200, spotify_recent_json(NOW), {}
+        if url.endswith("/me/top/tracks"):
+            return 200, spotify_top_json(kw["params"]["time_range"]), {}
+        return 404, {}, {}
+    return _request
+
+
+def token():
+    return {"access_token": "tok", "expires_at": 9e18}
+
+
+def listening():
+    recent = spotify.recent_from_json(spotify_recent_json(NOW))
+    top = {r: spotify.top_from_json(spotify_top_json(r), r) for r in spotify.TIME_RANGES}
+    return recent, top
+
+
+# ---------- PKCE, state, callback rule ----------
+
+def test_pkce_matches_rfc7636_vector():
+    assert spotify.code_challenge("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk") == \
+        "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
+    v = spotify.make_verifier()
+    assert 43 <= len(v) <= 128 and all(c.isalnum() or c in "-._~" for c in v)
+
+
+@pytest.mark.parametrize("url,ok", [
+    ("https://abc123.gradio.live/", True),
+    ("https://abc123.gradio.live/?x=1", True),
+    ("http://127.0.0.1:7860/", True),
+    ("http://localhost:7860", True),
+    ("http://abc123.gradio.live/", False),          # share links are https
+    ("https://gradio.live/", False),                # bare suffix
+    ("https://evil.com/.gradio.live", False),
+    ("https://abc.gradio.live.evil.com/", False),
+    ("https://user:pw@abc.gradio.live/", False),
+    ("javascript:alert(1)", False),
+    ("", False),
+])
+def test_safe_return_url(url, ok):
+    assert spotify.safe_return_url(url) is ok
+
+
+def test_state_round_trip_and_callback_page_rule():
+    s = spotify.make_state(APP)
+    assert spotify.state_app_url(s) == APP and spotify.state_app_url("garbage") is None
+    page = (Path(__file__).resolve().parents[1] / "docs" / "spotify" / "callback.html").read_text()
+    assert ".gradio.live" in page and "127.0.0.1" in page and "innerHTML" not in page
+    assert config.get_config().songpick.spotify.redirect_uri.endswith("/spotify/callback.html")
+
+
+def test_begin_auth_requires_client_id_and_safe_url(monkeypatch):
+    monkeypatch.delenv("SPOTIFY_CLIENT_ID", raising=False)
+    with pytest.raises(UserError, match="not set up"):
+        spotify.begin_auth(APP)
+    monkeypatch.setenv("SPOTIFY_CLIENT_ID", "x")
+    with pytest.raises(UserError, match="share link"):
+        spotify.begin_auth("https://example.com/")
+
+
+def test_auth_flow_with_fake_spotify(client_id, monkeypatch):
+    calls = []
+    monkeypatch.setattr(spotify, "_request", fake_api(calls))
+    url = spotify.begin_auth(APP + "?spotify_code=old&state=old")
+    assert url.startswith(spotify.AUTH_URL)
+    assert "scope=user-read-recently-played+user-top-read" in url and "code_challenge_method=S256" in url
+    assert "client_secret" not in url
+    state = [p.split("=", 1)[1] for p in url.split("?", 1)[1].split("&") if p.startswith("state=")][0]
+    from urllib.parse import unquote
+    state = unquote(state)
+    assert spotify.state_app_url(state) == APP  # old query stripped from the return URL
+    tok = spotify.finish_auth("the-code", state)
+    assert tok["access_token"] == "tok"
+    sent = calls[-1][2]["data"]
+    assert sent["code"] == "the-code" and sent["code_verifier"] and "client_secret" not in sent
+    with pytest.raises(UserError, match="expired or was already used"):
+        spotify.finish_auth("the-code", state)  # one use only
+
+
+def test_auth_state_expires(client_id, monkeypatch):
+    monkeypatch.setattr(spotify, "_request", fake_api([]))
+    url = spotify.begin_auth(APP, now=1000.0)
+    from urllib.parse import parse_qs, urlsplit
+    state = parse_qs(urlsplit(url).query)["state"][0]
+    ttl = config.get_config().songpick.spotify.auth_ttl_s
+    with pytest.raises(UserError, match="expired"):
+        spotify.finish_auth("c", state, now=1000.0 + ttl + 1)
+
+
+@pytest.mark.parametrize("status,match", [(401, "expired"), (403, "Development Mode"), (429, "limiting"),
+                                          (500, "HTTP 500")])
+def test_api_errors_are_friendly(monkeypatch, status, match):
+    monkeypatch.setattr(spotify, "_request", lambda *a, **k: (status, {"error": "x"}, {}))
+    with pytest.raises(UserError, match=match):
+        spotify.recently_played(token())
+
+
+# ---------- parsing ----------
+
+def test_recent_and_top_parsing():
+    recent, top = listening()
+    assert len(recent) == 50 and all(e.source == "recent" and e.duration_ms for e in recent)
+    assert recent == sorted(recent, key=lambda e: (e.ts, e.artist, e.track)) and recent[-1].ts <= NOW
+    assert top["short_term"][0].rank == 1 and (top["short_term"][0].artist, top["short_term"][0].track) == TOP_PICK
+    assert spotify.recent_from_json({"items": [{"track": {"type": "episode", "name": "Pod"},
+                                                "played_at": "2026-11-01T00:00:00Z"}]}) == []
+
+
+def test_fetch_listening(monkeypatch):
+    calls = []
+    monkeypatch.setattr(spotify, "_request", fake_api(calls))
+    recent, top = spotify.fetch_listening(token())
+    assert len(recent) == 50 and set(top) == set(spotify.TIME_RANGES)
+    assert all(c[2]["headers"]["Authorization"] == "Bearer tok" for c in calls)
+    with pytest.raises(UserError, match="Connect Spotify"):
+        spotify.recently_played({})
+
+
+# ---------- suggestions from sign-in data ----------
+
+def test_ranges_for_period():
+    recent_period = (NOW - timedelta(days=10), NOW - timedelta(days=3))
+    assert ranges_for_period(recent_period, spotify.TIME_RANGES, NOW) == (list(spotify.TIME_RANGES), False)
+    three_months = (NOW - timedelta(days=100), NOW - timedelta(days=90))
+    assert ranges_for_period(three_months, spotify.TIME_RANGES, NOW) == (["medium_term", "long_term"], False)
+    old = (datetime(2021, 7, 1), datetime(2021, 7, 14))
+    assert ranges_for_period(old, spotify.TIME_RANGES, NOW) == (["long_term"], True)
+    assert ranges_for_period(None, ["long_term"], NOW) == (["long_term"], False)
+
+
+def test_suggest_recent_photos_uses_recent_plays_and_short_term():
+    recent, top = listening()
+    pick = suggest([NOW - timedelta(days=2), NOW - timedelta(days=1)], recent=recent, top=top, now=NOW)
+    first = pick.candidates[0]
+    assert (first.artist, first.track) == TOP_PICK
+    assert "recent" in first.sources and "top:short_term" in first.sources
+    assert "recently played" in first.reason and "top songs of the last 4 weeks" in first.reason
+    assert first.duration_ms == 195_000 and first.score == 1.0
+    assert pick.sources[0] == "recent" and pick.period_source == "album"
+
+
+def test_suggest_old_photos_falls_back_to_long_term_with_note():
+    recent, top = listening()
+    pick = suggest([datetime(2021, 7, 3), datetime(2021, 7, 10)], recent=recent, top=top, now=NOW)
+    assert (pick.candidates[0].artist, pick.candidates[0].track) == FAVOURITE
+    assert pick.sources == ["top:long_term"] and any("older than the year" in n for n in pick.notes)
+
+
+def test_suggest_old_photos_with_export_uses_the_export(tmp_path):
+    from montage.songpick import load_history
+    truth = write_history(tmp_path)
+    recent, top = listening()
+    dates = [datetime.fromisoformat(s) for s in truth["album_dates"]]  # July 2026: ~4 months before NOW
+    pick = suggest(dates, export=load_history([tmp_path]), recent=recent, top=top, now=NOW)
+    assert (pick.candidates[0].artist, pick.candidates[0].track) == TOP_PICK
+    assert "export" in pick.candidates[0].sources and pick.sources[0] == "export"
+    assert not any("older than the year" in n for n in pick.notes)
+
+
+def test_suggest_without_dates_and_without_data():
+    recent, top = listening()
+    pick = suggest([None, None], recent=recent, top=top, now=NOW)
+    assert pick.period_start is None and any("no capture dates" in n for n in pick.notes)
+    assert set(pick.sources) >= {"recent", "top:short_term", "top:long_term"}
+    with pytest.raises(UserError, match="Connect Spotify"):
+        suggest([NOW], now=NOW)
+
+
+def test_suggest_is_deterministic():
+    recent, top = listening()
+    dates = [NOW - timedelta(days=2)]
+    assert suggest(dates, recent=recent, top=top, now=NOW).model_dump() == \
+        suggest(dates, recent=list(recent), top=dict(top), now=NOW).model_dump()
+
+
+# ---------- YouTube matching ----------
+
+def r(id_, title, channel, duration):
+    return {"id": id_, "title": title, "channel": channel, "duration": duration}
+
+
+def test_pick_best_prefers_official_audio_and_rejects_versions():
+    results = [
+        r("aaaaaaaaaa1", "The Fixtures - Summer Anthem (Live at the Arena)", "The Fixtures", 260),
+        r("aaaaaaaaaa2", "Summer Anthem (Cover by Someone)", "Someone Else", 197),
+        r("aaaaaaaaaa3", "Summer Anthem", "The Fixtures - Topic", 196),
+        r("aaaaaaaaaa4", "The Fixtures - Summer Anthem (Official Video)", "TheFixturesVEVO", 230),
+    ]
+    best, score = youtube.pick_best(results, "Summer Anthem", "The Fixtures", 195_000)
+    assert best["id"] == "aaaaaaaaaa3" and score > 1.0
+    # without the Topic upload, the official video wins despite its longer intro (live and cover are penalized)
+    best2, _ = youtube.pick_best([results[0], results[1], results[3]], "Summer Anthem", "The Fixtures", None)
+    assert best2["id"] == "aaaaaaaaaa4"
+
+
+def test_pick_best_keeps_words_that_are_in_the_title():
+    res = [r("bbbbbbbbbb1", "Live Forever", "Oasis - Topic", 276)]
+    assert youtube.pick_best(res, "Live Forever", "Oasis", 276_000) is not None
+
+
+def test_pick_best_rejects_bad_ids_lengths_and_weak_matches():
+    assert youtube.pick_best([r("short", "Summer Anthem", "The Fixtures - Topic", 196)], "Summer Anthem", "The Fixtures") is None
+    assert youtube.pick_best([r("cccccccccc1", "Summer Anthem", "The Fixtures - Topic", 30)], "Summer Anthem", "The Fixtures") is None
+    assert youtube.pick_best([r("cccccccccc2", "Cooking pasta at home", "Chef", 300)], "Summer Anthem", "The Fixtures") is None
+
+
+def test_find_and_fetch_caches_audio(monkeypatch):
+    downloads = []
+
+    def fake_download(video_id, out_dir):
+        downloads.append(video_id)
+        f = out_dir / f"{video_id}.m4a"
+        f.write_bytes(b"fake audio")
+        return f
+
+    monkeypatch.setattr(youtube, "search", lambda q, n: [r("dddddddddd1", "Summer Anthem", "The Fixtures - Topic", 196)])
+    monkeypatch.setattr(youtube, "_download", fake_download)
+    p1, meta = youtube.find_and_fetch("Summer Anthem", "The Fixtures", 195_000)
+    p2, _ = youtube.find_and_fetch("Summer Anthem", "The Fixtures", 195_000)
+    assert p1 == p2 == youtube.audio_path("dddddddddd1") and p1.read_bytes() == b"fake audio"
+    assert downloads == ["dddddddddd1"] and meta["id"] == "dddddddddd1"
+    with pytest.raises(ValueError):
+        youtube.fetch_audio("../../etc/passwd")
+
+
+def test_youtube_errors_are_friendly(monkeypatch):
+    monkeypatch.setattr(youtube, "search", lambda q, n: [])
+    with pytest.raises(UserError, match="Upload the song file"):
+        youtube.find_and_fetch("Summer Anthem", "The Fixtures")
+    err = youtube._friendly(RuntimeError("ERROR: Sign in to confirm you're not a bot"))
+    assert "blocking downloads" in str(err)
+
+
+# ---------- app handlers ----------
+
+def test_ui_page_load_and_connect(client_id, monkeypatch):
+    monkeypatch.setattr(spotify, "_request", fake_api([]))
+    assert songpick_ui.on_page_load({}) == (None, "")
+    url, md = songpick_ui.connect(APP)
+    from urllib.parse import parse_qs, urlsplit
+    state = parse_qs(urlsplit(url).query)["state"][0]
+    sp, status = songpick_ui.on_page_load({"spotify_code": "c", "state": state})
+    assert sp["token"]["access_token"] == "tok" and len(sp["recent"]) == 50 and "connected" in status
+    sp2, msg = songpick_ui.on_page_load({"spotify_code": "c", "state": state})  # reload: link used up
+    assert sp2 is None and "expired" in msg
+    with pytest.raises(UserError, match="two parts"):
+        songpick_ui.paste_code("only-one-part")
+
+
+def test_ui_suggest_and_use_song(monkeypatch):
+    recent, top = listening()
+    sp = {"token": token(), "recent": recent, "top": top}
+    monkeypatch.setattr(songpick_ui, "_album_dates", lambda media: [datetime.utcnow() - timedelta(days=1)])
+    with pytest.raises(UserError, match="Connect Spotify"):
+        songpick_ui.suggest(["album"], None, {})
+    choices, pick, md = songpick_ui.suggest(["album"], None, sp)
+    assert choices[0][1] == "0" and TOP_PICK[1] in choices[0][0] and md.startswith("Songs from around")
+    with pytest.raises(UserError, match="tick"):
+        songpick_ui.use_song("0", pick, youtube_ok=False)
+    monkeypatch.setattr(youtube, "find_and_fetch",
+                        lambda t, a, d: (Path("/x/song.m4a"), {"title": t, "channel": "Topic", "duration": 196}))
+    path, md = songpick_ui.use_song("0", pick, youtube_ok=True)
+    assert path == "/x/song.m4a" and "3:16" in md
+    with pytest.raises(UserError, match="Suggest songs"):
+        songpick_ui.use_song("0", None, True)
+
+
+# ---------- network (Colab only) ----------
+
+@pytest.mark.network
+def test_youtube_search_live():
+    pytest.importorskip("yt_dlp")
+    res = youtube.search("Kevin MacLeod - Monkeys Spinning Monkeys", 5)
+    assert youtube.pick_best(res, "Monkeys Spinning Monkeys", "Kevin MacLeod") is not None
