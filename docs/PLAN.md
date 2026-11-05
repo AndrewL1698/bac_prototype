@@ -150,6 +150,10 @@ Extension (phases 12+, proposed; numbering and specs set when the team agrees, s
 - 2026-11-05 | Keshav | Shot cache key leaves out the shot's slot and timeline position, so an unchanged shot that moves in a recut is reused | swaps and reorders are the common recut
 - 2026-11-05 | Keshav | Shot cache lives on local scratch by default (`render.shot_cache.location: scratch`, LRU-pruned to `max_gb` 5); `drive` is an option | recuts run in the same runtime; writing every shot to Drive would slow cold renders
 - 2026-11-05 | Keshav | The encoded song excerpt (AAC) is cached with the shots | it was ~3.4 s of the ~4.2 s fixed assembly cost, and most recuts keep the excerpt
+- 2026-11-05 | Andrew | Song pick default flow is Connect Spotify (OAuth PKCE, scopes recently-played + top tracks only) -> shortlist -> opt-in YouTube audio (yt-dlp); the data export stays optional for photos older than about a year; upload stays the fallback | uploading an export plus the MP3 by hand was a poor experience
+- 2026-11-05 | Andrew | YouTube audio fetch is off by default and runs only after a per-session opt-in click; Andrew accepts YouTube's terms and copyright risk for the class demo; yt-dlp has a lower bound, not a pin | YouTube changes break old yt-dlp releases; demo-only use
+- 2026-11-05 | Andrew | Spotify redirect goes through a fixed GitHub Pages page (docs/spotify/callback.html) that sends the browser back only to *.gradio.live or localhost | share links change on every restart, and Spotify needs a fixed redirect URI
+- 2026-11-05 | Andrew | Spotify Development Mode limits accepted: owner on Premium, at most 5 allowlisted users | extended quota needs about 250k monthly users
 
 ## Setup checklist
 
