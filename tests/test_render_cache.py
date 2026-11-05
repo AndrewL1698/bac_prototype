@@ -92,6 +92,15 @@ def test_audio_key():
         assert shot_cache.audio_key("song1", 12.0, 48.5, 1.5) != k
 
 
+def test_song_file_hash_follows_file_contents(tmp_path):
+    p = tmp_path / "song.wav"
+    p.write_bytes(b"a" * 100)
+    h1 = shot_cache.song_file_hash(p)
+    assert shot_cache.song_file_hash(p) == h1
+    p.write_bytes(b"b" * 101)                     # the file at the same path changed
+    assert shot_cache.song_file_hash(p) != h1
+
+
 def test_cached_shot_hit_and_miss(monkeypatch):
     calls = []
 
@@ -194,6 +203,17 @@ def test_cached_render_matches_uncached(fixtures, tmp_path):
     assert _probe_frames(cached) == _probe_frames(plain) == 75
     for i in (3, 30, 70):
         assert np.abs(_frame_at(cached, i).astype(float) - _frame_at(plain, i).astype(float)).mean() < 1
+
+
+@pytest.mark.media
+def test_audio_cache_keyed_on_song_file(fixtures, tmp_path):
+    """The same plan (same song_hash) rendered with another song file must not reuse the first song's audio."""
+    from montage.render.assemble import render_edl
+    amap = _solid_photos(tmp_path, 2)
+    edl = _edl(_cut(amap, [30, 30]), run_id="s")
+    render_edl(edl, amap, str(fixtures / "click_120.wav"), out_path=tmp_path / "a.mp4")
+    render_edl(edl, amap, str(fixtures / "click_090.wav"), out_path=tmp_path / "b.mp4")
+    assert len(list(shot_cache.cache_dir().glob("audio_*.m4a"))) == 2
 
 
 @pytest.mark.media

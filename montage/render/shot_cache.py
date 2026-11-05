@@ -11,6 +11,7 @@ Files are content-addressed and written atomically, so parallel renders (threads
 
 from __future__ import annotations
 
+import functools
 import os
 from pathlib import Path
 from typing import Callable
@@ -50,6 +51,18 @@ def shot_key(shot: Shot, asset: Asset, W: int, H: int, crf: int,
         shot.kenburns.model_dump() if shot.kenburns else None,
         W, H, crf, [round(face[0], 4), round(face[1], 4)],
         c.model_dump(exclude=_NOT_IN_KEY), n=20)
+
+
+@functools.lru_cache(maxsize=64)
+def _song_hash(path: str, mtime_ns: int, size: int) -> str:
+    return cache.file_hash(path)
+
+
+def song_file_hash(path: str | Path) -> str:
+    """Content hash of the song file actually being rendered (not the EDL's song_hash, which could belong
+    to another song). Memoized per process by (path, mtime, size), so re-renders do not re-read the file."""
+    st = os.stat(path)
+    return _song_hash(str(path), st.st_mtime_ns, st.st_size)
 
 
 def audio_key(song_hash: str, song_start: float, length: float, fade: float) -> str:

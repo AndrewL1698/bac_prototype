@@ -23,7 +23,7 @@ Assembly still runs on every render: stream-copy concat, mux, and the frame/audi
 
 Not in the key: `slot_idx`, `start`/`end`, `frame_start`, `scores`, `reason`. A shot that moves to another slot of the cut, unchanged, is reused.
 
-`audio_key(song_hash, song_start, length, fade)` adds `render.audio_bitrate` and the version.
+`audio_key(song_hash, song_start, length, fade)` adds `render.audio_bitrate` and the version. `song_hash` is the content hash of the song file actually being rendered (`song_file_hash(song_path)`, memoized per process by path, mtime and size), not `EDL.song_hash`: a plan rendered with a different song file must not reuse the first song's audio.
 
 ## 3. Storage and safety
 
@@ -38,11 +38,12 @@ Not in the key: `slot_idx`, `start`/`end`, `frame_start`, `scores`, `reason`. A 
 No media:
 - the key ignores timeline position (slot index, frame offset);
 - the key changes with length, framing, Ken Burns, output size, face, source bytes, video in-point, and pixel-affecting render config; it ignores `workers`, `audio_bitrate`, `shot_cache.max_gb`;
-- the audio key changes with song, start, length, fade, bitrate;
+- the audio key changes with song, start, length, fade, bitrate; the song hash changes when the file at the same path changes;
 - hit/miss: the second request is a hit, encodes once, and leaves no temp file; a failed encode leaves no entry;
 - prune drops least recently used files and honors `keep`.
 
 Media:
 - a 6-shot cut rendered twice encodes 6 shots, then 0; a recut that swaps two shots and changes one encodes exactly 1, with the right frame count and order;
 - a cached render matches an uncached one (same frame count, mean pixel difference < 1);
+- the same plan rendered with two different song files stores two audio entries;
 - a 40-shot recut that changes 3 shots takes less than half the cold render time (laptop: 8.0 s cold, 1.7 s recut).

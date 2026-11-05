@@ -74,7 +74,7 @@ def _song_audio(edl: EDL, song_path: str, L: float, work: Path) -> Path:
         encode(work / "audio.m4a")
         return work / "audio.m4a"
     p, _ = shot_cache.cached_file(
-        shot_cache.audio_key(edl.song_hash, edl.excerpt.song_start, L, fade), ".m4a", encode)
+        shot_cache.audio_key(shot_cache.song_file_hash(song_path), edl.excerpt.song_start, L, fade), ".m4a", encode)
     return p
 
 
