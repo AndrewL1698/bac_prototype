@@ -14,7 +14,8 @@ from PIL import Image
 from montage import config
 from montage.render import shot_cache
 from montage.types import Asset, KenBurns
-from tests.test_render import _edl, _forty, _frame_at, _probe_frames, _shot
+# by module name, like `from conftest import ...` elsewhere: Colab ships an unrelated top-level `tests` package
+from test_render import _edl, _forty, _frame_at, _probe_frames, _shot
 
 KB = KenBurns(zoom_from=1.0, zoom_to=1.05, pan_x=0.0, pan_y=0.0)
 
