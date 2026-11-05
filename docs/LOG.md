@@ -183,3 +183,9 @@ Format:
 - Next: team review of `docs/ROADMAP.md` (Keshav + the two new devs); agree on track owners, then move phases into PLAN.md and write specs.
 - Blockers: none
 - Heads-up: proposal only. Nothing in ROADMAP.md is claimed or agreed yet; PLAN.md is still the plan of record.
+
+## 2026-11-04 ET | Andrew | planning (4-person, 8-week reframe) | branch main
+- Done: `docs/PLAN.md` and `CLAUDE.md` reframed from the 2-person, 2-day demo to a 4-person, 8-week project following `docs/ROADMAP.md`. In PLAN.md: an Extension schedule and cut order, a 4-track table (owners TBD), proposed phases 12-21 (specs TBD), a Decisions entry, and setup checklists for the two new devs. The MVP sections are kept as history. In CLAUDE.md: the team description and wording for multiple collaborators; the output contract (16:9, 45-60 s, cuts only) is unchanged.
+- Next: the team agrees on track owners and the phase list, then writes `docs/spec/12_songpick.md` and the other phase specs.
+- Blockers: `montage_data` not yet shared with Andrew; Andrew's Colab Secrets not set.
+- Heads-up: plan-of-record framing changed (4 tracks, phases 12-21 proposed). No contract, config, or data layout changes.

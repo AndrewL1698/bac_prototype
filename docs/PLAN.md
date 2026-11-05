@@ -4,10 +4,20 @@ This is the plan of record. Progress history goes in `docs/LOG.md`; this file sh
 
 How to use it: claim a phase in **Current work** before starting (person, branch, start time), tick the box and clear your row when it is merged to `main`, and record any judgment calls under **Decisions**.
 
-> **Proposed next stage (draft, Andrew, 2026-10-29):** an 8-week, four-person extension (Spotify-history song picking, deeper ML, timeline editor) is proposed in [`ROADMAP.md`](ROADMAP.md). It is not agreed or claimed yet; please review it before starting new work.
+> **Now a 4-person, 8-week project (2026-11-04).** The MVP (phases 0-11) is done. The extension (Spotify-history song picking, deeper ML, timeline editor) follows [`ROADMAP.md`](ROADMAP.md). Track owners are TBD until the team agrees; nothing in the Extension section below is claimed yet.
 
 ## Goal and schedule
 
+### Extension (4 people, 8 weeks; proposed, see ROADMAP.md)
+Team: Andrew, Keshav, and two new devs, one per track (owners TBD). The goal is an ML cohort project with real depth: new trained models, datasets, baselines, ablations, and human evaluation. Every model ships with a fallback and a RESULTS.md table, as in 9B/10A.
+- **Weeks 1-2:** fallbacks complete end to end. Song-pick shortlist from listening history, Beat This! mirror, per-shot render cache, expanded eval set, dataset downloads (PMEmo/EmoMusic, CUFED).
+- **Weeks 3-4:** first learned models. Temporal emotion, photo importance (CUFED), music-video contrastive v1, face clustering. Preference logging, mid-point human study.
+- **Weeks 5-6:** integration. Coverage/diversity term, people in the director, reward model and preference-tuned weights, final song ranking. Timeline editor v1.
+- **Weeks 7-8:** editor locks and re-solve, full eval grid, human studies, RESULTS.md, DEMO.md v2, freeze.
+
+**Cut in this order if time runs short:** 1. 9:16 output and variable length, 2. timeline editor locks/re-solve (keep v1), 3. learned editing preferences (F3), 4. people-aware editing (F2), 5. contrastive song model (ship the period-affinity + tag/mood fallback). F1's fallback shortlist is never cut.
+
+### MVP (done 2026-10-27)
 A live workshop demo of the AI music video editor in two days.
 - **Day 1:** working app end to end using fallbacks only (no trained models, rule-based director).
 - **Day 2:** LLM director, trained models, evaluation, demo prep.
@@ -21,7 +31,18 @@ A live workshop demo of the AI music video editor in two days.
 5. Learned importance (10A; ship heuristic only)
 6. MERT emotion head (9B; ship heuristic arousal)
 
-## Two tracks (so two people can work in parallel)
+## Tracks
+
+### Extension tracks (4 people in parallel; owners TBD)
+
+| Track | Scope | Week-1 deliverables | Owner |
+|---|---|---|---|
+| **1: Song pick (F1)** | Spotify history -> period affinity -> tag/CLIP and mood vibe match -> image-set <-> music contrastive model -> shortlist UI | history parser, album time window, affinity score, spec 12 | TBD |
+| **2: Music + emotion** | Beat This! mirror, temporal emotion model (DEAM + PMEmo/EmoMusic), structure, preference-tuned planner weights | Beat This! mirror; temporal emotion spec; dataset downloads | TBD |
+| **3: Visual understanding** | CUFED photo importance, face clustering + naming, people in the director, event coverage/diversity, personalization | CUFED/ML-CUFED download + label mapping | TBD |
+| **4: Platform, eval, editor** | per-shot render cache, eval grid v2 + VLM judge, preference logging, reward model, FastAPI layer, timeline editor | render cache; expanded eval set; FastAPI skeleton | TBD |
+
+### MVP tracks (two people in parallel; history)
 
 | Track | Phases | Depends on |
 |---|---|---|
@@ -60,6 +81,18 @@ Day 2
 - [x] **11. Evaluation, naive-cut compare, demo mode, backups, DEMO.md, RESULTS.md** (`spec/11_eval_demo.md`)
   - [x] demo parts (Track A): demo mode, backups, Rate tab + vote analysis, DEMO.md (merged 2026-10-27; real-album prep run waits for the demo album)
   - [x] evaluation parts (Track B): eval grid, metrics, render check, report, RESULTS.md (merged 2026-10-27; the live vote runs at the demo)
+
+Extension (phases 12+, proposed; numbering and specs set when the team agrees, see ROADMAP.md)
+- [ ] **12. Song pick from listening history** (Track 1; ROADMAP F1; spec TBD: `spec/12_songpick.md`)
+- [ ] **13. Beat This! mirror + per-shot render cache** (Tracks 2 and 4; ROADMAP items 6-7; spec TBD)
+- [ ] **14. Temporal emotion model** (Track 2; ROADMAP item 1; spec TBD)
+- [ ] **15. Photo-album importance (CUFED) + personalization** (Track 3; ROADMAP item 2; spec TBD)
+- [ ] **16. People-aware editing** (Track 3; ROADMAP F2 / item 5; spec TBD)
+- [ ] **17. Coverage and diversity term** (Track 3; ROADMAP item 4; spec TBD)
+- [ ] **18. Eval v2: larger eval set, multiple briefs, VLM judge, human studies** (Track 4; ROADMAP item 8; spec TBD)
+- [ ] **19. Learned editing preferences** (Tracks 2 and 4; ROADMAP F3 / item 3; spec TBD)
+- [ ] **20. 9:16 output and variable length** (Tracks 2 and 4; ROADMAP item 9; spec TBD)
+- [ ] **21. FastAPI layer + timeline editor** (Track 4; ROADMAP item 10 / F4; spec TBD)
 
 ## Current work
 
@@ -107,6 +140,7 @@ Day 2
 - 2026-10-27 | Keshav | 10B (CUFED) skipped | optional; the learned ranker already beats the heuristic, and the remaining time goes to the demo
 - 2026-10-27 | Keshav | A removal note that names a time ("lose the shot at 0:12") excludes the shot playing at that time in the current cut, also when Claude revises the plan (Claude's own exclude edits for that note are dropped) | Claude excluded the wrong shot in test_note_lose_shot; the cut knows exactly which shot plays when
 - 2026-10-27 | Keshav | Beat This! tests skip when its checkpoint cannot load (host down, no copy on Drive); the synthetic-song BPM and peak-excerpt checks only run with Beat This! | librosa reads the synthetic song at half tempo, so those checks measure the missing model, not our code
+- 2026-11-04 | Andrew | Project reframed as 4 people x 8 weeks following ROADMAP.md; track owners TBD; extension phases 12-21 listed as proposed | MVP is done; the extension needs ML depth
 
 ## Setup checklist
 
@@ -122,6 +156,16 @@ Keshav
 - [x] Demo album in `montage_data/demo/<album>/`, songs in `montage_data/demo/songs/` (Summer Trip (picked), 2 songs; 2026-10-27)
 
 Andrew
-- [ ] Local clone; `uv` installed
+- [x] Local clone; `uv` installed
 - [ ] Colab Secrets: `ANTHROPIC_API_KEY`, `MONTAGE_USER=andrew`
 - [x] Eval: 2 albums in `montage_data/eval/albums/`, 3 songs in `montage_data/eval/songs/` (Track B; done by Keshav, 2026-10-27)
+
+New dev 1 (name TBD)
+- [ ] Push access to the repo; local clone; `uv` installed
+- [ ] Colab Secrets: `ANTHROPIC_API_KEY`, `MONTAGE_USER=<name>`
+- [ ] Drive shortcut to `montage_data` (shared as Editor)
+
+New dev 2 (name TBD)
+- [ ] Push access to the repo; local clone; `uv` installed
+- [ ] Colab Secrets: `ANTHROPIC_API_KEY`, `MONTAGE_USER=<name>`
+- [ ] Drive shortcut to `montage_data` (shared as Editor)
