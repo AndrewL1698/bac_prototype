@@ -2,7 +2,7 @@
 
     python scripts/mirror_beat_this.py --check            # probe every configured source + the Drive copy
     python scripts/mirror_beat_this.py --cache            # fetch the verified checkpoint into DATA_ROOT/weights/
-    python scripts/mirror_beat_this.py --upload <user>/beat-this-mirror   # needs HF_TOKEN (write)
+    python scripts/mirror_beat_this.py --upload <user>/beat-this-mirror   # needs `hf auth login` or HF_TOKEN (write)
 
 --upload pushes every checkpoint listed under music.beat_this.sha256 (verified against the configured
 hashes) plus a README with the authors' MIT license to a Hugging Face model repo, then prints the
@@ -76,10 +76,10 @@ def cache() -> int:
 
 
 def upload(repo_id: str) -> int:
-    from huggingface_hub import HfApi
-    token = os.environ.get("HF_TOKEN")
+    from huggingface_hub import HfApi, get_token
+    token = os.environ.get("HF_TOKEN") or get_token()   # env var, or a saved `hf auth login`
     if not token:
-        print("HF_TOKEN not set (needs a write token for the repo owner)")
+        print("no Hugging Face token: run `hf auth login` (write token) or set HF_TOKEN")
         return 2
     cfg = get_config().music.beat_this
     upstream = cfg.sources[-1]
