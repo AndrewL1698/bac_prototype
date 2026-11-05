@@ -99,7 +99,7 @@ Extension (phases 12+, proposed; numbering and specs set when the team agrees, s
 | Phase | Person | Branch | Started (ET) | Notes |
 |---|---|---|---|---|
 | 12. Song pick (fallback: 12.1-12.4) | Andrew | phase-12-songpick | 2026-11-04 | provisional: Track 1 owner not agreed yet; branch not merged until the team agrees on ROADMAP.md |
-| 13a. Beat This! mirror | Keshav | phase-13-beat-this-mirror | 2026-11-05 | pushed, no PR yet; HF mirror upload pending (needs an HF write token) |
+| 13a. Beat This! mirror | Keshav | phase-13-beat-this-mirror | 2026-11-05 | pushed, no PR yet (Keshav's call); checkpoint cached on Drive; HF mirror upload pending (needs an HF write token) |
 
 ## Decisions
 
