@@ -262,3 +262,14 @@ Format:
 - Next: full `pytest -q` on Colab; merge. If #3 or #4 lands first, rebase and keep every PLAN.md row and decision from both sides.
 - Blockers: none.
 - Heads-up: the YouTube audio cache is never an allowed Gradio path (CLAUDE.md §11).
+## 2026-11-04 ET | Andy | phase 14 | branch phase-14-temporal-emotion (local, not pushed)
+- Done: claimed phase 14 (temporal emotion, Track 2), provisional until track owners are agreed. Wrote `docs/spec/14_temporal_emotion.md`. On the branch:
+  - `montage.music.emotion.make_temporal_head`: BiGRU over the song's MERT window sequence (shared by training and inference);
+  - inference fallback chain: temporal head -> 9B window head -> heuristic (`predict_emotion_detail`; `predict_emotion` unchanged);
+  - `training/emotion/temporal.py`: training on the 9B DEAM shards and split, window-head baselines retrained on the same seeds, per-song CCC report, deploy gate;
+  - cached song analyses now keyed on the emotion model id + weights hash.
+- Tests: `tests/test_temporal_emotion.py` (7 tests, CPU only, synthetic data) pass locally, plus the existing suite (except the known macOS `test_job_stop`).
+- Next: run `python scripts/run_job.py --name emo_temporal -- python -m training.emotion.temporal` on Colab (needs the DEAM MERT shards on Drive), copy the table to RESULTS.md; then 14.2 PMEmo.
+- Blockers: `montage_data` access for Andy (shards, weights).
+- Heads-up: new config keys `music.emotion.use_temporal`, `music.emotion.temporal_weights`, `music.emotion.temporal.*` (with defaults). New internal field `FullAnalysis.emotion_model`: existing cached song analyses are recomputed once. No `types.py` / `schemas.md` change.
+- Heads-up: EmoMusic is a subset of DEAM, so it is dropped from the ROADMAP item 1 data plan (see PLAN Decisions).
