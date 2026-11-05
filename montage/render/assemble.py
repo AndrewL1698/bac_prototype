@@ -11,6 +11,7 @@ from pathlib import Path
 from montage import paths
 from montage.config import get_config
 from montage.log import get_logger, stage
+from montage.render import shot_cache
 from montage.render.shots import render_shot
 from montage.types import EDL, Asset
 
@@ -35,6 +36,48 @@ def probe_counts(path: Path) -> tuple[int, float]:
     return int(v.get("nb_read_packets", 0)), float(a.get("duration", 0) or 0)
 
 
+def _render_shots(edl: EDL, assets: dict[str, Asset], faces: dict[str, tuple[float, float]],
+                  W: int, H: int, crf: int, work: Path) -> list[Path]:
+    """Encoded shot files in EDL order. With the shot cache on, unchanged shots are reused and a shot
+    that appears twice in one EDL is encoded once."""
+    cfg = get_config().render
+    face = lambda s: faces.get(s.candidate_id, (-1.0, -1.0))  # noqa: E731
+    if not cfg.shot_cache.enabled:
+        outs = [work / f"shot_{s.slot_idx:03d}.mp4" for s in edl.shots]
+        with ThreadPoolExecutor(max_workers=cfg.workers) as ex:
+            list(ex.map(lambda so: render_shot(so[0], assets[so[0].asset_id], so[1], W, H, crf, face(so[0])),
+                        zip(edl.shots, outs)))
+        return outs
+    keys = [shot_cache.shot_key(s, assets[s.asset_id], W, H, crf, face(s)) for s in edl.shots]
+    unique = {k: s for k, s in zip(keys, edl.shots)}
+    with ThreadPoolExecutor(max_workers=cfg.workers) as ex:
+        done = dict(zip(unique, ex.map(
+            lambda ks: shot_cache.cached_shot(ks[0], ks[1], assets[ks[1].asset_id], W, H, crf, face(ks[1])),
+            unique.items())))
+    reused = sum(hit for _, hit in done.values())
+    log.info("shot cache: reused %d of %d shots, encoded %d", reused, len(unique), len(unique) - reused)
+    return [done[k][0] for k in keys]
+
+
+def _song_audio(edl: EDL, song_path: str, L: float, work: Path) -> Path:
+    """The song excerpt as AAC (with the fade-out). Cached next to the shots when the shot cache is on:
+    the AAC encode is the slowest step of assembly, and most recuts keep the same excerpt."""
+    cfg = get_config().render
+    fade = edl.excerpt.fade_out
+
+    def encode(out: Path) -> None:
+        _ff("-ss", f"{edl.excerpt.song_start:.4f}", "-i", song_path, "-t", f"{L:.4f}", "-vn",
+            "-af", f"afade=t=out:st={max(0.0, L - fade):.4f}:d={fade:.4f},apad,atrim=0:{L:.4f}",
+            "-ar", "48000", "-c:a", "aac", "-b:a", cfg.audio_bitrate, str(out))
+
+    if not cfg.shot_cache.enabled:
+        encode(work / "audio.m4a")
+        return work / "audio.m4a"
+    p, _ = shot_cache.cached_file(
+        shot_cache.audio_key(shot_cache.song_file_hash(song_path), edl.excerpt.song_start, L, fade), ".m4a", encode)
+    return p
+
+
 def render_edl(edl: EDL, assets: dict[str, Asset], song_path: str, preview: bool = True,
                faces: dict[str, tuple[float, float]] | None = None, out_path: Path | None = None) -> Path:
     cfg = get_config().render
@@ -48,19 +91,12 @@ def render_edl(edl: EDL, assets: dict[str, Asset], song_path: str, preview: bool
     L = total / edl.fps
     try:
         with stage("render_shots"):
-            outs = [work / f"shot_{s.slot_idx:03d}.mp4" for s in edl.shots]
-            with ThreadPoolExecutor(max_workers=cfg.workers) as ex:
-                list(ex.map(lambda so: render_shot(so[0], assets[so[0].asset_id], so[1], W, H, crf,
-                                                   faces.get(so[0].candidate_id, (-1.0, -1.0))),
-                            zip(edl.shots, outs)))
+            outs = _render_shots(edl, assets, faces, W, H, crf, work)
         with stage("render_assemble"):
             (work / "concat.txt").write_text("".join(f"file '{o.as_posix()}'\n" for o in outs))
             _ff("-f", "concat", "-safe", "0", "-i", str(work / "concat.txt"), "-c", "copy", str(work / "video.mp4"))
-            fade = edl.excerpt.fade_out
-            _ff("-ss", f"{edl.excerpt.song_start:.4f}", "-i", song_path, "-t", f"{L:.4f}", "-vn",
-                "-af", f"afade=t=out:st={max(0.0, L - fade):.4f}:d={fade:.4f},apad,atrim=0:{L:.4f}",
-                "-ar", "48000", "-c:a", "aac", "-b:a", cfg.audio_bitrate, str(work / "audio.m4a"))
-            _ff("-i", str(work / "video.mp4"), "-i", str(work / "audio.m4a"), "-map", "0:v", "-map", "1:a",
+            audio = _song_audio(edl, song_path, L, work)
+            _ff("-i", str(work / "video.mp4"), "-i", str(audio), "-map", "0:v", "-map", "1:a",
                 "-c", "copy", "-movflags", "+faststart", str(work / "out.mp4"))
             n_video, a_dur = probe_counts(work / "out.mp4")
             if n_video != total:
@@ -70,6 +106,8 @@ def render_edl(edl: EDL, assets: dict[str, Asset], song_path: str, preview: bool
         dest = out_path or paths.run_dir(edl.run_id) / ("preview.mp4" if preview else "video.mp4")
         dest.parent.mkdir(parents=True, exist_ok=True)
         paths.atomic_write(dest, lambda tmp: shutil.copyfile(work / "out.mp4", tmp))
+        if cfg.shot_cache.enabled:
+            shot_cache.prune(keep={*outs, audio})
         return dest
     finally:
         shutil.rmtree(work, ignore_errors=True)

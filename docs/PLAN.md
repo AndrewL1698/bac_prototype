@@ -84,7 +84,9 @@ Day 2
 
 Extension (phases 12+, proposed; numbering and specs set when the team agrees, see ROADMAP.md)
 - [ ] **12. Song pick from listening history** (Track 1; ROADMAP F1; `spec/12_songpick.md`; claimed by Andrew, provisional)
-- [ ] **13. Beat This! mirror + per-shot render cache** (Tracks 2 and 4; ROADMAP items 6-7; spec TBD)
+- [ ] **13. Beat This! mirror + per-shot render cache** (Tracks 2 and 4; ROADMAP items 6-7)
+  - [ ] per-shot render cache (Track 4, Keshav; `spec/13_render_cache.md`; in review on `phase-13-render-cache`)
+  - [ ] Beat This! mirror (Track 2; spec TBD)
 - [ ] **14. Temporal emotion model** (Track 2; ROADMAP item 1; spec TBD)
 - [ ] **15. Photo-album importance (CUFED) + personalization** (Track 3; ROADMAP item 2; spec TBD)
 - [ ] **16. People-aware editing** (Track 3; ROADMAP F2 / item 5; spec TBD)
@@ -98,6 +100,7 @@ Extension (phases 12+, proposed; numbering and specs set when the team agrees, s
 
 | Phase | Person | Branch | Started (ET) | Notes |
 |---|---|---|---|---|
+| 13. Per-shot render cache (render half; spec 13_render_cache.md) | Keshav | phase-13-render-cache | 2026-11-05 | Track 4; PR for review |
 | 12. Song pick (fallback: 12.1-12.4) | Andrew | phase-12-songpick | 2026-11-04 | provisional: Track 1 owner not agreed yet; branch not merged until the team agrees on ROADMAP.md |
 
 ## Decisions
@@ -144,6 +147,9 @@ Extension (phases 12+, proposed; numbering and specs set when the team agrees, s
 - 2026-11-04 | Andrew | Song pick (phase 12) only shortlists from the user's own Spotify export; the user supplies the audio; the fallback (period affinity) uses no network and no weights | Spotify provides no audio and its terms forbid syncing its content with video
 - 2026-11-04 | Andrew | Song-pick track key is "artist|track" (lowercased), not the Spotify uri; capture dates (local) and history times (UTC) are compared as is | the same song has different uris on single and album; the time-zone error (< 1 day) is far below the 7-day padding
 - 2026-11-04 | Andrew | Listening-history exports are personal data: never committed (hygiene test blocks Streaming_History*/StreamingHistory*/endsong* JSON), never logged except counts; tests use the synthetic history in scripts/fixtures_history.py | public repo
+- 2026-11-05 | Keshav | Shot cache key leaves out the shot's slot and timeline position, so an unchanged shot that moves in a recut is reused | swaps and reorders are the common recut
+- 2026-11-05 | Keshav | Shot cache lives on local scratch by default (`render.shot_cache.location: scratch`, LRU-pruned to `max_gb` 5); `drive` is an option | recuts run in the same runtime; writing every shot to Drive would slow cold renders
+- 2026-11-05 | Keshav | The encoded song excerpt (AAC) is cached with the shots | it was ~3.4 s of the ~4.2 s fixed assembly cost, and most recuts keep the excerpt
 - 2026-11-05 | Andrew | Song pick default flow is Connect Spotify (OAuth PKCE, scopes recently-played + top tracks only) -> shortlist -> opt-in YouTube audio (yt-dlp); the data export stays optional for photos older than about a year; upload stays the fallback | uploading an export plus the MP3 by hand was a poor experience
 - 2026-11-05 | Andrew | YouTube audio fetch is off by default and runs only after a per-session opt-in click; Andrew accepts YouTube's terms and copyright risk for the class demo; yt-dlp has a lower bound, not a pin | YouTube changes break old yt-dlp releases; demo-only use
 - 2026-11-05 | Andrew | Spotify redirect goes through a fixed GitHub Pages page (docs/spotify/callback.html) that sends the browser back only to *.gradio.live or localhost | share links change on every restart, and Spotify needs a fixed redirect URI
