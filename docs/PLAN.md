@@ -144,6 +144,10 @@ Extension (phases 12+, proposed; numbering and specs set when the team agrees, s
 - 2026-11-04 | Andrew | Song pick (phase 12) only shortlists from the user's own Spotify export; the user supplies the audio; the fallback (period affinity) uses no network and no weights | Spotify provides no audio and its terms forbid syncing its content with video
 - 2026-11-04 | Andrew | Song-pick track key is "artist|track" (lowercased), not the Spotify uri; capture dates (local) and history times (UTC) are compared as is | the same song has different uris on single and album; the time-zone error (< 1 day) is far below the 7-day padding
 - 2026-11-04 | Andrew | Listening-history exports are personal data: never committed (hygiene test blocks Streaming_History*/StreamingHistory*/endsong* JSON), never logged except counts; tests use the synthetic history in scripts/fixtures_history.py | public repo
+- 2026-11-05 | Andrew | Song pick default flow is Connect Spotify (OAuth PKCE, scopes recently-played + top tracks only) -> shortlist -> opt-in YouTube audio (yt-dlp); the data export stays optional for photos older than about a year; upload stays the fallback | uploading an export plus the MP3 by hand was a poor experience
+- 2026-11-05 | Andrew | YouTube audio fetch is off by default and runs only after a per-session opt-in click; Andrew accepts YouTube's terms and copyright risk for the class demo; yt-dlp has a lower bound, not a pin | YouTube changes break old yt-dlp releases; demo-only use
+- 2026-11-05 | Andrew | Spotify redirect goes through a fixed GitHub Pages page (docs/spotify/callback.html) that sends the browser back only to *.gradio.live or localhost | share links change on every restart, and Spotify needs a fixed redirect URI
+- 2026-11-05 | Andrew | Spotify Development Mode limits accepted: owner on Premium, at most 5 allowlisted users | extended quota needs about 250k monthly users
 
 ## Setup checklist
 

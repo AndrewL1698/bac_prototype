@@ -7,7 +7,16 @@
 ## Context
 The MVP (phases 0-11, built in ~2 days by Keshav and Andrew) works end to end: ingest -> CLIP features -> importance (heuristic + SumMe/TVSum ranker) -> music (beats, MERT emotion head on DEAM) -> Claude director -> beam-search planner -> FFmpeg render -> Gradio app. The project is for an **ML cohort**, and four developers (Andrew, Keshav, plus two more) now have **8 weeks**. The extension needs much more ML depth: new trained models, real datasets, baselines, ablations, and human evaluation, built in the same style as 9B/10A (our own feature pipeline, a non-learned fallback, numbers in RESULTS.md).
 
-Headline new feature: **"Pick the song for me"**. The user uploads photos plus their Spotify listening history. The app picks a song they actually listened to around when the photos were taken that matches the photos' vibe, then makes the montage. Spotify cannot supply audio. Its SDKs only play inside Spotify's DRM player, preview clips and audio features were removed for new apps in Nov 2024, and its developer terms forbid syncing its content with video or training ML on it. So the app **shortlists** songs from the history and the **user supplies the audio file**, either by upload or by pointing the app at a local music folder that it matches automatically. A future mobile app could use Spotify login (top tracks plus the last 50 plays) instead of the history export, and in-app playback to preview the shortlist.
+Headline new feature: **"Pick the song for me"**. The user connects Spotify (read-only listening data) and adds photos. The app picks a song they actually listened to around when the photos were taken that matches the photos' vibe, then makes the montage. Spotify cannot supply audio. Its SDKs only play inside Spotify's DRM player, preview clips and audio features were removed for new apps in Nov 2024, and its developer terms forbid syncing its content with video or training ML on it. So the app uses Spotify only for listening **data** and gets the audio elsewhere.
+- **Revised 2026-11-05 (Andrew):** the default flow is **Connect Spotify**, then a shortlist, then **Use this song**.
+  - **Connect Spotify:** OAuth with PKCE; scopes recently-played + top tracks only.
+  - **Use this song:** fetches the audio from **YouTube** (yt-dlp). This is **opt-in**, off by default, with upload as the fallback. Andrew accepts YouTube's terms and copyright risk for the class demo.
+  - **Data export:** optional, for photos older than about a year.
+- **Spotify Development Mode** (since Feb/Mar 2026):
+  - the app owner needs Premium;
+  - at most **5 allowlisted users**;
+  - sign-in shows only the last 50 plays and top tracks for about 4 weeks, 6 months and 1 year.
+- Built on branch `phase-12-songpick` (spec 12).
 
 Final feature (weeks 7-8, mostly non-ML): a simple timeline editor on top of the EDL.
 
@@ -31,7 +40,7 @@ Final feature (weeks 7-8, mostly non-ML): a simple timeline editor on top of the
 ### F1. Song selection from Spotify history (flagship, the deepest ML piece)
 New package `montage/songpick/`, used as an optional pre-step before the existing pipeline (`pipeline.generate` stays unchanged once a song path exists).
 
-1. **Ingest history** (`songpick/history.py`): parse Spotify "Extended streaming history" JSON (`ts`, `ms_played`, `master_metadata_track_name`, `master_metadata_album_artist_name`, `spotify_track_uri`, `skipped`, `reason_end`). Store it under the user's per-session DATA_ROOT only. It is personal data: never commit it or log raw track lists, and extend `test_repo_hygiene.py` to block `Streaming_History*.json`.
+1. **Listening data**: Spotify sign-in (`songpick/spotify.py`: last 50 plays with dates, top tracks for 3 time ranges, ranks only) is the default. Optional for older photos: parse the Spotify "Extended streaming history" export (`songpick/history.py`) JSON (`ts`, `ms_played`, `master_metadata_track_name`, `master_metadata_album_artist_name`, `spotify_track_uri`, `skipped`, `reason_end`). Store it under the user's per-session DATA_ROOT only. It is personal data: never commit it or log raw track lists, and extend `test_repo_hygiene.py` to block `Streaming_History*.json`.
 2. **Time period** (`songpick/period.py`).
    - **Now (phase 12 fallback):** the album's capture dates (`Asset.taken_at`) set the window: robust min/max, padded 7 days, widened when there are few plays. If timestamps are missing, the whole history is used, weighted by recency.
    - **Long term: an age-scaled window.** The window is centered on the album's **median** capture date (robust to stray photos). Its width **grows with how long ago the photos were taken**, measured as the median's age at generate time:
@@ -44,7 +53,7 @@ New package `montage/songpick/`, used as an optional pre-step before the existin
    - If the history does not reach back that far, it widens and then falls back as today.
 3. **Period affinity score (non-learned fallback; built in phase 12, temporary as the main ranker):** plays in the window weighted by `ms_played`, with a penalty for skips. A "signature song" lift (the track's play share in the window divided by its share across the whole history, TF-IDF style) surfaces "your song of that summer", not just your all-time favourites. Long term it only decides **which songs are eligible** (a minimum number of real plays in the window) and breaks ties; the sentiment match (step 6) does the ranking.
 4. **Vibe match, stage A (metadata only, before any audio):** turn each track into text (Last.fm/MusicBrainz tags + genre; only track/artist names leave the machine) -> CLIP text embedding -> similarity to the album's pooled image embedding. Also compare the album's mood valence/arousal (already computed in `features/mood.py`) with the track's valence/arousal predicted from its tags.
-5. **Vibe match, stage B (learned, audio):** an **image-set <-> music contrastive model**. Frozen CLIP ViT-L/14 frame embeddings go through attention pooling into a projection. Frozen MERT window features (reusing `montage.music.emotion` code, so train and inference match) go through a projection. Train with InfoNCE on music-video pairs (candidates: HIMV-200K, the YouTube-8M music-video subset, MusicCaps/AudioSet clips with video), with features extracted through our own pipeline. Baselines: valence/arousal distance, tag-CLIP. Metrics: Recall@K / MRR on held-out pairs, plus a human study ("which song fits this album?"). It runs when audio is available: the user's local music folder (matched by ID3 tags/fuzzy filename via `mutagen` + `rapidfuzz`), or audio the user uploads for the shortlist.
+5. **Vibe match, stage B (learned, audio):** an **image-set <-> music contrastive model**. Frozen CLIP ViT-L/14 frame embeddings go through attention pooling into a projection. Frozen MERT window features (reusing `montage.music.emotion` code, so train and inference match) go through a projection. Train with InfoNCE on music-video pairs (candidates: HIMV-200K, the YouTube-8M music-video subset, MusicCaps/AudioSet clips with video), with features extracted through our own pipeline. Baselines: valence/arousal distance, tag-CLIP. Metrics: Recall@K / MRR on held-out pairs, plus a human study ("which song fits this album?"). It runs when audio is available: the opt-in YouTube fetch (`songpick/youtube.py`), audio the user uploads, or optionally a local music folder (matched by ID3 tags/fuzzy filename via `mutagen` + `rapidfuzz`).
 6. **Final ranking.**
    - **Now:** `alpha * period_affinity + (1 - alpha) * vibe`, with `alpha = 1` until a vibe stage exists.
    - **Long term: a song-sentiment match within the time window.** The candidate pool is the songs played in the age-scaled window (step 2) with enough real plays (step 3). They are ranked mainly by how well **the song's sentiment matches the photos' sentiment**:
@@ -55,7 +64,7 @@ New package `montage/songpick/`, used as an optional pre-step before the existin
      - **Sentiment match:** 1 minus the normalized valence/arousal distance. It optionally compares curve shape too: an energetic album prefers songs with a high-arousal peak.
    - **Evaluation:** sentiment-ranked vs affinity-ranked shortlists in the song-pick human study.
    - It also drops tracks too short for a 45 s excerpt. The output is a shortlist of 3-5 with a "why this song" line from Claude (text only), plus the existing excerpt chooser.
-7. **App:** a "Pick a song for me" tab with history upload -> shortlist with reasons -> choose -> upload/match the audio -> the existing Generate flow.
+7. **App:** a "Pick a song for me" panel. Connect Spotify -> Suggest songs (shortlist with reasons) -> choose -> Use this song (opt-in YouTube fetch, or upload) -> the existing Generate flow. The history export is an optional upload.
 8. **Schemas:** new pydantic models `ListeningEvent`, `TrackCandidate`, `SongPick` in `montage/types.py` + `docs/spec/schemas.md` (shared-contract commit plus a LOG heads-up).
 
 ### F2. People-aware editing (pipeline item 5)
@@ -71,7 +80,7 @@ Edits the EDL directly: reorder, swap a shot from ranked alternatives (the beam 
 
 | Week | Track 1: Song pick (F1) | Track 2: Music + emotion | Track 3: Visual understanding | Track 4: Platform, eval, editor |
 |---|---|---|---|---|
-| 1 | History parser, period window, affinity score, specs | Beat This! mirror; temporal emotion spec + PMEmo/EmoMusic downloads | CUFED/ML-CUFED download + label mapping | Per-shot render cache; expanded eval set; FastAPI skeleton |
+| 1 | History parser, period window, affinity score, specs; Spotify sign-in + opt-in YouTube audio + app panel (done on the phase 12 branch) | Beat This! mirror; temporal emotion spec + PMEmo/EmoMusic downloads | CUFED/ML-CUFED download + label mapping | Per-shot render cache; expanded eval set; FastAPI skeleton |
 | 2 | Stage A tag/CLIP vibe match; age-scaled time window; shortlist UI (fallback complete end to end) | Temporal emotion model training | Photo importance ranker training (CUFED) | Eval grid v2: multiple briefs, VLM adherence judge |
 | 3 | Music-video dataset download + CLIP/MERT feature extraction | Emotion eval (per-song CCC) + deploy | Face embeddings + clustering + naming UI | Preference logging (votes, recut pairs) in app |
 | 4 | Contrastive model v1 training + Recall@K | 9:16 output + variable length (with Track 4) | People in director/plan; event segmentation | Mid-point human study #1 |

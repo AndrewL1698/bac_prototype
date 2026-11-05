@@ -208,3 +208,20 @@ Format:
 - Done: ROADMAP F1 revised. The phase 12 play-count affinity is marked temporary. Long term, the song pick ranks by **song-sentiment match** (photo valence/arousal + CLIP vs song valence/arousal from tags, then from the MERT head once audio exists) among songs from an **age-scaled time window**. The window is centered on the album's median date: about a month for photos from a year ago, a season for photos from five years ago, up to about half a year for older ones (config table `songpick.window_by_age_days`, tuned in the human study). Affinity stays as eligibility and tie-break. Schedule: window in week 2, sentiment ranking in week 6.
 - Next: team review of ROADMAP.md.
 - Blockers: none.
+
+## 2026-11-05 ET | Andrew | phase 12 | branch phase-12-songpick (pushed, not merged)
+- Done: song pick v2 on the branch.
+  - **Connect Spotify** (`montage/songpick/spotify.py`): OAuth with PKCE, no client secret, scopes recently-played + top tracks only. The redirect goes through `docs/spotify/callback.html` (GitHub Pages), which only returns to *.gradio.live or localhost. Token and listening data stay in the browser session.
+  - **Multi-source suggestions** (`pick.suggest`): recent plays inside the album period + the top-tracks lists that overlap it (narrower lists weigh more) + the optional data export. Photos older than a year get the 1-year list and a note to upload the export.
+  - **Opt-in YouTube audio** (`montage/songpick/youtube.py`, yt-dlp): picks the official "<Artist> - Topic" upload, penalizes live/cover/remix, checks the length against Spotify. Audio is cached on the private Drive.
+  - **App panel** "Pick a song for me (Spotify)" fills the Song box; Generate is unchanged.
+  - Spec 12 and README updated; ROADMAP F1, CLAUDE.md §11 and PLAN decisions updated on main.
+- Tests: `tests/test_songpick.py` + `tests/test_songpick_connect.py`: 53 pass locally, plus 1 live YouTube test (`@pytest.mark.network`) that runs on Colab. The app builds with gradio 6.30.0. It has not been run end to end yet: that needs the Spotify app and Colab.
+- Next (Andrew, human steps):
+  1. Create the Spotify app (Premium account), add the redirect `https://andrewl1698.github.io/bac_prototype/spotify/callback.html`, and allowlist up to 5 users.
+  2. Enable GitHub Pages (branch `phase-12-songpick` /docs until merge).
+  3. Add the Colab Secret `SPOTIFY_CLIENT_ID`.
+  4. Start the app from the branch (`%run scripts/start_app.py --branch phase-12-songpick`) and try connect -> suggest -> use -> Generate.
+  5. Full `pytest -q` on Colab before merging.
+- Blockers: Track 1 ownership not agreed yet. YouTube may block downloads from Colab IPs ("confirm you're not a bot"); upload is the fallback.
+- Heads-up (branch only): schemas `ListeningEvent` (+source, duration_ms), new `TopTrack`, `TrackCandidate` (+duration_ms, sources), `SongPick` (+sources). New config `songpick.w_sources`, `songpick.spotify.*`, `songpick.youtube.*`. New requirements `yt-dlp[default]>=2025.10.22`, `requests>=2.31`. New pytest marker `network`. The bootstrap passes the optional Colab Secret `SPOTIFY_CLIENT_ID`.
