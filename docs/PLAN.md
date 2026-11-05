@@ -83,7 +83,7 @@ Day 2
   - [x] evaluation parts (Track B): eval grid, metrics, render check, report, RESULTS.md (merged 2026-10-27; the live vote runs at the demo)
 
 Extension (phases 12+, proposed; numbering and specs set when the team agrees, see ROADMAP.md)
-- [ ] **12. Song pick from listening history** (Track 1; ROADMAP F1; spec TBD: `spec/12_songpick.md`)
+- [ ] **12. Song pick from listening history** (Track 1; ROADMAP F1; `spec/12_songpick.md`; claimed by Andrew, provisional)
 - [ ] **13. Beat This! mirror + per-shot render cache** (Tracks 2 and 4; ROADMAP items 6-7; spec TBD)
 - [ ] **14. Temporal emotion model** (Track 2; ROADMAP item 1; spec TBD)
 - [ ] **15. Photo-album importance (CUFED) + personalization** (Track 3; ROADMAP item 2; spec TBD)
@@ -98,7 +98,7 @@ Extension (phases 12+, proposed; numbering and specs set when the team agrees, s
 
 | Phase | Person | Branch | Started (ET) | Notes |
 |---|---|---|---|---|
-| _(none: all phases merged 2026-10-27; 10B skipped)_ | | | | |
+| 12. Song pick (fallback: 12.1-12.4) | Andrew | phase-12-songpick | 2026-11-04 | provisional: Track 1 owner not agreed yet; branch not merged until the team agrees on ROADMAP.md |
 
 ## Decisions
 
