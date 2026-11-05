@@ -141,6 +141,9 @@ Extension (phases 12+, proposed; numbering and specs set when the team agrees, s
 - 2026-10-27 | Keshav | A removal note that names a time ("lose the shot at 0:12") excludes the shot playing at that time in the current cut, also when Claude revises the plan (Claude's own exclude edits for that note are dropped) | Claude excluded the wrong shot in test_note_lose_shot; the cut knows exactly which shot plays when
 - 2026-10-27 | Keshav | Beat This! tests skip when its checkpoint cannot load (host down, no copy on Drive); the synthetic-song BPM and peak-excerpt checks only run with Beat This! | librosa reads the synthetic song at half tempo, so those checks measure the missing model, not our code
 - 2026-11-04 | Andrew | Project reframed as 4 people x 8 weeks following ROADMAP.md; track owners TBD; extension phases 12-21 listed as proposed | MVP is done; the extension needs ML depth
+- 2026-11-04 | Andrew | Song pick (phase 12) only shortlists from the user's own Spotify export; the user supplies the audio; the fallback (period affinity) uses no network and no weights | Spotify provides no audio and its terms forbid syncing its content with video
+- 2026-11-04 | Andrew | Song-pick track key is "artist|track" (lowercased), not the Spotify uri; capture dates (local) and history times (UTC) are compared as is | the same song has different uris on single and album; the time-zone error (< 1 day) is far below the 7-day padding
+- 2026-11-04 | Andrew | Listening-history exports are personal data: never committed (hygiene test blocks Streaming_History*/StreamingHistory*/endsong* JSON), never logged except counts; tests use the synthetic history in scripts/fixtures_history.py | public repo
 
 ## Setup checklist
 

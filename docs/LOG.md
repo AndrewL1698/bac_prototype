@@ -189,3 +189,17 @@ Format:
 - Next: the team agrees on track owners and the phase list, then writes `docs/spec/12_songpick.md` and the other phase specs.
 - Blockers: `montage_data` not yet shared with Andrew; Andrew's Colab Secrets not set.
 - Heads-up: plan-of-record framing changed (4 tracks, phases 12-21 proposed). No contract, config, or data layout changes.
+
+## 2026-11-04 ET | Andrew | phase 12 | branch phase-12-songpick (pushed, not merged)
+- Done: claimed phase 12 (song pick, Track 1), provisional until the team agrees on ROADMAP.md. Wrote `docs/spec/12_songpick.md`. On the branch: the non-learned fallback in `montage/songpick/`:
+  - Spotify history parser (extended and account-data formats; podcasts, IPs and other export fields dropped);
+  - album period from capture dates (trimmed, padded, widened when there are few plays, whole-history fallback);
+  - period affinity with a "more than usual for you" lift, plus a reason per song;
+  - `shortlist()` and `python -m montage.songpick` (CLI);
+  - synthetic history generator `scripts/fixtures_history.py`;
+  - hygiene rule plus `.gitignore` entries for listening-history files.
+- Tests: `tests/test_songpick.py` passes locally (16 tests, plus 2 hygiene). No GPU, media or network needed.
+- Next: team review of the roadmap and of this branch. Then 12.5 (tag/CLIP vibe match), 12.6 (app tab), 12.7 (local library matching); a full `pytest -q` run on Colab before merging.
+- Blockers: Track 1 ownership not agreed yet; `montage_data` not yet shared with Andrew.
+- Heads-up: on the branch only. New schemas `ListeningEvent`, `TrackCandidate`, `SongPick` (types.py and schemas.md; no existing model changed). New config section `songpick` (`SongpickCfg`, required in `Config`).
+- Heads-up: `tests/test_jobs.py::test_job_stop` fails on macOS (pre-existing, also on main; jobs.py is untouched). It passes on Colab/Linux.
