@@ -167,3 +167,73 @@ def test_llm_live(brief):
         assert 0 < len(q.split()) <= 8
     assert set(plan.must_include + plan.exclude) <= set(ctx["asset_ids"])
     print(plan.model_dump_json(indent=1))
+
+
+# ---------- open-weight provider (OpenAI-compatible server), mocked ----------
+
+class FakeServer:
+    def __init__(self, behavior):
+        self.behavior, self.calls = behavior, []
+
+    def __call__(self, url, payload, headers, timeout):
+        self.calls.append((url, payload, headers))
+        b = self.behavior
+        if b == "down":
+            raise llm.LLMFailure("server unreachable")
+        if b == "length":
+            return {"choices": [{"message": {"content": "{\"vibe\": \"tru"}, "finish_reason": "length"}]}
+        if b == "garbage":
+            return {"error": "model not found"}
+        text = b if isinstance(b, str) else json.dumps(b)
+        return {"choices": [{"message": {"content": text}, "finish_reason": "stop"}]}
+
+
+@pytest.fixture
+def server(monkeypatch):
+    from montage.config import override
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+    def use(behavior):
+        srv = FakeServer(behavior)
+        monkeypatch.setattr(llm, "_post", srv)
+        return srv
+    with override({"director.provider": "openai_compat"}):
+        yield use
+
+
+def test_openai_compat_plan(server):
+    srv = server(GOOD)
+    assert director.llm_enabled() and director.llm_label() == "Qwen/Qwen3-8B"
+    plan, fb = director.make_plan("beach then party", CTX)
+    assert plan.source == "llm" and fb == [] and plan.must_include == ["a001"]
+    url, payload, _ = srv.calls[0]
+    assert url == "http://127.0.0.1:8000/v1/chat/completions"
+    assert payload["model"] == "Qwen/Qwen3-8B" and payload["chat_template_kwargs"] == {"enable_thinking": False}
+    schema = payload["response_format"]["json_schema"]["schema"]
+    assert payload["response_format"]["type"] == "json_schema" and "segments" in schema["properties"]
+    assert payload["messages"][0]["role"] == "system" and isinstance(payload["messages"][1]["content"], str)
+
+
+def test_openai_compat_strips_think(server):
+    server("<think>the brief says beach</think>\n" + json.dumps(GOOD))
+    plan, fb = director.make_plan("beach", CTX)
+    assert plan.source == "llm" and fb == []
+
+
+@pytest.mark.parametrize("behavior", ["down", "length", "garbage", "{not json"])
+def test_openai_compat_fallbacks(server, behavior):
+    srv = server(behavior)
+    plan, fb = director.make_plan("chill beach recap", CTX)
+    assert plan.source == "rules" and fb == ["director:rules"] and len(srv.calls) == 2
+
+
+def test_openai_compat_image_and_note(server):
+    srv = server("Opened on the beach, party on the drop at 0:32.")
+    msgs = llm._openai_messages("sys", llm._blocks({"contact_sheet": b"\xff\xd8jpeg"}, [("Brief", "beach")]))
+    parts = msgs[1]["content"]
+    assert parts[0]["type"] == "image_url" and parts[0]["image_url"]["url"].startswith("data:image/jpeg;base64,")
+    assert parts[1]["type"] == "text"
+    edl = _edl()
+    from montage.director.editor_note import editor_note
+    note, _ = editor_note(edl, None, CTX)
+    assert note.startswith("Opened on the beach") and "response_format" not in srv.calls[0][1]

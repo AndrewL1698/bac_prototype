@@ -97,6 +97,12 @@ resp = client.messages.create(
 
 **User content blocks**: brief; song summary; media inventory; tag vocabulary; (optional) contact sheet image (section 8).
 
+### 5b. Open-weight provider (no API key)
+
+`director.provider: openai_compat` sends the same prompts to an open-weight model behind an OpenAI-compatible server (vLLM on Colab via `scripts/serve_llm.py`, or Ollama / LM Studio locally) at `director.openai_compat.base_url`, model `director.openai_compat.model` (default `Qwen/Qwen3-8B`, Apache 2.0). Plans use `response_format = {"type": "json_schema", ...}` with `EditPlanLLM.model_json_schema()`, so decoding is constrained to the schema; `extra_body` passes server extras (Qwen3: `chat_template_kwargs.enable_thinking=false`); any `<think>` block is stripped. The editor's note is a plain chat call. The contact sheet is sent as an `image_url` data URL (needs a vision model; a text-only model fails and falls back). `finish_reason == "length"`, HTTP errors, an unreachable server, and bad JSON all follow the same retry-then-rules path as Claude. `llm_enabled()` is true when `use_llm` and a base URL are set (no key needed).
+
+Comparison: `python -m montage.eval.director_compare --systems haiku=anthropic,open=openai_compat,rules` runs 20 briefs and 5 notes against fixed synthetic context and scores each plan with objective checks from the prompt rules (report in `DATA_ROOT/eval/director_compare/`). It calls `plan_from_llm` / `revise_from_llm` directly, so it measures the raw model without the note guards in `notes.py`.
+
 ## 6. Notes and recut (`director/notes.py`), Day 2
 
 `revise_plan(prev_plan, edl, note) -> EditPlan`

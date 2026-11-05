@@ -135,6 +135,15 @@ def prepare() -> dict:
     return report
 
 
+def _director_line(cfg) -> str:
+    from montage.director import llm_label
+    d = cfg.director
+    if d.provider == "openai_compat":
+        return f"[{'x' if d.use_llm else ' '}] open-weight director at {d.openai_compat.base_url} (director: {llm_label()})"
+    key = bool(os.environ.get("ANTHROPIC_API_KEY"))
+    return f"[{'x' if key else ' '}] Claude API key (director: {llm_label()})"
+
+
 def checklist(report: dict | None = None) -> list[str]:
     import torch
     w = paths.weights_dir()
@@ -142,7 +151,7 @@ def checklist(report: dict | None = None) -> list[str]:
     url = paths.jobs_dir() / "app.url"
     lines = [
         f"[{'x' if torch.cuda.is_available() else ' '}] GPU: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'none'}",
-        f"[{'x' if os.environ.get('ANTHROPIC_API_KEY') else ' '}] Claude API key (director: {'Claude' if os.environ.get('ANTHROPIC_API_KEY') else 'rules'})",
+        _director_line(cfg),
         f"[{'x' if (w / cfg.music.emotion.head_weights).exists() else ' '}] emotion head weights (else heuristic arousal)",
         f"[{'x' if (w / cfg.importance.ranker_weights).exists() else ' '}] importance ranker weights (else heuristic)",
         f"[{'x' if (w / 'beat_this-final0.ckpt').exists() else ' '}] Beat This! checkpoint cached on Drive (else librosa beats)",

@@ -13,7 +13,22 @@ log = get_logger("director")
 
 
 def llm_enabled() -> bool:
-    return bool(get_config().director.use_llm and os.environ.get("ANTHROPIC_API_KEY"))
+    """Claude needs an API key; an open-weight model only needs a server URL (if it is down, calls fail
+    fast and the rules take over)."""
+    d = get_config().director
+    if not d.use_llm:
+        return False
+    if d.provider == "openai_compat":
+        return bool(d.openai_compat.base_url)
+    return bool(os.environ.get("ANTHROPIC_API_KEY"))
+
+
+def llm_label() -> str:
+    """Short name of the active director for the UI and logs."""
+    d = get_config().director
+    if not llm_enabled():
+        return "rules"
+    return d.openai_compat.model if d.provider == "openai_compat" else "Claude"
 
 
 def make_plan(brief: str, ctx: dict | None = None) -> tuple[EditPlan, list[str]]:

@@ -33,5 +33,10 @@ SEGMENT_ENUM_FIELDS = ("anchor", "mood")
 
 
 def json_schema() -> dict:
+    """Schema for the configured provider: Anthropic's transformed schema, or plain JSON Schema for an
+    OpenAI-compatible server (vLLM / Ollama constrain decoding to it)."""
+    from montage.config import get_config
+    if get_config().director.provider == "openai_compat":
+        return EditPlanLLM.model_json_schema()
     import anthropic
     return anthropic.transform_schema(EditPlanLLM)

@@ -295,3 +295,9 @@ Format:
 - Next: look at the fixed cut's storyboard for people seen from behind (faces and CLIP both miss some). Then the Ollama director (branch `claude/alternative-ai-models-6ab256`, rebase on main).
 - Blockers: none.
 - Heads-up: new config key `director.people_filter` (`words`, `prompts`, `min_prob`; required in `DirectorCfg`). The shared song cache on Drive was written by a branch with a `FullAnalysis.emotion_model` field, and main cannot read it (`TypeError` in `music.profile.load_cached`); every demo song fails on main until that branch merges or main ignores unknown keys.
+## 2026-11-05 ET | Keshav | director: open-weight provider | branch claude/alternative-ai-models-6ab256
+- Done: `director.provider` switch. `openai_compat` sends the director's prompts to an OpenAI-compatible server (vLLM / Ollama) with schema-constrained JSON; Claude path unchanged and still the default. `scripts/serve_llm.py` serves the model on Colab with vLLM in its own venv (Colab torch untouched). `montage.eval.director_compare` scores Claude vs open model vs rules on 20 briefs + 5 notes with objective checks. Mocked tests for the new path and the harness; local `pytest -q` 83 passed, 63 skipped.
+- Next: run `serve_llm.py` + `director_compare` on Colab (Haiku vs Qwen3-8B, maybe Qwen3-30B-A3B); decide whether to switch, keep Claude, or fine-tune.
+- Blockers: none. `serve_llm.py` (vLLM 0.11.0 pin) is not yet verified on Colab.
+- Heads-up: new config keys `director.provider` and `director.openai_compat.*` (required in `DirectorCfg`). New `montage.director.llm_label()`. No schema changes.
+- Results: rules baseline on the comparison set passes 34/54 checks (27/46 briefs, 7/8 notes).
