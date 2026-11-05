@@ -111,6 +111,12 @@ class StructureCfg(_B):
     peak_k: float
 
 
+class TemporalEmotionCfg(_B):
+    proj_dim: int = 128
+    hidden: int = 64
+    dropout: float = 0.2
+
+
 class EmotionCfg(_B):
     use_mert: bool
     model: str
@@ -119,6 +125,9 @@ class EmotionCfg(_B):
     align: str
     batch: int
     head_weights: str
+    use_temporal: bool = True
+    temporal_weights: str = "emotion_temporal.pt"
+    temporal: TemporalEmotionCfg = TemporalEmotionCfg()
 
 
 class IntensityCfg(_B):
