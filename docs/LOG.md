@@ -208,3 +208,11 @@ Format:
 - Done: ROADMAP F1 revised. The phase 12 play-count affinity is marked temporary. Long term, the song pick ranks by **song-sentiment match** (photo valence/arousal + CLIP vs song valence/arousal from tags, then from the MERT head once audio exists) among songs from an **age-scaled time window**. The window is centered on the album's median date: about a month for photos from a year ago, a season for photos from five years ago, up to about half a year for older ones (config table `songpick.window_by_age_days`, tuned in the human study). Affinity stays as eligibility and tie-break. Schedule: window in week 2, sentiment ranking in week 6.
 - Next: team review of ROADMAP.md.
 - Blockers: none.
+
+## 2026-11-05 03:35 ET | Keshav | phase 13 (render cache) | branch phase-13-render-cache
+- Done: per-shot render cache (Track 4, ROADMAP item 7), spec `docs/spec/13_render_cache.md`. New `montage/render/shot_cache.py`. `render_edl` now reuses encoded shots whose key (source hash, in-point, length, framing, Ken Burns, face, size, CRF, render config) is unchanged, encodes a shot used twice only once, and caches the AAC song excerpt. Files are written atomically and LRU-pruned. Turning `render.shot_cache.enabled` off gives the old behavior.
+- Tests: `tests/test_render_cache.py` passes locally (10 tests, media included). Full `pytest -q` locally: 96 passed, 11 failed; the same 11 fail on a clean copy of main on this laptop (librosa and scenedetect not installed locally, HDR fixture not flagged HDR). Still needs a Colab run before merge.
+- Results (laptop, fixtures): 40-shot cut cold 8.0 s, recut changing 3 shots 1.7 s; full cache hit: shots 0.02 s.
+- Next: PR review by a teammate; full `pytest -q` and a real recut timing on Colab (warm generate vs recut) for RESULTS.md.
+- Blockers: none.
+- Heads-up: new config key `render.shot_cache` (`ShotCacheCfg`, required in `RenderCfg`). No schema changes.
