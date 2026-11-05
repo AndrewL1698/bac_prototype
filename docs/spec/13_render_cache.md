@@ -46,4 +46,4 @@ Media:
 - a 6-shot cut rendered twice encodes 6 shots, then 0; a recut that swaps two shots and changes one encodes exactly 1, with the right frame count and order;
 - a cached render matches an uncached one (same frame count, mean pixel difference < 1);
 - the same plan rendered with two different song files stores two audio entries;
-- a 40-shot recut that changes 3 shots takes less than half the cold render time (laptop: 8.0 s cold, 1.7 s recut).
+- a 40-shot recut that changes 3 shots takes less than half the cold render time (Colab A100: 11.9 s cold, 1.5 s recut; laptop: 8.0 s cold, 1.7 s recut).
