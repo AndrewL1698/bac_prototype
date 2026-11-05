@@ -18,6 +18,8 @@ MAX_BYTES = 2 * 1024 * 1024
 IMG_ALLOW_BYTES = 500 * 1024
 BAD_EXT = {".jpg", ".jpeg", ".png", ".heic", ".mp4", ".mov", ".wav", ".mp3", ".m4a",
            ".npz", ".pt", ".pth", ".onnx", ".zip"}
+# Personal listening-history exports (Spotify): blocked by name wherever they are.
+HISTORY_RE = re.compile(r"(^|/)(Streaming_?History[^/]*\.json|endsong[^/]*\.json)$", re.IGNORECASE)
 # Built by concatenation so this file does not match itself.
 SECRET_RES = [re.compile(p) for p in (
     "sk" + r"-ant-[A-Za-z0-9_\-]{20,}",
@@ -48,6 +50,8 @@ def problems(root: Path, files: list[str]) -> list[str]:
             and size <= IMG_ALLOW_BYTES
         if ext in BAD_EXT and not allowed_img:
             out.append(f"{rel}: media/data file type {ext}")
+        if HISTORY_RE.search(rel):
+            out.append(f"{rel}: personal listening history (Spotify export)")
         if size > MAX_BYTES:
             out.append(f"{rel}: larger than 2 MB ({size} bytes)")
         if size <= MAX_BYTES:
@@ -75,6 +79,9 @@ def test_hygiene_detects_violations(tmp_path):
     (tmp_path / "ok.md").write_text("mention of the sk" + "-ant- prefix is fine\n")
     (tmp_path / "docs" / "img").mkdir(parents=True)
     (tmp_path / "docs" / "img" / "slide.png").write_bytes(b"\x89PNG" + b"\x00" * 100)
+    (tmp_path / "data").mkdir()
+    (tmp_path / "data" / "Streaming_History_Audio_2024_0.json").write_text("[]")
+    (tmp_path / "StreamingHistory_music_0.json").write_text("[]")
     subprocess.run(["git", "add", "-A", "-f"], cwd=tmp_path, check=True)
     bad = problems(tmp_path, tracked_files(tmp_path))
     joined = "\n".join(bad)
@@ -82,3 +89,5 @@ def test_hygiene_detects_violations(tmp_path):
     assert "leak.txt" in joined
     assert "ok.md" not in joined
     assert "slide.png" not in joined
+    assert "Streaming_History_Audio_2024_0.json" in joined
+    assert "StreamingHistory_music_0.json" in joined

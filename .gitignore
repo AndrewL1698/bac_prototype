@@ -36,6 +36,12 @@ tests/fixtures/
 *.webp
 !docs/img/*.png
 
+# personal data (Spotify listening-history exports)
+Streaming_History*.json
+StreamingHistory*.json
+endsong*.json
+my_spotify_data/
+
 # secrets
 .env
 .claude/settings.local.json
