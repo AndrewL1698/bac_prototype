@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import threading
+import time
+from pathlib import Path
 
 import numpy as np
 
@@ -12,43 +14,58 @@ from montage.log import get_logger
 log = get_logger("beats")
 _lock = threading.Lock()
 _beat_this = None
+_failed_at: float | None = None
 CALLS = {"beat_this": 0, "librosa": 0}
+LOADED_FROM: dict[str, str] = {}   # {"checkpoint": path, "source": "cache" | "local:..." | url}
 
 
-CKPT_NAME = "beat_this-final0.ckpt"
-
-
-def checkpoint_on_drive():
+def checkpoint_on_drive() -> Path:
     from montage import paths
-    return paths.weights_dir() / CKPT_NAME
+    return paths.weights_dir() / f"beat_this-{get_config().music.beat_this.checkpoint}.ckpt"
+
+
+def ensure_checkpoint() -> tuple[Path, str]:
+    """The sha256-verified checkpoint on Drive (weights/), fetched first if missing or corrupt:
+    from the torch hub cache, then each configured source (mirror, then the authors' host)."""
+    from montage import weights
+    cfg = get_config().music.beat_this
+    name = cfg.checkpoint
+    if name not in cfg.sha256:
+        raise ValueError(f"no sha256 configured for Beat This! checkpoint {name!r}")
+    local: list[Path] = []
+    try:
+        import torch
+        local.append(Path(torch.hub.get_dir()) / "checkpoints" / f"beat_this-{name}.ckpt")
+    except Exception:  # noqa: BLE001  torch missing: URLs only
+        pass
+    return weights.fetch_verified(checkpoint_on_drive(), [s.format(name=name) for s in cfg.sources],
+                                  cfg.sha256[name], local=local)
 
 
 def _get_beat_this():
-    """Loaded once per process. Prefers the checkpoint cached on Drive (weights/); after a successful
-    download it is copied there, so new runtimes do not depend on the checkpoint host. A failure is
-    remembered for the rest of the process (the librosa fallback takes over immediately)."""
-    global _beat_this
+    """Loaded once per process from the verified Drive copy (see ensure_checkpoint). After a failure
+    the librosa fallback is used for music.beat_this.retry_s seconds, then loading is tried again,
+    so a long-running app recovers when a source comes back."""
+    global _beat_this, _failed_at
     with _lock:
-        if _beat_this is False:
-            raise RuntimeError("Beat This! failed to load earlier in this process")
-        if _beat_this is None:
-            import shutil
-            from pathlib import Path
-
+        if _beat_this is not None:
+            return _beat_this
+        retry_s = get_config().music.beat_this.retry_s
+        if _failed_at is not None and time.time() - _failed_at < retry_s:
+            raise RuntimeError(f"Beat This! failed to load {time.time() - _failed_at:.0f} s ago "
+                               f"(retrying after {retry_s:.0f} s)")
+        try:
+            ckpt, source = ensure_checkpoint()
             import torch
             from beat_this.inference import Audio2Beats
-
-            from montage import paths
-            local = checkpoint_on_drive()
-            try:
-                _beat_this = Audio2Beats(checkpoint_path=str(local) if local.exists() else "final0",
-                                         device="cuda" if torch.cuda.is_available() else "cpu", dbn=False)
-            except Exception:
-                _beat_this = False
-                raise
-            hub = Path(torch.hub.get_dir()) / "checkpoints" / CKPT_NAME
-            if not local.exists() and hub.exists():
-                paths.atomic_write(local, lambda tmp: shutil.copyfile(hub, tmp))
+            _beat_this = Audio2Beats(checkpoint_path=str(ckpt),
+                                     device="cuda" if torch.cuda.is_available() else "cpu", dbn=False)
+        except Exception:
+            _failed_at = time.time()
+            raise
+        _failed_at = None
+        LOADED_FROM.update(checkpoint=str(ckpt), source=source)
+        log.info("Beat This! loaded from %s (source: %s)", ckpt, source)
         return _beat_this
 
 

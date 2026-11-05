@@ -12,7 +12,7 @@ _Keep this list current. Update it when a phase merges to `main`._
 
 - **Phase 0 (scaffold):** config (`montage.config`, dotted `--set` overrides), data contracts (`montage.types`), shared-Drive paths with atomic writes, background jobs (`scripts/run_job.py`, `scripts/job_status.py`), Colab bootstrap, synthetic test media (`scripts/make_fixtures.py`), model smoke tests (`scripts/smoke_models.py`: CLIP, LAION aesthetic, Beat This!, YuNet, Claude API, FFmpeg pass; MERT pending), `pytest -q` green.
 - **Phase 1 (ingest + candidates):** `montage.candidates.build_media(paths)` probes, orders, and validates uploads, extracts analysis frames/motion pairs/proxies in one FFmpeg pass per video, detects scenes, and makes photo + 3 s video-window candidates with thumbnails (all cached).
-- **Phase 2 (music):** `montage.music.profile.analyze_song(path)` gives beats/downbeats (Beat This!, librosa fallback), 2 Hz energy/intensity/arousal curves, section boundaries (cached by song hash); `montage.music.excerpt.choose_excerpt` + `build_profile` produce a whole-bar 45-60 s `MusicProfile`; `summarize` writes the director's song summary.
+- **Phase 2 (music):** `montage.music.profile.analyze_song(path)` gives beats/downbeats (Beat This!, librosa fallback; the checkpoint is sha256-verified and cached on Drive, fetched from a mirror or the authors' host via `scripts/mirror_beat_this.py --check/--cache/--upload`), 2 Hz energy/intensity/arousal curves, section boundaries (cached by song hash); `montage.music.excerpt.choose_excerpt` + `build_profile` produce a whole-bar 45-60 s `MusicProfile`; `summarize` writes the director's song summary.
 - **Phase 3 (visual features + heuristic importance):** `montage.features.extract.extract(assets, candidates, frames)` gives CLIP embeddings, aesthetic, quality, motion/shake, faces, mood, tags, near-dup clusters per candidate (per-asset cache on Drive); `montage.importance.blend.importance(features)` gives rank-normalized importance (heuristic now, learned ranker blended automatically when its weights exist).
 - **Phase 4 (director, rules):** `montage.director.make_plan(brief)` turns the brief into an `EditPlan` (rule-based for now); `montage.director.apply.compile_plan` turns a plan into planner directives (section intents, pacing, target arousal, CLIP query scores, excludes/must-includes).
 - **Phase 5 (planner):** `montage.planning.plan_edit(PlanInputs, run_id, seed, system)` builds the beat grid, scores every candidate/slot pair, runs the constrained beam search (or a naive/beat_random/greedy baseline), picks in/out points, and writes an `EDL` with frame-exact cuts and a reason per shot.
@@ -122,7 +122,7 @@ configs/      default.yaml (every weight and threshold), tags.txt
 docs/         PLAN.md  LOG.md  RESULTS.md  DEMO.md  spec/
 montage/      the app: ingest, candidates, features, importance, music, director, planning, render, app, eval
 training/     emotion (MERT + DEAM), importance (SumMe/TVSum ranker)
-scripts/      colab_bootstrap, run_job, job_status, make_fixtures, smoke_models
+scripts/      colab_bootstrap, run_job, job_status, make_fixtures, smoke_models, mirror_beat_this
 tests/        pytest suite (fixtures are generated, not committed)
 ```
 

@@ -99,6 +99,7 @@ Extension (phases 12+, proposed; numbering and specs set when the team agrees, s
 | Phase | Person | Branch | Started (ET) | Notes |
 |---|---|---|---|---|
 | 12. Song pick (fallback: 12.1-12.4) | Andrew | phase-12-songpick | 2026-11-04 | provisional: Track 1 owner not agreed yet; branch not merged until the team agrees on ROADMAP.md |
+| 13a. Beat This! mirror | Keshav | phase-13-beat-this-mirror | 2026-11-05 | pushed, no PR yet; HF mirror upload pending (needs an HF write token) |
 
 ## Decisions
 
@@ -144,6 +145,7 @@ Extension (phases 12+, proposed; numbering and specs set when the team agrees, s
 - 2026-11-04 | Andrew | Song pick (phase 12) only shortlists from the user's own Spotify export; the user supplies the audio; the fallback (period affinity) uses no network and no weights | Spotify provides no audio and its terms forbid syncing its content with video
 - 2026-11-04 | Andrew | Song-pick track key is "artist|track" (lowercased), not the Spotify uri; capture dates (local) and history times (UTC) are compared as is | the same song has different uris on single and album; the time-zone error (< 1 day) is far below the 7-day padding
 - 2026-11-04 | Andrew | Listening-history exports are personal data: never committed (hygiene test blocks Streaming_History*/StreamingHistory*/endsong* JSON), never logged except counts; tests use the synthetic history in scripts/fixtures_history.py | public repo
+- 2026-11-05 | Keshav | Beat This! checkpoint is fetched by our code (not torch hub): Drive copy, then torch hub cache, then `music.beat_this.sources` in order (pinned HF mirror first, authors' host last); every copy must match the sha256 in config; a failed load retries after `retry_s` instead of never | the authors' host was down for the whole demo and a failure used to stick for the life of the app
 
 ## Setup checklist
 

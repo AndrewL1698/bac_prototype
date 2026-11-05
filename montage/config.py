@@ -151,8 +151,16 @@ class ExcerptCfg(_B):
     weights: ExcerptWeights
 
 
+class BeatThisCfg(_B):
+    checkpoint: str
+    sha256: dict[str, str]
+    sources: list[str]
+    retry_s: float
+
+
 class MusicCfg(_B):
     use_beat_this: bool = True
+    beat_this: BeatThisCfg
     min_song_s: float
     max_bpm: float
     min_bpm: float

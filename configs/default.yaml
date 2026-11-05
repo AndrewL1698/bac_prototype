@@ -70,6 +70,16 @@ importance:
 
 music:
   use_beat_this: true            # false = librosa beats only (fallback / tests)
+  beat_this:
+    checkpoint: "final0"         # cached as DATA_ROOT/weights/beat_this-<checkpoint>.ckpt
+    sha256:                      # every copy (Drive, mirror, upstream) must match before it is loaded
+      final0: "8c328b45f59d8dd3dff219253ff6a8d6482be57d0133a29140e2febbf8eb8331"
+      small0: "6074be2c4d490c5f6101fcc374a1ec72ae93456e23bb6019783b849f5dc7d47b"
+    # Download sources, tried in order when the Drive copy is missing; {name} = checkpoint.
+    # Mirror first (pinned revision, see scripts/mirror_beat_this.py), then the authors' host.
+    sources:
+      - "https://cloud.cp.jku.at/public.php/dav/files/7ik4RrBKTS273gp/{name}.ckpt"
+    retry_s: 300                 # after a failed load, use librosa for this long before trying again
   min_song_s: 40
   max_bpm: 160
   min_bpm: 70
