@@ -283,6 +283,23 @@ class EvalCfg(_B):
     default_brief: str
 
 
+class SongpickCfg(_B):
+    min_play_ms: int
+    full_play_ms: int
+    skip_penalty: float
+    period_trim_frac: float
+    pad_days: float
+    min_window_days: float
+    min_window_events: int
+    widen_factor: float
+    max_pad_days: float
+    recency_half_life_days: float
+    lift_prior: float
+    sig_weight: float
+    min_window_plays: int
+    shortlist_size: int
+    alpha: float
+
 class Config(_B):
     seed: int
     ingest: IngestCfg
@@ -295,6 +312,7 @@ class Config(_B):
     director: DirectorCfg
     planner: PlannerCfg
     render: RenderCfg
+    songpick: SongpickCfg
     app: AppCfg
     eval: EvalCfg
 

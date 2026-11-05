@@ -174,6 +174,23 @@ render:
   ffmpeg_bin: "ffmpeg"
   ffprobe_bin: "ffprobe"
 
+songpick:                         # phase 12: pick a song from the user's listening history
+  min_play_ms: 30000              # shorter plays do not count (Spotify's own stream threshold)
+  full_play_ms: 180000            # a play this long counts as 1; shorter plays count pro rata
+  skip_penalty: 0.5               # subtracted per skipped play
+  period_trim_frac: 0.05          # ignore the earliest/latest 5% of capture dates (stray old photos)
+  pad_days: 7                     # period = album dates padded this much on both sides
+  min_window_days: 3              # a one-day album still gets a few days of listening
+  min_window_events: 20           # fewer plays than this in the period -> widen it
+  widen_factor: 2.0               # padding multiplier per widening step
+  max_pad_days: 60                # stop widening here, then fall back to the whole history
+  recency_half_life_days: 365     # whole-history fallback: older plays count less
+  lift_prior: 1.0                 # smoothing (in plays) for the period-vs-usual lift
+  sig_weight: 0.5                 # affinity = plays_window * lift ** sig_weight ("song of that period")
+  min_window_plays: 2             # a candidate needs at least this many real plays in the period
+  shortlist_size: 5
+  alpha: 1.0                      # score = alpha * affinity + (1 - alpha) * vibe; 1.0 until a vibe stage exists
+
 app:
   port: 7860
   share: true
