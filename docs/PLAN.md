@@ -93,7 +93,7 @@ Extension (2 weeks, see ROADMAP.md)
 - [ ] **18. Eval v2 (slim): more albums, with/without brief, song-pick mini study** (Track 4; ROADMAP item 8; spec TBD)
 - [ ] **22. Image-set <-> music contrastive model** (Track 3; ROADMAP F1 stage B; go/no-go on day 3; spec TBD)
 - [ ] **23. "My montages" gallery** (Track 4; ROADMAP F5; spec TBD)
-- Dropped in the 2-week re-scope (2026-11-07): 14 temporal emotion, 16 people-aware editing, 19 learned editing preferences, 20 9:16 and variable length, 21 FastAPI + timeline editor.
+- Dropped in the 2-week re-scope (2026-11-07): 14 temporal emotion (Andy is continuing it on `phase-14-temporal-emotion` and raising the re-scope with the team; `spec/14_temporal_emotion.md`, `MUSIC_EMOTION.md`), 16 people-aware editing, 19 learned editing preferences, 20 9:16 and variable length, 21 FastAPI + timeline editor.
 
 ## Current work
 
@@ -101,6 +101,7 @@ Extension (2 weeks, see ROADMAP.md)
 |---|---|---|---|---|
 | 13. Per-shot render cache (render half; spec 13_render_cache.md) | Keshav | phase-13-render-cache | 2026-11-05 | Track 4; PR for review |
 | 12. Song pick (12.1-12.7b: export, Connect Spotify, three modes, YouTube) | Andrew | phase-12-songpick | 2026-11-04 | PR open for review (2026-11-08); Track 1 owner still to confirm |
+| 14. Temporal emotion model (outside the 2-week re-scope; see note above) | Andy | phase-14-temporal-emotion | 2026-11-04 | code + tests done; rebased on main 2026-11-10; DEAM training run on Colab next |
 
 ## Decisions
 
@@ -153,6 +154,9 @@ Extension (2 weeks, see ROADMAP.md)
 - 2026-11-05 | Andrew | YouTube audio fetch is off by default and runs only after a per-session opt-in click; Andrew accepts YouTube's terms and copyright risk for the class demo; yt-dlp has a lower bound, not a pin | YouTube changes break old yt-dlp releases; demo-only use
 - 2026-11-05 | Andrew | Spotify redirect goes through a fixed GitHub Pages page (docs/spotify/callback.html) that sends the browser back only to *.gradio.live or localhost | share links change on every restart, and Spotify needs a fixed redirect URI
 - 2026-11-05 | Andrew | Spotify Development Mode limits accepted: owner on Premium, at most 5 allowlisted users | extended quota needs about 250k monthly users
+- 2026-11-04 | Andy | Temporal emotion (phase 14) is a BiGRU over each song's MERT window sequence with a skip from the per-window projection; loss MSE + pooled CCC + within-song (per-song-centered) CCC; trained on random 10-30 s crops; deployed to a separate `emotion_temporal.pt` only if it beats the smoothed window head on validation; the 9B head stays as the fallback | the window head cannot follow changes inside a song (arousal CCC per song about 0.1); a separate file keeps the 9B head as a working fallback
+- 2026-11-04 | Andy | EmoMusic is not added to the emotion training data (ROADMAP item 1 listed it) | EmoMusic (MediaEval 2013, 744 songs) is already the 2013 part of DEAM: duplicate songs, and DEAM test songs could leak into training. PMEmo is the next dataset (phase 14.2)
+- 2026-11-04 | Andy | Cached song analyses store the emotion model id (`temporal:`/`window:` + weights hash, or `heuristic`) and are recomputed when it changes; `MusicProfile.emotion_source` stays `mert`/`heuristic` | no schema change; deploying or retraining a head now invalidates stale analyses (before, only mert vs heuristic was compared)
 
 ## Setup checklist
 
