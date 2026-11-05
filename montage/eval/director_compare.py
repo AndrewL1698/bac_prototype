@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Callable
 
 from montage import jobs, paths
-from montage.config import override
+from montage.config import override, set_overrides
 from montage.log import get_logger
 from montage.types import EditPlan
 
@@ -271,7 +271,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--systems", default="haiku=anthropic,open=openai_compat,rules")
     ap.add_argument("--cases", default="", help="comma-separated case ids (default: all)")
     ap.add_argument("--out", default="")
+    ap.add_argument("--set", action="append", default=[], help="config override a.b=value (e.g. the server URL)")
     args = ap.parse_args(argv)
+    paths.load_colab_env()
+    if args.set:
+        set_overrides(args.set)
     systems = parse_systems(args.systems)
     cases = [c for c in CASES if not args.cases or c.id in args.cases.split(",")]
     rows = []

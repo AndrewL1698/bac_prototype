@@ -25,7 +25,7 @@ from urllib.parse import urlparse
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from montage import jobs, paths  # noqa: E402
-from montage.config import get_config  # noqa: E402
+from montage.config import get_config, set_overrides  # noqa: E402
 
 
 def ensure_venv(venv: Path, version: str) -> Path:
@@ -53,11 +53,16 @@ def ready(base_url: str) -> bool:
 
 
 def main(argv: list[str] | None = None) -> int:
-    oc = get_config().director.openai_compat
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model", default=oc.model)
+    ap.add_argument("--model", default="", help="Hugging Face repo id (default: director.openai_compat.model)")
     ap.add_argument("--venv", default="/content/vllm_env")
+    ap.add_argument("--set", action="append", default=[],
+                    help="config override a.b=value, e.g. director.openai_compat.serve.gpu_memory_utilization=0.8")
     args = ap.parse_args(argv)
+    if args.set:
+        set_overrides(args.set)
+    oc = get_config().director.openai_compat
+    args.model = args.model or oc.model
     if ready(oc.base_url):
         print(f"a server already answers at {oc.base_url}; nothing to do")
         return 0
