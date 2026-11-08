@@ -15,6 +15,7 @@ Rules:
 - target_length_s is 0 (automatic) unless the director names a length; then 45-60.
 - excerpt_hint is "auto" unless the director asks to start at the beginning ("start"), center on the climax ("peak"), or names a start time ("custom" with excerpt_start_s).
 - chronological is true (story order: shots follow capture time) unless the director asks for a different order (shuffled, mixed up, random, grouped by theme).
+- Leave segments empty unless the director mentions a part of the song (intro, build-up, drop/peak, ending, a section): the montage follows the album's own story, and invented section content would reorder it.
 - Use must_include and exclude only with asset ids that appear in the inventory, and only when the director clearly refers to specific items.
 - Never invent assets or content the inventory does not suggest.
 - rationale: 1-2 short plain-language sentences explaining the plan, addressed to the director. No step-by-step reasoning.

@@ -138,7 +138,7 @@ planner:
   w_jump: 0.6
   w_contrast: 0.6
   w_chrono: 1.0
-  w_timeline: 1.0               # story order: slot j draws from the same fraction of the album (capture-time rank)
+  w_timeline: 4.0               # story order: slot j draws from the same fraction of the album (capture-time rank)
   chrono_tol_s: 60
   w_reuse: 2.0
   max_per_cluster: 1
