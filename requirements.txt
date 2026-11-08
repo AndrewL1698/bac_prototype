@@ -12,8 +12,9 @@ anthropic==2.3.0
 mir_eval==0.8.2
 beat-this==1.1.0
 # yt-dlp: lower bound, not a pin: YouTube changes often break older releases (song pick, opt-in audio fetch).
-# The [default] extra brings its YouTube helpers; recent releases also need a JS runtime (deno) for YouTube.
-yt-dlp[default]>=2025.10.22
+# The [default] extra brings its YouTube helpers (yt-dlp-ejs); YouTube also needs a JS runtime: deno (pinned).
+yt-dlp[default]>=2026.10.26
+deno==2.9.8
 transformers>=4.40
 librosa>=0.10
 soundfile>=0.12

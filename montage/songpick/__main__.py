@@ -2,6 +2,7 @@
 
     python -m montage.songpick --history DIR_OR_FILES... --media ALBUM_DIR [--k 5] [--json]
     python -m montage.songpick --history DIR_OR_FILES... --start 2026-07-01 --end 2026-07-14
+    python -m montage.songpick --history DIR_OR_FILES... --mode vibe   # ignore dates
 
 Prints to your terminal only (the history is personal data: nothing is written or logged).
 --media probes capture dates (needs ffprobe for videos).
@@ -14,7 +15,8 @@ import sys
 from datetime import datetime
 
 from montage import config
-from montage.songpick import load_history, shortlist
+from montage.songpick import load_history
+from montage.songpick.pick import suggest
 from montage.types import UserError
 
 
@@ -34,6 +36,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--start", default=None, help="period start YYYY-MM-DD (instead of --media)")
     ap.add_argument("--end", default=None, help="period end YYYY-MM-DD")
     ap.add_argument("--k", type=int, default=None, help="shortlist size")
+    ap.add_argument("--mode", choices=["export", "vibe"], default="export",
+                    help="export: songs you played around the photo dates (default); vibe: ignore dates")
     ap.add_argument("--json", action="store_true", help="print the SongPick as JSON")
     ap.add_argument("--set", action="append", default=[], help="config override a.b=value")
     args = ap.parse_args(argv)
@@ -42,7 +46,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.set:
         config.set_overrides(args.set)
     try:
-        pick = shortlist(load_history(args.history), _dates(args), k=args.k)
+        pick = suggest(_dates(args), mode=args.mode, export=load_history(args.history), k=args.k)
     except UserError as e:
         print(f"error: {e}", file=sys.stderr)
         return 2

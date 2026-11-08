@@ -11,7 +11,7 @@ import pytest
 from montage import config
 from montage.app import songpick_ui
 from montage.songpick import spotify, youtube
-from montage.songpick.pick import ranges_for_period, suggest
+from montage.songpick.pick import suggest
 from montage.types import UserError
 from scripts.fixtures_history import (BACKGROUND, FAVOURITE, TOP_PICK, spotify_recent_json, spotify_top_json,
                                       write_history)
@@ -139,6 +139,13 @@ def test_recent_and_top_parsing():
     assert len(recent) == 50 and all(e.source == "recent" and e.duration_ms for e in recent)
     assert recent == sorted(recent, key=lambda e: (e.ts, e.artist, e.track)) and recent[-1].ts <= NOW
     assert top["short_term"][0].rank == 1 and (top["short_term"][0].artist, top["short_term"][0].track) == TOP_PICK
+    t = top["short_term"][0]
+    assert t.release_date.isoformat() == "2026-06-12" and t.release_precision == "day" and t.release_reliable
+    fav = next(x for x in top["long_term"] if (x.artist, x.track) == FAVOURITE)
+    assert fav.release_date.isoformat() == "2019-01-01" and fav.release_precision == "year"
+    assert recent[-1].release_date is not None
+    from scripts.fixtures_history import REMASTER
+    assert not next(x for x in top["short_term"] if (x.artist, x.track) == REMASTER).release_reliable
     assert spotify.recent_from_json({"items": [{"track": {"type": "episode", "name": "Pod"},
                                                 "played_at": "2026-11-01T00:00:00Z"}]}) == []
 
@@ -155,59 +162,81 @@ def test_fetch_listening(monkeypatch):
 
 # ---------- suggestions from sign-in data ----------
 
-def test_ranges_for_period():
-    recent_period = (NOW - timedelta(days=10), NOW - timedelta(days=3))
-    assert ranges_for_period(recent_period, spotify.TIME_RANGES, NOW) == (list(spotify.TIME_RANGES), False)
-    three_months = (NOW - timedelta(days=100), NOW - timedelta(days=90))
-    assert ranges_for_period(three_months, spotify.TIME_RANGES, NOW) == (["medium_term", "long_term"], False)
-    old = (datetime(2021, 7, 1), datetime(2021, 7, 14))
-    assert ranges_for_period(old, spotify.TIME_RANGES, NOW) == (["long_term"], True)
-    assert ranges_for_period(None, ["long_term"], NOW) == (["long_term"], False)
-
-
 def test_suggest_recent_photos_uses_recent_plays_and_short_term():
     recent, top = listening()
-    pick = suggest([NOW - timedelta(days=2), NOW - timedelta(days=1)], recent=recent, top=top, now=NOW)
+    pick = suggest([NOW - timedelta(days=2), NOW - timedelta(days=1)], mode="release", recent=recent, top=top, now=NOW)
     first = pick.candidates[0]
-    assert (first.artist, first.track) == TOP_PICK
+    assert (first.artist, first.track) == TOP_PICK  # played during the album, though it came out in June
     assert "recent" in first.sources and "top:short_term" in first.sources
     assert "recently played" in first.reason and "top songs of the last 4 weeks" in first.reason
     assert first.duration_ms == 195_000 and first.score == 1.0
-    assert pick.sources[0] == "recent" and pick.period_source == "album"
+    assert pick.mode == "release" and pick.period_source in ("release", "release_widened")
 
 
-def test_suggest_old_photos_falls_back_to_long_term_with_note():
+def test_suggest_old_photos_release_mode_picks_songs_from_back_then():
     recent, top = listening()
-    pick = suggest([datetime(2021, 7, 3), datetime(2021, 7, 10)], recent=recent, top=top, now=NOW)
-    assert (pick.candidates[0].artist, pick.candidates[0].track) == FAVOURITE
-    assert pick.sources == ["top:long_term"] and any("older than the year" in n for n in pick.notes)
+    pick = suggest([datetime(2021, 7, 3), datetime(2021, 7, 10)], mode="release", recent=recent, top=top, now=NOW)
+    names = [(c.artist, c.track) for c in pick.candidates]
+    assert pick.mode == "release" and BACKGROUND[0] in names       # came out Jul 2021
+    assert TOP_PICK not in names                                   # the #1 song of this month came out in 2026
+    assert all(c.release_date and c.release_date.year <= 2022 for c in pick.candidates)
+    a1 = pick.candidates[names.index(BACKGROUND[0])]
+    assert a1.reason.startswith("Came out Jul 2021, near your photos (Jul 2021).")
+    with config.override({"songpick.release.min_candidates": 1}):  # one song is enough: no widening
+        narrow = suggest([datetime(2021, 7, 3), datetime(2021, 7, 10)], mode="release", recent=recent, top=top, now=NOW)
+    assert narrow.period_source == "release" and [(c.artist, c.track) for c in narrow.candidates] == [BACKGROUND[0]]
+    assert pick.period_source == "release_widened" and pick.period_start < narrow.period_start
 
 
-def test_suggest_old_photos_with_export_uses_the_export(tmp_path):
+def test_suggest_release_mode_skips_remaster_dates_and_falls_back():
+    from scripts.fixtures_history import REMASTER
+    recent, top = listening()
+    # May 2025 photos: only the remastered album "came out" then, and its date is not the song's
+    with config.override({"songpick.release.max_before_days": 100, "songpick.release.min_candidates": 1}):
+        pick = suggest([datetime(2025, 5, 3), datetime(2025, 5, 9)], mode="release", recent=recent, top=top, now=NOW)
+    assert pick.mode == "vibe" and pick.candidates
+    assert REMASTER not in [(c.artist, c.track) for c in pick.candidates[:1]]
+    assert any("remaster or compilation" in n for n in pick.notes)
+    assert any("None of the songs you played this year came out around May 2025" in n for n in pick.notes)
+
+
+def test_suggest_vibe_mode_ignores_dates():
+    recent, top = listening()
+    pick = suggest([datetime(2021, 7, 3)], mode="vibe", recent=recent, top=top, now=NOW)
+    assert pick.mode == "vibe" and pick.period_start is None and pick.period_source == "history"
+    assert any("Vibe matching" in n for n in pick.notes)
+    assert set(pick.sources) >= {"top:short_term", "top:medium_term", "top:long_term"}
+
+
+def test_suggest_export_mode_uses_the_export(tmp_path):
     from montage.songpick import load_history
     truth = write_history(tmp_path)
     recent, top = listening()
     dates = [datetime.fromisoformat(s) for s in truth["album_dates"]]  # July 2026: ~4 months before NOW
-    pick = suggest(dates, export=load_history([tmp_path]), recent=recent, top=top, now=NOW)
+    pick = suggest(dates, mode="export", export=load_history([tmp_path]), recent=recent, top=top, now=NOW)
     assert (pick.candidates[0].artist, pick.candidates[0].track) == TOP_PICK
-    assert "export" in pick.candidates[0].sources and pick.sources[0] == "export"
-    assert not any("older than the year" in n for n in pick.notes)
+    assert pick.mode == "export" and pick.sources[0] == "export" and "top:long_term" not in pick.sources
+    with pytest.raises(UserError, match="history files"):
+        suggest(dates, mode="export", recent=recent, top=top, now=NOW)
+    with pytest.raises(ValueError):
+        suggest(dates, mode="nope", recent=recent, top=top, now=NOW)
 
 
 def test_suggest_without_dates_and_without_data():
     recent, top = listening()
-    pick = suggest([None, None], recent=recent, top=top, now=NOW)
-    assert pick.period_start is None and any("no capture dates" in n for n in pick.notes)
-    assert set(pick.sources) >= {"recent", "top:short_term", "top:long_term"}
+    pick = suggest([None, None], mode="release", recent=recent, top=top, now=NOW)
+    assert pick.period_start is None and pick.mode == "vibe" and any("no capture dates" in n for n in pick.notes)
+    assert set(pick.sources) >= {"top:short_term", "top:long_term"}
     with pytest.raises(UserError, match="Connect Spotify"):
         suggest([NOW], now=NOW)
 
 
 def test_suggest_is_deterministic():
     recent, top = listening()
-    dates = [NOW - timedelta(days=2)]
-    assert suggest(dates, recent=recent, top=top, now=NOW).model_dump() == \
-        suggest(dates, recent=list(recent), top=dict(top), now=NOW).model_dump()
+    for mode, dates in (("release", [NOW - timedelta(days=2)]), ("release", [datetime(2021, 7, 3)]),
+                        ("vibe", [NOW])):
+        assert suggest(dates, mode=mode, recent=recent, top=top, now=NOW).model_dump() == \
+            suggest(dates, mode=mode, recent=list(recent), top=dict(top), now=NOW).model_dump()
 
 
 # ---------- YouTube matching ----------
@@ -264,8 +293,22 @@ def test_youtube_errors_are_friendly(monkeypatch):
     monkeypatch.setattr(youtube, "search", lambda q, n: [])
     with pytest.raises(UserError, match="Upload the song file"):
         youtube.find_and_fetch("Summer Anthem", "The Fixtures")
+    monkeypatch.delenv("MONTAGE_YT_COOKIES", raising=False)
     err = youtube._friendly(RuntimeError("ERROR: Sign in to confirm you're not a bot"))
-    assert "blocking downloads" in str(err)
+    assert "blocking downloads" in str(err) and "YOUTUBE_COOKIES" in str(err)
+    assert "cookiefile" not in youtube._ydl_opts()
+
+
+def test_youtube_cookies_from_env(monkeypatch, tmp_path):
+    cookies = tmp_path / "c.txt"
+    monkeypatch.setenv("MONTAGE_YT_COOKIES", str(cookies))
+    assert youtube.cookies_path() is None  # a path that does not exist is ignored
+    cookies.write_text("# Netscape HTTP Cookie File\n")
+    assert youtube.cookies_path() == str(cookies) and youtube._ydl_opts()["cookiefile"] == str(cookies)
+    err = youtube._friendly(RuntimeError("Sign in to confirm you\u2019re not a bot. confirm you're not a bot"))
+    assert "may have expired" in str(err)
+    url = youtube.search_url("Summer Anthem", "The Fixtures, Guest")
+    assert url == "https://www.youtube.com/results?search_query=The+Fixtures+-+Summer+Anthem"
 
 
 # ---------- app handlers ----------
@@ -290,14 +333,24 @@ def test_ui_suggest_and_use_song(monkeypatch):
     monkeypatch.setattr(songpick_ui, "_album_dates", lambda media: [datetime.utcnow() - timedelta(days=1)])
     with pytest.raises(UserError, match="Connect Spotify"):
         songpick_ui.suggest(["album"], None, {})
-    choices, pick, md = songpick_ui.suggest(["album"], None, sp)
-    assert choices[0][1] == "0" and TOP_PICK[1] in choices[0][0] and md.startswith("Songs from around")
-    with pytest.raises(UserError, match="tick"):
-        songpick_ui.use_song("0", pick, youtube_ok=False)
+    choices, pick, md = songpick_ui.suggest(["album"], None, sp, "release")
+    assert choices[0][1] == "0" and TOP_PICK[1] in choices[0][0] and md.startswith("Songs that came out around")
+    _, vpick, vmd = songpick_ui.suggest(["album"], None, sp, "vibe")
+    assert vpick.mode == "vibe" and vmd.startswith("Your best picks overall")
+    with pytest.raises(UserError, match="history files"):
+        songpick_ui.suggest(["album"], None, sp, "export")
+    path, md = songpick_ui.use_song("0", pick, youtube_ok=False)
+    assert path is None and "tick" in md and "youtube.com/results?search_query=" in md
     monkeypatch.setattr(youtube, "find_and_fetch",
                         lambda t, a, d: (Path("/x/song.m4a"), {"title": t, "channel": "Topic", "duration": 196}))
     path, md = songpick_ui.use_song("0", pick, youtube_ok=True)
     assert path == "/x/song.m4a" and "3:16" in md
+
+    def blocked(t, a, d):
+        raise UserError("YouTube is blocking downloads from this server right now.")
+    monkeypatch.setattr(youtube, "find_and_fetch", blocked)
+    path, md = songpick_ui.use_song("0", pick, youtube_ok=True)
+    assert path is None and "blocking downloads" in md and "Song" in md and "search_query=" in md
     with pytest.raises(UserError, match="Suggest songs"):
         songpick_ui.use_song("0", None, True)
 

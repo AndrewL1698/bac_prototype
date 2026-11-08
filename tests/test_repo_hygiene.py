@@ -20,6 +20,8 @@ BAD_EXT = {".jpg", ".jpeg", ".png", ".heic", ".mp4", ".mov", ".wav", ".mp3", ".m
            ".npz", ".pt", ".pth", ".onnx", ".zip"}
 # Personal listening-history exports (Spotify): blocked by name wherever they are.
 HISTORY_RE = re.compile(r"(^|/)(Streaming_?History[^/]*\.json|endsong[^/]*\.json)$", re.IGNORECASE)
+# Browser cookie exports (YouTube cookies for the song fetch are a Google login): blocked by name.
+COOKIES_RE = re.compile(r"(^|/)[^/]*cookies[^/]*\.txt$", re.IGNORECASE)
 # Built by concatenation so this file does not match itself.
 SECRET_RES = [re.compile(p) for p in (
     "sk" + r"-ant-[A-Za-z0-9_\-]{20,}",
@@ -52,6 +54,8 @@ def problems(root: Path, files: list[str]) -> list[str]:
             out.append(f"{rel}: media/data file type {ext}")
         if HISTORY_RE.search(rel):
             out.append(f"{rel}: personal listening history (Spotify export)")
+        if COOKIES_RE.search(rel):
+            out.append(f"{rel}: browser cookie export (a login)")
         if size > MAX_BYTES:
             out.append(f"{rel}: larger than 2 MB ({size} bytes)")
         if size <= MAX_BYTES:
@@ -82,6 +86,7 @@ def test_hygiene_detects_violations(tmp_path):
     (tmp_path / "data").mkdir()
     (tmp_path / "data" / "Streaming_History_Audio_2024_0.json").write_text("[]")
     (tmp_path / "StreamingHistory_music_0.json").write_text("[]")
+    (tmp_path / "yt_cookies.txt").write_text("# Netscape HTTP Cookie File\n")
     subprocess.run(["git", "add", "-A", "-f"], cwd=tmp_path, check=True)
     bad = problems(tmp_path, tracked_files(tmp_path))
     joined = "\n".join(bad)
@@ -91,3 +96,4 @@ def test_hygiene_detects_violations(tmp_path):
     assert "slide.png" not in joined
     assert "Streaming_History_Audio_2024_0.json" in joined
     assert "StreamingHistory_music_0.json" in joined
+    assert "yt_cookies.txt" in joined

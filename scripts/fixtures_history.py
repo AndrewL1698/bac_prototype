@@ -97,10 +97,24 @@ def write_history(out_dir: Path, seed: int = 0) -> dict:
 
 # ---------- Spotify sign-in API responses (synthetic, same shapes as the Web API) ----------
 
+# Album release dates for the sign-in fixtures (made up). "Summer Anthem" came out in June 2026, the favourite
+# in 2019, "Song A1" in 2021 (an older song for old photos), "Song B1" sits on a 2025 remaster of a 2005 album.
+RELEASES = {
+    TOP_PICK: ("2026-06-12", "day", "album"),
+    FAVOURITE: ("2019", "year", "album"),
+    BACKGROUND[0]: ("2021-07", "month", "album"),
+    BACKGROUND[2]: ("2025-05-02", "day", "album"),
+}
+REMASTER = BACKGROUND[2]    # its album name says "Remastered": the 2025 date is not the song's
+
+
 def _api_track(artist: str, track: str, duration_ms: int = 200_000) -> dict:
+    date, prec, kind = RELEASES.get((artist, track), ("2024-03-15", "day", "album"))
+    name = f"{artist} Album (2025 Remastered)" if (artist, track) == REMASTER else f"{artist} Album"
     return {"type": "track", "name": track, "duration_ms": duration_ms,
             "uri": "spotify:track:" + hashlib.sha1(f"{artist}|{track}".encode()).hexdigest()[:22],
-            "artists": [{"name": artist}], "album": {"name": f"{artist} Album"}}
+            "artists": [{"name": artist}],
+            "album": {"name": name, "album_type": kind, "release_date": date, "release_date_precision": prec}}
 
 
 def spotify_recent_json(now: datetime, seed: int = 0) -> dict:

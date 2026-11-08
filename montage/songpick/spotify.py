@@ -25,6 +25,7 @@ from typing import Any
 from urllib.parse import urlencode, urlsplit
 
 from montage.config import get_config
+from montage.songpick import release
 from montage.types import ListeningEvent, TopTrack, UserError
 
 log = logging.getLogger(__name__)
@@ -212,7 +213,8 @@ def recent_from_json(body: dict) -> list[ListeningEvent]:
         dur = int(dur) if isinstance(dur, (int, float)) and dur > 0 else None
         out.append(ListeningEvent(ts=ts, ms_played=dur or get_config().songpick.full_play_ms, track=name,
                                   artist=artist, album=((t.get("album") or {}).get("name") or ""),
-                                  uri=t.get("uri"), source="recent", duration_ms=dur))
+                                  uri=t.get("uri"), source="recent", duration_ms=dur,
+                                  **release.from_album(t.get("album"), name)))
     out.sort(key=lambda e: (e.ts, e.artist, e.track))
     return out
 
@@ -226,7 +228,7 @@ def top_from_json(body: dict, time_range: str) -> list[TopTrack]:
         dur = t.get("duration_ms")
         out.append(TopTrack(track=name, artist=artist, album=((t.get("album") or {}).get("name") or ""),
                             uri=t.get("uri"), duration_ms=int(dur) if isinstance(dur, (int, float)) and dur > 0 else None,
-                            time_range=time_range, rank=len(out) + 1))
+                            time_range=time_range, rank=len(out) + 1, **release.from_album(t.get("album"), name)))
     return out
 
 

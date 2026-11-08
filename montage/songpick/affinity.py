@@ -45,6 +45,13 @@ class _Acc:
     uri: str | None = None
     album: str = ""
     duration_ms: int | None = None
+    release: dict | None = None            # release fields of the latest play that has a date
+
+
+def release_fields(x) -> dict:
+    """The release_* fields of a ListeningEvent/TopTrack/TrackCandidate as a dict."""
+    return {"release_date": x.release_date, "release_precision": x.release_precision,
+            "release_reliable": x.release_reliable}
 
 
 def _fmt_day(d: datetime) -> str:
@@ -82,6 +89,8 @@ def score_tracks(events: list[ListeningEvent], period: tuple[datetime, datetime]
         a.uri = e.uri or a.uri
         a.album = e.album or a.album
         a.duration_ms = e.duration_ms or a.duration_ms
+        if e.release_date is not None:
+            a.release = release_fields(e)
         w = play_weight(e)
         a.total += w
         inside = in_period(e, period) if period is not None else True
@@ -122,6 +131,6 @@ def score_tracks(events: list[ListeningEvent], period: tuple[datetime, datetime]
             album=a.album, uri=a.uri, plays_window=round(a.window, 4), plays_total=round(a.total, 4),
             n_plays_window=a.n_window, n_skips_window=a.n_skips, lift=round(lift, 4),
             affinity=round(aff, 6), score=round(aff, 6), reason=_reason(a, lift, period),
-            duration_ms=a.duration_ms))
+            duration_ms=a.duration_ms, **(a.release or {})))
     out.sort(key=lambda c: (-c.affinity, -c.n_plays_window, c.key))
     return out

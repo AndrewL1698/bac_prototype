@@ -307,6 +307,15 @@ class YoutubeCfg(_B):
     bad_penalty: float
     duration_penalty: float
     cookies_file: str
+    cookies_env: str
+
+
+class ReleaseCfg(_B):
+    before_days_by_age: list[list[float]]
+    after_frac: float
+    min_candidates: int
+    max_before_days: float
+    unreliable_words: list[str]
 
 
 class SongpickCfg(_B):
@@ -318,7 +327,6 @@ class SongpickCfg(_B):
     min_window_days: float
     min_window_events: int
     widen_factor: float
-    max_pad_days: float
     recency_half_life_days: float
     lift_prior: float
     sig_weight: float
@@ -326,6 +334,10 @@ class SongpickCfg(_B):
     shortlist_size: int
     alpha: float
     w_sources: dict[str, float]
+    default_mode: Literal["release", "vibe", "export"]
+    window_by_age_days: list[list[float]]
+    max_window_days: float
+    release: ReleaseCfg
     spotify: SpotifyCfg
     youtube: YoutubeCfg
 

@@ -41,6 +41,8 @@ Streaming_History*.json
 StreamingHistory*.json
 endsong*.json
 my_spotify_data/
+# browser cookie exports (YouTube cookies are a Google login)
+*cookies*.txt
 
 # secrets
 .env

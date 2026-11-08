@@ -66,24 +66,40 @@ def _album_dates(media: list[str]):
     return [a.taken_at for a in assets]
 
 
-def suggest(media: list[str], history_files: list[str] | None, sp: dict | None) -> tuple[list[tuple[str, str]], SongPick, str]:
-    """(radio choices [(label, index)], the SongPick, markdown with the period and notes)."""
+MODE_CHOICES = [("Songs from back then (release date)", "release"), ("Best vibe fit", "vibe"),
+                ("My full Spotify history (data export)", "export")]
+
+
+def suggest(media: list[str], history_files: list[str] | None, sp: dict | None, mode: str | None = None
+            ) -> tuple[list[tuple[str, str]], SongPick, str]:
+    """(radio choices [(label, index)], the SongPick, markdown with the window and notes)."""
     sp = sp or {}
+    if mode == "export" and not history_files:
+        raise UserError("Upload your Spotify history files (data export JSON) for this mode, or pick another mode.")
     export = load_history(history_files) if history_files else None
     if not export and not sp.get("recent") and not any((sp.get("top") or {}).values()):
         raise UserError("Connect Spotify (or upload your Spotify history files) first.")
-    pick = pick_mod.suggest(_album_dates(media), export=export, recent=sp.get("recent"), top=sp.get("top"))
+    pick = pick_mod.suggest(_album_dates(media), mode=mode, export=export, recent=sp.get("recent"), top=sp.get("top"))
     choices = [(f"{c.artist} - {c.track}: {c.reason}", str(i)) for i, c in enumerate(pick.candidates)]
-    if pick.period_start and pick.period_end:
-        head = f"Songs from around {pick.period_start:%b %d, %Y} - {pick.period_end:%b %d, %Y}."
+    if pick.mode == "release" and pick.period_start and pick.period_end:
+        head = f"Songs that came out around your photos ({pick.period_start:%b %Y} - {pick.period_end:%b %Y})."
+    elif pick.mode == "export" and pick.period_start and pick.period_end:
+        head = f"Songs you played around {pick.period_start:%b %d, %Y} - {pick.period_end:%b %d, %Y}."
     else:
-        head = "Songs from your overall listening."
+        head = "Your best picks overall."
     md = "\n".join([head] + [f"> {n}" for n in pick.notes])
     return choices, pick, md
 
 
-def use_song(choice: str | None, pick: SongPick | None, youtube_ok: bool) -> tuple[str, str]:
-    """(audio path for the Song player, status markdown). Fetches from YouTube only when opted in."""
+def _manual(c, why: str) -> str:
+    from montage.songpick import youtube
+    return (f"{why} [Find \"{c.artist} - {c.track}\" on YouTube]({youtube.search_url(c.track, c.artist)}) "
+            "(opens in your browser), get the song file you're allowed to use, then drop it in the **Song** box.")
+
+
+def use_song(choice: str | None, pick: SongPick | None, youtube_ok: bool) -> tuple[str | None, str]:
+    """(audio path for the Song player or None, status markdown). Fetches from YouTube only when opted in;
+    when the fetch is off or fails, the status links to a YouTube search so the user can upload the file."""
     if pick is None or not pick.candidates:
         raise UserError("Press Suggest songs first.")
     try:
@@ -91,10 +107,12 @@ def use_song(choice: str | None, pick: SongPick | None, youtube_ok: bool) -> tup
     except (ValueError, IndexError) as e:
         raise UserError("Pick one of the suggested songs.") from e
     if not youtube_ok:
-        raise UserError(f"To fetch \"{c.track}\" automatically, tick \"Fetch the song's audio from YouTube\". "
-                        "Or upload the song file yourself in the Song box.")
+        return None, _manual(c, "To fetch it automatically, tick \"Fetch the song's audio from YouTube\". Or:")
     from montage.songpick import youtube
-    path, meta = youtube.find_and_fetch(c.track, c.artist, c.duration_ms)
+    try:
+        path, meta = youtube.find_and_fetch(c.track, c.artist, c.duration_ms)
+    except UserError as e:
+        return None, _manual(c, f"{e}")
     dur = meta.get("duration")
     length = f", {int(dur) // 60}:{int(dur) % 60:02d}" if isinstance(dur, (int, float)) else ""
     who = meta.get("channel") or meta.get("uploader") or "YouTube"

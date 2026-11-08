@@ -24,6 +24,7 @@ REPO_DIR = Path("/content/bac_prototype")
 DRIVE = Path("/content/drive/MyDrive")
 DATA_ROOT = DRIVE / "montage_data"
 ENV_FILE = Path("/content/montage_env.sh")
+YT_COOKIES_FILE = Path("/content/.yt_cookies.txt")   # local VM disk only: never Drive, never the repo
 REQ_HASH_FILE = Path("/content/.montage_req_hash")
 FFMPEG_DIR = Path("/content/bin")
 STATIC_FFMPEG_URL = "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz"
@@ -148,8 +149,35 @@ def ensure_ffmpeg() -> tuple[str, bool]:
     return ver, zs and tm
 
 
+def cookies_text(secret: str | None) -> str | None:
+    """YOUTUBE_COOKIES secret -> cookies.txt text. Accepts the file as is (Netscape format, tab-separated
+    lines) or base64 of it (Colab's secret box may drop newlines; `base64 -i cookies.txt` keeps them)."""
+    s = (secret or "").strip()
+    if not s:
+        return None
+    if "\t" in s and "\n" in s:
+        return s + "\n"
+    try:
+        import base64
+        text = base64.b64decode("".join(s.split()), validate=True).decode("utf-8")
+    except Exception:  # noqa: BLE001
+        return None
+    return text if "\t" in text else None
+
+
+def write_cookies(secret: str | None) -> Path | None:
+    """Write the YouTube cookies (from the secret) to local VM disk, mode 600. Never printed."""
+    text = cookies_text(secret)
+    if text is None:
+        return None
+    YT_COOKIES_FILE.touch(mode=0o600, exist_ok=True)
+    os.chmod(YT_COOKIES_FILE, 0o600)
+    YT_COOKIES_FILE.write_text(text)
+    return YT_COOKIES_FILE
+
+
 def write_env(user: str, api_key: str | None, app_password: str | None = None,
-              spotify_client_id: str | None = None) -> None:
+              spotify_client_id: str | None = None, yt_cookies: Path | None = None) -> None:
     lines = [
         f"export MONTAGE_DATA_ROOT={DATA_ROOT}",
         "export MONTAGE_SCRATCH=/content/scratch",
@@ -162,6 +190,8 @@ def write_env(user: str, api_key: str | None, app_password: str | None = None,
         lines.append(f"export MONTAGE_APP_PASSWORD='{app_password}'")
     if spotify_client_id:
         lines.append(f"export SPOTIFY_CLIENT_ID='{spotify_client_id}'")
+    if yt_cookies:
+        lines.append(f"export MONTAGE_YT_COOKIES={yt_cookies}")
     ENV_FILE.touch(mode=0o600, exist_ok=True)
     os.chmod(ENV_FILE, 0o600)
     ENV_FILE.write_text("\n".join(x for x in lines if x) + "\n")
@@ -172,6 +202,8 @@ def write_env(user: str, api_key: str | None, app_password: str | None = None,
         os.environ["MONTAGE_APP_PASSWORD"] = app_password
     if spotify_client_id:
         os.environ["SPOTIFY_CLIENT_ID"] = spotify_client_id
+    if yt_cookies:
+        os.environ["MONTAGE_YT_COOKIES"] = str(yt_cookies)
 
 
 def gpu_info() -> tuple[str, bool]:
@@ -206,14 +238,20 @@ def main(argv: list[str] | None = None) -> int:
     api_key = read_secret("ANTHROPIC_API_KEY") or saved.get("ANTHROPIC_API_KEY")
     app_password = read_secret("APP_PASSWORD") or saved.get("MONTAGE_APP_PASSWORD")
     spotify_id = read_secret("SPOTIFY_CLIENT_ID") or saved.get("SPOTIFY_CLIENT_ID")
+    yt_secret = read_secret("YOUTUBE_COOKIES")
+    yt_cookies = write_cookies(yt_secret) if yt_secret else (
+        Path(saved["MONTAGE_YT_COOKIES"]) if saved.get("MONTAGE_YT_COOKIES") and Path(saved["MONTAGE_YT_COOKIES"]).is_file() else None)
+    if yt_secret and yt_cookies is None:
+        print("YOUTUBE_COOKIES is set but is not a cookies.txt file (or base64 of one); YouTube cookies are off.")
     Path("/content/scratch").mkdir(parents=True, exist_ok=True)
     ffver, zs_ok = ensure_ffmpeg()
-    write_env(user, api_key, app_password, spotify_id)
+    write_env(user, api_key, app_password, spotify_id, yt_cookies)
     req = ensure_requirements(args.foreground_install)
     gpu, cuda = gpu_info()
     print(f"bootstrap: branch {args.branch}@{commit} | user {user} | GPU {gpu} | CUDA {'ok' if cuda else 'NO'} | "
           f"FFmpeg {ffver} zscale {'ok' if zs_ok else 'missing'} | API key {'yes' if api_key else 'no'} | "
           f"app password {'yes' if app_password else 'no'} | Spotify {'yes' if spotify_id else 'no'} | "
+          f"YouTube cookies {'yes' if yt_cookies else 'no'} | "
           f"requirements {req} | {'shared Drive ok' if drive_ok else 'shared Drive MISSING'}")
     return 0
 

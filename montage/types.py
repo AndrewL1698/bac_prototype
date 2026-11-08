@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel
@@ -211,6 +211,9 @@ class ListeningEvent(BaseModel):
     skipped: bool = False            # export's `skipped`, or reason_end == "fwdbtn"
     source: Literal["export", "recent"] = "export"   # data export, or Spotify sign-in "recently played"
     duration_ms: int | None = None   # track length when known (sign-in data)
+    release_date: date | None = None  # album release date (sign-in data); the first day of its year/month when less precise
+    release_precision: Literal["year", "month", "day"] | None = None
+    release_reliable: bool = True    # False for compilations/remasters/deluxe editions (the date is not the song's)
 
 
 class TopTrack(BaseModel):
@@ -222,6 +225,9 @@ class TopTrack(BaseModel):
     duration_ms: int | None = None
     time_range: Literal["short_term", "medium_term", "long_term"]   # about 4 weeks / 6 months / 1 year
     rank: int                        # 1 = most played in that range
+    release_date: date | None = None  # album release date (sign-in data); the first day of its year/month when less precise
+    release_precision: Literal["year", "month", "day"] | None = None
+    release_reliable: bool = True    # False for compilations/remasters/deluxe editions (the date is not the song's)
 
 
 class TrackCandidate(BaseModel):
@@ -241,15 +247,20 @@ class TrackCandidate(BaseModel):
     reason: str                      # short human-readable "why this song"
     duration_ms: int | None = None   # track length when known (sign-in data)
     sources: list[str] = []          # "export", "recent", "top:<time_range>"
+    release_date: date | None = None  # album release date (sign-in data); the first day of its year/month when less precise
+    release_precision: Literal["year", "month", "day"] | None = None
+    release_reliable: bool = True    # False for compilations/remasters/deluxe editions (the date is not the song's)
 
 
 class SongPick(BaseModel):
     period_start: datetime | None    # naive; None when the album has no capture dates
     period_end: datetime | None
-    period_source: Literal["album", "album_widened", "history"]
+    period_source: Literal["album", "album_widened", "history", "release", "release_widened"]
     n_events: int                    # music plays in the cleaned history
     n_events_window: int             # of those, inside the period
     candidates: list[TrackCandidate] # shortlist, best first
     vibe_source: Literal["none", "tags", "contrastive"] = "none"
     notes: list[str] = []            # warnings (widened period, few plays, no dates)
     sources: list[str] = []          # listening data used: "export", "recent", "top:<time_range>"
+    mode: Literal["release", "vibe", "export"] = "vibe"   # release: songs that came out around the photos;
+    # vibe: best fit regardless of dates (ranked by listening until a vibe stage exists); export: played back then

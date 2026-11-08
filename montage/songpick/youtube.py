@@ -14,12 +14,14 @@ against Spotify's track length when it is known.
 from __future__ import annotations
 
 import logging
+import os
 import re
 import shutil
 import tempfile
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote_plus
 
 from montage import paths
 from montage.config import get_config
@@ -87,21 +89,41 @@ def pick_best(results: list[dict], track: str, artist: str, duration_ms: int | N
 
 # ---------- yt-dlp (network; one seam each so tests can replace them) ----------
 
-def _ydl_opts(**extra: Any) -> dict:
+def cookies_path() -> str | None:
+    """cookies.txt for yt-dlp: env `cookies_env` (written by colab_bootstrap from the YOUTUBE_COOKIES secret to
+    local VM disk), else config `cookies_file`. Never on the shared Drive or in the repo; never logged."""
     cfg = get_config().songpick.youtube
+    for p in (os.environ.get(cfg.cookies_env or ""), cfg.cookies_file):
+        if p and Path(p).is_file():
+            return p
+    return None
+
+
+def _ydl_opts(**extra: Any) -> dict:
     opts: dict[str, Any] = {"quiet": True, "no_warnings": True, "noplaylist": True, "noprogress": True}
-    if cfg.cookies_file:
-        opts["cookiefile"] = cfg.cookies_file
+    cookies = cookies_path()
+    if cookies:
+        opts["cookiefile"] = cookies
     opts.update(extra)
     return opts
 
 
 def _friendly(e: Exception) -> UserError:
-    msg = str(e)
-    if "confirm you" in msg.lower() and "bot" in msg.lower():
+    msg = str(e).lower()
+    if "confirm you" in msg and "bot" in msg:
+        if cookies_path():
+            return UserError("YouTube is blocking downloads from this server even with your YouTube cookies (it "
+                             "asks to confirm you're not a bot); they may have expired. Re-export them into the "
+                             "YOUTUBE_COOKIES secret (see README), or upload the song file instead.")
         return UserError("YouTube is blocking downloads from this server right now (it asks to confirm you're "
-                         "not a bot). Upload the song file instead.")
+                         "not a bot). Add a YOUTUBE_COOKIES Colab Secret from a spare YouTube account (see README), "
+                         "or upload the song file instead.")
     return UserError(f"Could not get the song from YouTube ({type(e).__name__}). Upload the song file instead.")
+
+
+def search_url(track: str, artist: str) -> str:
+    """A YouTube search link for the user to open in their own browser (the manual fallback)."""
+    return "https://www.youtube.com/results?search_query=" + quote_plus(f"{artist.split(',')[0].strip()} - {track}")
 
 
 def search(query: str, n: int) -> list[dict]:

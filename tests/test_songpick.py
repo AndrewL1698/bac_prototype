@@ -29,6 +29,9 @@ def events(history):
     return load_history([history[0]])
 
 
+NOW = datetime(2026, 11, 5, 12, 0, 0)
+
+
 def _dates(truth):
     return [datetime.fromisoformat(s) for s in truth["album_dates"]]
 
@@ -141,7 +144,7 @@ def test_track_key_merges_case_and_spacing():
 
 def test_shortlist_finds_song_of_that_summer(events, history):
     truth = history[1]
-    pick = shortlist(events, _dates(truth))
+    pick = shortlist(events, _dates(truth), now=NOW)
     names = [(c.artist, c.track) for c in pick.candidates]
     assert pick.period_source == "album" and pick.period_start < datetime(2026, 7, 3)
     assert names[0] == tuple(truth["top_pick"])
@@ -169,11 +172,11 @@ def test_shortlist_without_dates_uses_whole_history(events, history):
 
 
 def test_shortlist_widens_period_then_falls_back(events):
-    # album a week before the history starts: the padding widens, the period reaches the first plays
-    widened = shortlist(events, [datetime(2024, 12, 20)])
+    # album weeks before the history starts: the window widens until it reaches the first plays
+    widened = shortlist(events, [datetime(2024, 11, 25)], now=NOW)
     assert widened.period_source == "album_widened" and widened.notes
     # album years before the history: falls back to the whole history
-    old = shortlist(events, [datetime(2020, 6, 1)])
+    old = shortlist(events, [datetime(2020, 6, 1)], now=NOW)
     assert old.period_source == "history" and old.candidates
 
 

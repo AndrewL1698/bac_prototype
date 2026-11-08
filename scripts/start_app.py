@@ -3,6 +3,8 @@
     !git clone -q https://github.com/AndrewL1698/bac_prototype /content/bac_prototype 2>/dev/null
     %run /content/bac_prototype/scripts/start_app.py
 
+It first switches the code to --branch and then loads that branch's own scripts (a fresh runtime starts on
+main, and a kernel keeps scripts it already imported), so the branch's bootstrap always runs.
 Bootstraps (Drive, branch, requirements, Secrets incl. the optional APP_PASSWORD), stops a running app,
 starts the `app` job, and waits for the share link. This is a human-run convenience cell, so it waits up
 to --wait seconds (default 120); if the link is not ready by then it prints the command to fetch it.
@@ -11,8 +13,10 @@ to --wait seconds (default 120); if the link is not ready by then it prints the 
 from __future__ import annotations
 
 import argparse
+import importlib
 import json
 import os
+import runpy
 import subprocess
 import sys
 import time
@@ -20,6 +24,22 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "scripts"))
+REEXEC_ENV = "MONTAGE_START_REEXEC"
+
+
+def needs_reexec(changed: bool, env: dict) -> bool:
+    """Re-run the freshly checked-out start_app.py once when switching branches changed it."""
+    return changed and env.get(REEXEC_ENV) != "1"
+
+
+def sync_branch(branch: str):
+    """Check out `branch` with the bootstrap's git_sync, then reload the bootstrap module from disk.
+    Returns (start_app.py changed on disk, the fresh colab_bootstrap module)."""
+    me = Path(__file__).resolve()
+    before = me.read_bytes()
+    import colab_bootstrap
+    colab_bootstrap.git_sync(branch)
+    return me.read_bytes() != before, importlib.reload(colab_bootstrap)
 
 
 def _job_state(data_root: Path, user: str, name: str) -> str | None:
@@ -35,7 +55,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--user", default=None)
     ap.add_argument("--wait", type=float, default=120.0)
     args = ap.parse_args(argv)
-    import colab_bootstrap
+    changed, colab_bootstrap = sync_branch(args.branch)
+    if needs_reexec(changed, os.environ):
+        os.environ[REEXEC_ENV] = "1"
+        try:  # the new start_app.py parses the same sys.argv
+            runpy.run_path(str(Path(__file__).resolve()), run_name="__main__")
+        finally:
+            os.environ.pop(REEXEC_ENV, None)
+        return 0
     boot = ["--branch", args.branch] + (["--user", args.user] if args.user else [])
     if colab_bootstrap.main(boot):
         return 1
