@@ -8,20 +8,21 @@ related_targets: []
 # Surface: Montage editor workspace (montage/app/gradio_app.py)
 
 Mode: Operate. Audience: non-professionals turning a camera roll plus one song into a short music video; demo viewers secondary.
-Job: add media + song, write a brief, Generate, watch, pin/exclude, note, Recut, Export.
-Constraints: Gradio 6.30 restyle only (theme + CSS + layout); API endpoints and first 11 generate/recut outputs unchanged; cuts-only product.
+Job: add media + song, write a brief, Generate, watch, keep/remove shots, note, Recut, Export.
+Constraints: Gradio 6.30 restyle only (theme + CSS + layout); API endpoints and first 11 generate/recut outputs unchanged; cuts-only product. User pins: sleek, not pastel, not AI-looking; built for non-professionals.
 
 ## Direction contract
 
-THESIS: A friendly editor's workspace where the song is the clock: the program monitor leads, and every number reads in timecode, tempo and shot counts like a precise instrument. Refuses the stacked upload-form page and the near-black-plus-neon-glow AI look.
+THESIS: Your shots are prints laid out on a dark table: pick one up, keep it or put it aside, and the music decides the order. Refuses both category defaults: the dark graphite pro NLE and the pastel soft-card consumer app.
 
-OWN-WORLD: Warm graphite ground and panels one step lighter, 1px warm hairlines, soft apricot-orange for the primary action, selection and readout highlights, dark ink on orange. Workhorse sans for UI, tabular mono for timecode and readouts. Small radii, no glow, no gradients. Viewfinder corner marks on the monitor.
+OWN-WORLD: Neutral black table (no warm tint), panels one step up, 1px neutral hairlines, crisp white prints, one signal red reserved for action, selection and kept marks, white text on red. Archivo for everything, tabular figures for numbers. Small radii on panels, near-square print corners, no glow, no gradients, no handwriting, no tilt.
 
-STORY: The visitor sees where media goes, where the video will play and where to tell the director what they want; generates; reads the editor's note and the readout strip; clicks shots on the timeline to see why they were picked; pins or excludes, adds a note, recuts; exports.
+STORY: The visitor sees where media goes, where the video plays and where to tell the director what they want; generates; reads big tempo, shot and length figures; picks a print from the timeline, reads why it is there, keeps or removes it, adds a note and recuts; exports.
 
-FIRST VIEWPORT: 1440x900. Top bar: wordmark + tagline left, Export right. Three columns: media bin (left, ~22%), program monitor with readout strip beneath (center, ~50%), director panel with brief and Generate (right, ~28%), Generate visible without scrolling. Full-width timeline strip of shot thumbnails with mono timecodes, pin/exclude and the shot inspector, below. Lab drawer (curves, compare, rate, system details) collapsed at the bottom.
+FIRST VIEWPORT: 1440x900. Top bar: wordmark + tagline left, Export right. Three columns: Media panel, dark monitor screen with the readout strip of large figures beneath, Director panel with brief and Generate. Below, the Revise panel: a row of white-framed prints whose wide bottom margin carries timecode and a state cell, then Selected shot (as a print) / Note / Changes with Recut, all above the fold. Lab drawer collapsed at the bottom.
 
-FORM: Pinned by the user brief (NLE workspace, orange/black softened, precise-instrument futurism); no concept roll. seed: none (direction pinned by user)
-Signature move: the monitor readout strip, live tempo / shots / length / director set in tabular mono under a viewfinder-marked program monitor.
+FORM: Print Table (instant prints on a dark table), my candidate 7 of 7, assigned by the roll; chosen by the user over Liner Notes (pick), Boarding Pass, Feed Native and Warm Consumer. seed:377e480ce57a6abd
+Signature move: the timeline as a row of white instant prints; each print's bottom margin holds its timecode and a fixed state cell (hollow open, red filled kept, struck removed).
+Raises: scale-contrast hierarchy in the readout (large figures, small labels); state as a mark in a fixed cell; the dock sequences the next decision (Keep/Remove stay disabled until a print is picked, Recut carries the pending count).
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance

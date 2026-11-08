@@ -32,8 +32,8 @@ Gradio app served from a Colab A100 through a share link, used in a desktop brow
 ## Brand Commitments
 
 - Name: Montage. Tagline: "You direct, the music sets the timing, the system does the rest."
-- Palette commitment from the user: orange and black, softened.
-- Workspace commitment from the user: a professional video editor's layout (media bin, program monitor, inspector, timeline strip), made friendly for non-pros; "future" expressed as precise-instrument detail (timecode, BPM, beat readouts, fine lines), not glow.
+- Look commitment from the user (2026-11-08, replaces the earlier "orange and black, softened"): sleek, not pastel, not AI-looking, made for non-professionals. Chosen direction: Print Table (neutral black, white prints, one signal red).
+- Workspace commitment from the user: an editor's layout (media panel, program monitor, director panel, one Revise panel with the timeline), made friendly for non-pros; no glow.
 
 ## Evidence on Hand
 

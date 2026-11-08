@@ -6,6 +6,7 @@ On Colab start it through the job runner: scripts/run_job.py --name app -- pytho
 
 import argparse
 import functools
+import html
 import json
 import os
 import traceback
@@ -21,7 +22,8 @@ from montage.types import UserError
 log = get_logger("app")
 BRIEF_PLACEHOLDER = ("Warm, nostalgic summer recap. Open slow on the beach at sunrise, build through the road trip, "
                      "save the party for the drop, end on the sunset. Skip anything blurry.")
-INSPECTOR_IDLE = "*No shot selected.*"  # theme.py mutes em in the inspector
+SHOT_IDLE = "*No shot selected. Click a shot in the timeline above.*"  # theme.py mutes em in the Revise panel
+NO_CHANGES = "No changes yet. Keep or remove shots, or write a note."
 
 def status_line(res, edl, st) -> str:
     fb = set(res.fallbacks)
@@ -80,8 +82,10 @@ def build_app():
         ui = dict(ui or {})
         # labels outlive the cut: an excluded shot drops out of the next EDL but should still read as "0:12 a003"
         labels = {**ui.get("labels", {}), **{c: " ".join(cap.split()[:2]) for _, cap, c in board}}
-        ui.update(session_id=s.session_id, run_id=res.run_id, selected=None, why="", current_video=res.video_path,
-                  pins=list(s.pins), excluded=list(s.excluded), board=board, labels=labels)
+        # applied_* = what the last cut used; the Changes list is the difference to what the user has set since
+        ui.update(session_id=s.session_id, run_id=res.run_id, selected=None, current_video=res.video_path,
+                  pins=list(s.pins), excluded=list(s.excluded), applied_pins=list(s.pins),
+                  applied_excluded=list(s.excluded), board=board, labels=labels)
         timings = [[k, round(v, 2)] for k, v in res.timings.items()]
         notes = "\n".join(f"- {n}" for n in s.notes_history) or "(no notes yet)"
         warn = ("\n\n" + "\n".join(f"> {n}" for n in edl.notes)) if edl.notes else ""
@@ -89,26 +93,47 @@ def build_app():
                 json.dumps(json.loads(edl.plan.model_dump_json()), indent=1), marked(ui),
                 str(rd / "curves.png") if (rd / "curves.png").exists() else None,
                 str(rd / "costs.png") if (rd / "costs.png").exists() else None, timings, notes, ui,
-                *[gr.update(interactive=True)] * len(need_cut), *pin_buttons(ui),
-                pin_summary(ui) if ui["pins"] or ui["excluded"] else INSPECTOR_IDLE,
+                recut_update(ui), gr.update(interactive=True), gr.update(interactive=True), *pin_buttons(ui),
+                SHOT_IDLE,
                 readout_html(f"{st.music.tempo:.0f}", len(edl.shots), mmss(edl.shots[-1].end) if edl.shots else "-:--",
                              "Claude" if edl.plan.source == "llm" else "Built-in", idle=False),
-                gr.update(variant="secondary"))  # once a cut exists, Recut is the primary action
+                gr.update(variant="secondary"),  # once a cut exists, Recut is the primary action
+                None, changes_html(ui), "", restore_update(ui))  # shot frame, Changes, note box (sent), put-back
 
     def marked(ui):
-        # caption = "0:04 a002" (+ " · pinned" / " · out"): the timecode always fits; theme.py keys marks off the suffix
+        # caption = "0:04 a002" (+ " · kept" / " · out"): the timecode always fits; theme.py keys marks off the suffix
         pins, excl = ui.get("pins", []), ui.get("excluded", [])
-        return [(t, ui["labels"][c] + (" · pinned" if c in pins else " · out" if c in excl else ""))
+        return [(t, ui["labels"][c] + (" · kept" if c in pins else " · out" if c in excl else ""))
                 for t, _, c in ui.get("board", [])]
 
-    def pin_summary(ui):
-        names = lambda k: ", ".join(ui.get("labels", {}).get(c, c) for c in ui.get(k, [])) or "-"
-        return f"Pinned: {names('pins')} | Excluded: {names('excluded')}"
+    def changes(ui):
+        lab = lambda c: ui.get("labels", {}).get(c, c)  # noqa: E731
+        p, e = ui.get("pins", []), ui.get("excluded", [])
+        ap, ae = ui.get("applied_pins", []), ui.get("applied_excluded", [])
+        return ([f"Keep {lab(c)}" for c in p if c not in ap] + [f"Stop keeping {lab(c)}" for c in ap if c not in p]
+                + [f"Remove {lab(c)}" for c in e if c not in ae] + [f"Put back {lab(c)}" for c in ae if c not in e])
+
+    def changes_html(ui):
+        # a live region so screen readers hear each Keep/Remove; "Removed earlier" is the undo path after a recut
+        rows, lab = changes(ui), ui.get("labels", {})
+        gone = [lab.get(c, c) for c in ui.get("applied_excluded", []) if c in ui.get("excluded", [])]
+        body = (f"<ul>{''.join(f'<li>{html.escape(r)}</li>' for r in rows)}</ul>" if rows
+                else f'<p class="idle">{NO_CHANGES}</p>')
+        if gone:
+            body += f'<p class="idle">Removed earlier: {html.escape(", ".join(gone))}</p>'
+        return f'<div role="status" aria-live="polite">{body}</div>'
+
+    def restore_update(ui):
+        return gr.update(interactive=bool(ui.get("excluded")))
+
+    def recut_update(ui):
+        n = len(changes(ui))
+        return gr.update(value=f"Recut · {n} change{'s' * (n > 1)}" if n else "Recut", interactive=True)
 
     def pin_buttons(ui):
         c = ui.get("selected")
-        return (gr.update(value="Unpin shot" if c in ui.get("pins", []) else "Pin shot", interactive=bool(c)),
-                gr.update(value="Include shot" if c in ui.get("excluded", []) else "Exclude shot", interactive=bool(c)))
+        return (gr.update(value="Stop keeping" if c in ui.get("pins", []) else "Keep", interactive=bool(c)),
+                gr.update(value="Put back" if c in ui.get("excluded", []) else "Remove", interactive=bool(c)))
 
     def friendly(fn):
         @functools.wraps(fn)  # keeps the signature so Gradio still injects gr.Progress
@@ -173,22 +198,20 @@ def build_app():
     def on_select(ui, evt: gr.SelectData):
         ui = dict(ui or {})
         if not ui.get("run_id"):
-            return "", ui, *pin_buttons(ui)
-        cid = ui["board"][evt.index][2]
+            return SHOT_IDLE, ui, *pin_buttons(ui), None
+        thumb, _, cid = ui["board"][evt.index]
         shot = next(sh for sh in pipeline.load_edl(ui["run_id"]).shots if sh.candidate_id == cid)
-        sc = shot.scores
-        why = (f"**{shot.asset_id}** ({shot.kind}, {shot.framing}) at {shot.start:.1f}-{shot.end:.1f}s\n\n"
-               f"**Why:** {shot.reason}\n\nimportance {sc.importance:.2f} | mood cost {sc.mood:.2f} | "
-               f"director {sc.director:+.2f} | transition cost {sc.pairwise_in:.2f}")
-        ui.update(selected=cid, selected_idx=evt.index, why=why)
-        return f"{why}\n\n{pin_summary(ui)}", ui, *pin_buttons(ui)
+        ui.update(selected=cid, selected_idx=evt.index)
+        # engine scores stay in the Lab's score chart; the card says it in words
+        return (f"**{mmss(shot.start)}** {shot.asset_id} · {shot.kind}  \nWhy: {shot.reason}", ui, *pin_buttons(ui),
+                thumb)
 
     def toggle(kind):
         def fn(ui):
             ui = dict(ui or {})
             c = ui.get("selected")
             if not c:
-                return "Select a storyboard shot first.", ui, gr.update(), *pin_buttons(ui)
+                return gr.update(), ui, gr.update(), *pin_buttons(ui), gr.update(), gr.update()
             lst = list(ui.get(kind, []))
             other = "excluded" if kind == "pins" else "pins"
             if c in lst:
@@ -197,10 +220,17 @@ def build_app():
                 lst.append(c)
                 ui[other] = [x for x in ui.get(other, []) if x != c]
             ui[kind] = lst
-            why = f"{ui['why']}\n\n" if ui.get("why") else ""  # pinning keeps the shot's explanation on screen
-            return (why + pin_summary(ui) + " (applies on the next Recut)", ui,
-                    gr.update(value=marked(ui), selected_index=ui.get("selected_idx")), *pin_buttons(ui))
+            return revised(ui)
         return fn
+
+    def revised(ui):
+        return (changes_html(ui), ui, gr.update(value=marked(ui), selected_index=ui.get("selected_idx")),
+                *pin_buttons(ui), recut_update(ui), restore_update(ui))
+
+    def put_back_all(ui):
+        ui = dict(ui or {})
+        ui["excluded"] = []
+        return revised(ui)
 
     def pick_source(src):
         # clear the hidden input so it can never silently win in on_generate
@@ -264,27 +294,41 @@ def build_app():
             with gr.Column(scale=6, min_width=420, elem_id="monitor-col"):
                 video = gr.Video(label="Preview", show_label=False, interactive=False, elem_id="monitor")
                 readout = gr.HTML(readout_html(), elem_id="readout")
-                shot_md = gr.Markdown(INSPECTOR_IDLE, elem_id="inspector")  # first viewport, under the readout
                 export_file = gr.File(label="1080p export", visible=False)
             with gr.Column(scale=3, min_width=280, elem_classes="ws-panel"):
                 gr.Markdown("Director", elem_classes="panel-title")
                 brief = gr.Textbox(label="Director's brief", lines=4, placeholder=BRIEF_PLACEHOLDER, elem_id="brief")
                 gen_btn = gr.Button("Generate", variant="primary")
                 note_md = gr.Markdown("Your editor's note about each cut shows up here.", elem_id="editor-note")
-                note_box = gr.Textbox(label="Notes for the editor", lines=2,
-                                      placeholder="slower at the start, more of the beach")
-                recut_btn = gr.Button("Recut", variant="primary", interactive=False)
                 notes_md = gr.Markdown("(no notes yet)", elem_classes="muted")
                 with gr.Accordion("The plan", open=False):
                     plan_md = gr.Markdown("")
+        # the whole revise loop in one panel, in task order: pick a shot, keep/remove it, note, recut
         with gr.Column(elem_id="timeline", elem_classes="ws-panel"):
-            with gr.Row(equal_height=True, elem_classes="panel-head"):
-                gr.Markdown('Timeline<span class="hint">click a shot to see why it is there</span>',
-                            elem_classes="panel-title")
-                pin_btn = gr.Button("Pin shot", size="sm", interactive=False, scale=0, min_width=120)
-                excl_btn = gr.Button("Exclude shot", size="sm", interactive=False, scale=0, min_width=120)
-            gallery = gr.Gallery(label="Storyboard", show_label=False, rows=1, height=150, object_fit="cover",
-                                 allow_preview=False, buttons=[])
+            gr.Markdown('Revise<span class="hint">pick a shot, keep or remove it, add a note, then recut</span>',
+                        elem_classes="panel-title")
+            gallery = gr.Gallery(label="Storyboard", show_label=False, rows=1, height=114, object_fit="cover",
+                                 allow_preview=False, buttons=[], elem_id="strip")
+            with gr.Row(elem_id="revise"):
+                with gr.Column(scale=4, min_width=280):
+                    gr.Markdown("Selected shot", elem_classes="signpost")
+                    with gr.Row():
+                        shot_img = gr.Image(type="filepath", interactive=False, show_label=False, buttons=[],
+                                            elem_id="shot-card", scale=1, min_width=140)
+                        with gr.Column(scale=1, min_width=140):
+                            shot_md = gr.Markdown(SHOT_IDLE, elem_id="shot-why")
+                            with gr.Row():
+                                pin_btn = gr.Button("Keep", size="sm", interactive=False, min_width=90)
+                                excl_btn = gr.Button("Remove", size="sm", interactive=False, min_width=90)
+                with gr.Column(scale=4, min_width=240):
+                    note_box = gr.Textbox(label="Note for the editor", lines=4, elem_id="note-box",
+                                          placeholder="slower at the start, more of the beach…")
+                with gr.Column(scale=3, min_width=220):
+                    gr.Markdown("Changes", elem_classes="signpost")
+                    # Recut first: its label carries the count, so it stays above the fold however long the list gets
+                    recut_btn = gr.Button("Recut", variant="primary", interactive=False)
+                    changes_out = gr.HTML(changes_html({}), elem_id="changes")
+                    restore_btn = gr.Button("Put back removed shots", size="sm", interactive=False)
         with gr.Accordion("Lab", open=False, elem_id="lab"):
             status = gr.Markdown("")
             with gr.Tab("Under the hood"):
@@ -316,7 +360,8 @@ def build_app():
         # first 11 outputs are the /generate and /recut API contract (tests/test_app.py indexes them); append only
         need_cut = [recut_btn, exp_btn, naive_btn]
         outs = [video, status, note_md, plan_md, plan_json, gallery, curves, costs, timings, notes_md, ui,
-                *need_cut, pin_btn, excl_btn, shot_md, readout, gen_btn]
+                *need_cut, pin_btn, excl_btn, shot_md, readout, gen_btn, shot_img, changes_out, note_box, restore_btn]
+        revise_outs = [changes_out, ui, gallery, pin_btn, excl_btn, recut_btn, restore_btn]
         media_src.change(pick_source, [media_src], [files, album])
         song_src.change(pick_source, [song_src], [song_file, song_choice])
         gen_btn.click(on_generate, [files, album, song_file, song_choice, brief, seed, target_len, excerpt_start,
@@ -325,9 +370,10 @@ def build_app():
         recut_btn.click(on_recut, [note_box, ui], outs, api_name="recut", show_progress_on=video)
         exp_btn.click(on_export, [ui], [export_file], api_name="export", show_progress_on=video)
         naive_btn.click(on_naive, [ui], [naive_video, cur_video], api_name="naive", show_progress_on=naive_video)
-        gallery.select(on_select, [ui], [shot_md, ui, pin_btn, excl_btn])
-        pin_btn.click(toggle("pins"), [ui], [shot_md, ui, gallery, pin_btn, excl_btn])
-        excl_btn.click(toggle("excluded"), [ui], [shot_md, ui, gallery, pin_btn, excl_btn])
+        gallery.select(on_select, [ui], [shot_md, ui, pin_btn, excl_btn, shot_img])
+        pin_btn.click(toggle("pins"), [ui], revise_outs)
+        excl_btn.click(toggle("excluded"), [ui], revise_outs)
+        restore_btn.click(put_back_all, [ui], revise_outs)
         load_pair.click(on_load_pair, [rate_state], [left_video, right_video, vote_md, rate_state], api_name="load_pair")
         for btn, choice in ((left_btn, "left"), (tie_btn, "tie"), (right_btn, "right")):
             btn.click(vote_handler(choice), [rater, rate_state], [vote_md, rate_state], api_name=f"vote_{choice}")
