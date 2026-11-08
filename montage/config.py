@@ -251,6 +251,12 @@ class EncodeCfg(_B):
     crf: int
 
 
+class ShotCacheCfg(_B):
+    enabled: bool
+    location: Literal["scratch", "drive"]
+    max_gb: float
+
+
 class RenderCfg(_B):
     fps: int
     preset: str
@@ -266,6 +272,7 @@ class RenderCfg(_B):
     kb_max_pan: float
     fill_blur_oversize: float
     workers: int
+    shot_cache: ShotCacheCfg
     ffmpeg_bin: str
     ffprobe_bin: str
 

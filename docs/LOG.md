@@ -216,3 +216,35 @@ Format:
 - Next: publish the Hugging Face mirror (needs an HF account and a write token): `python scripts/mirror_beat_this.py --upload <user>/beat-this-mirror`, then put the printed pinned URL first in `music.beat_this.sources`. Open the PR when Keshav says so.
 - Blockers: HF write token for the mirror upload.
 - Heads-up: new config section `music.beat_this` (checkpoint, sha256, sources, retry_s; required in `MusicCfg`). Songs cached with librosa beats are re-analyzed once, on the first run where Beat This! loads. No schema changes.
+## 2026-11-05 03:35 ET | Keshav | phase 13 (render cache) | branch phase-13-render-cache
+- Done: per-shot render cache (Track 4, ROADMAP item 7), spec `docs/spec/13_render_cache.md`. New `montage/render/shot_cache.py`. `render_edl` now reuses encoded shots whose key (source hash, in-point, length, framing, Ken Burns, face, size, CRF, render config) is unchanged, encodes a shot used twice only once, and caches the AAC song excerpt (keyed on the hash of the song file actually rendered, not the EDL's song_hash). Files are written atomically and LRU-pruned. Turning `render.shot_cache.enabled` off gives the old behavior.
+- Tests: `tests/test_render_cache.py` passes locally (12 tests, media included). Full `pytest -q` locally: 96 passed, 11 failed; the same 11 fail on a clean copy of main on this laptop (librosa and scenedetect not installed locally, HDR fixture not flagged HDR). Colab A100 (commit 6f2d44f): full `pytest -q` 140 passed, 8 skipped (7 need ANTHROPIC_API_KEY, 1 timing test that runs only with MONTAGE_TIMING=1), 0 failed.
+- Results (fixtures, 40-shot cut, recut changing 3 shots): Colab A100 11.9 s cold, 1.5 s recut; laptop 8.0 s cold, 1.7 s recut. Full cache hit: shots 0.02 s.
+- Next: PR review by a teammate; a recut timing on a real album (needs Drive) for RESULTS.md.
+- Blockers: none.
+- Heads-up: new config key `render.shot_cache` (`ShotCacheCfg`, required in `RenderCfg`). No schema changes.
+- Heads-up: Colab ships an unrelated top-level `tests` package (in dist-packages) that shadows the repo's `tests/` folder. Import test helpers by module name (`from conftest import ...`, `from test_render import ...`), never `from tests.<module> import ...`.
+## 2026-11-05 ET | Andrew | phase 12 | branch phase-12-songpick (pushed, not merged)
+- Done: song pick v2 on the branch.
+  - **Connect Spotify** (`montage/songpick/spotify.py`): OAuth with PKCE, no client secret, scopes recently-played + top tracks only. The redirect goes through `docs/spotify/callback.html` (GitHub Pages), which only returns to *.gradio.live or localhost. Token and listening data stay in the browser session.
+  - **Multi-source suggestions** (`pick.suggest`): recent plays inside the album period + the top-tracks lists that overlap it (narrower lists weigh more) + the optional data export. Photos older than a year get the 1-year list and a note to upload the export.
+  - **Opt-in YouTube audio** (`montage/songpick/youtube.py`, yt-dlp): picks the official "<Artist> - Topic" upload, penalizes live/cover/remix, checks the length against Spotify. Audio is cached on the private Drive.
+  - **App panel** "Pick a song for me (Spotify)" fills the Song box; Generate is unchanged.
+  - Spec 12 and README updated; ROADMAP F1, CLAUDE.md §11 and PLAN decisions updated on main.
+- Tests: `tests/test_songpick.py` + `tests/test_songpick_connect.py`: 53 pass locally, plus 1 live YouTube test (`@pytest.mark.network`) that runs on Colab. The app builds with gradio 6.30.0. It has not been run end to end yet: that needs the Spotify app and Colab.
+- Next (Andrew, human steps):
+  1. Create the Spotify app (Premium account), add the redirect `https://andrewl1698.github.io/bac_prototype/spotify/callback.html`, and allowlist up to 5 users.
+  2. Enable GitHub Pages (branch `phase-12-songpick` /docs until merge).
+  3. Add the Colab Secret `SPOTIFY_CLIENT_ID`.
+  4. Start the app from the branch (`%run scripts/start_app.py --branch phase-12-songpick`) and try connect -> suggest -> use -> Generate.
+  5. Full `pytest -q` on Colab before merging.
+- Blockers: Track 1 ownership not agreed yet. YouTube may block downloads from Colab IPs ("confirm you're not a bot"); upload is the fallback.
+- Heads-up (branch only): schemas `ListeningEvent` (+source, duration_ms), new `TopTrack`, `TrackCandidate` (+duration_ms, sources), `SongPick` (+sources). New config `songpick.w_sources`, `songpick.spotify.*`, `songpick.youtube.*`. New requirements `yt-dlp[default]>=2025.10.22`, `requests>=2.31`. New pytest marker `network`. The bootstrap passes the optional Colab Secret `SPOTIFY_CLIENT_ID`.
+
+## 2026-11-07 ET | Andrew | planning (2-week re-scope) | branch main
+- Done: re-scoped the extension to 4 people x 2 weeks and reframed the product as an **automatic montage maker** (one click; brief and notes optional; no timeline editor; a simple "My montages" gallery). ROADMAP.md rewritten; PLAN.md goal, tracks, phases, cut order and decisions updated; CLAUDE.md §1 and README intro updated.
+  - Song pick has three modes: Connect Spotify (songs played in the past year, released near the photos' median date), best vibe fit, full export upload.
+  - ML priority: 1. song-vibe matching, 2. CUFED photo importance, 3. contrastive song model (go/no-go on day 3), 4. story/event ordering. Cut order is the reverse.
+- Next: agree track owners; update `docs/spec/12_songpick.md` on `phase-12-songpick` for the release-date and best-vibe modes; Track 3 checks contrastive dataset access by day 3.
+- Blockers: track owners not agreed.
+- Heads-up: scope change. Phases 14 (temporal emotion), 16 (people-aware), 19 (learned preferences), 20 (9:16/variable length), 21 (FastAPI + timeline editor) are dropped. New phases 22 (contrastive model) and 23 (gallery). No code, schema or config changes.

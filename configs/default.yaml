@@ -178,6 +178,9 @@ render:
   kb_max_pan: 0.03
   fill_blur_oversize: 1.15
   workers: 8
+  # per-shot render cache: unchanged shots are reused across renders and recuts.
+  # location "scratch" (fast local SSD, per runtime) or "drive" (shared cache/shots/, survives runtimes)
+  shot_cache: {enabled: true, location: "scratch", max_gb: 5.0}
   ffmpeg_bin: "ffmpeg"
   ffprobe_bin: "ffprobe"
 
