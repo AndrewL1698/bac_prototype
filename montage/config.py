@@ -222,6 +222,7 @@ class PlannerCfg(_B):
     w_jump: float
     w_contrast: float
     w_chrono: float
+    w_timeline: float
     chrono_tol_s: float
     w_reuse: float
     max_per_cluster: int
