@@ -233,3 +233,11 @@ Format:
   5. Full `pytest -q` on Colab before merging.
 - Blockers: Track 1 ownership not agreed yet. YouTube may block downloads from Colab IPs ("confirm you're not a bot"); upload is the fallback.
 - Heads-up (branch only): schemas `ListeningEvent` (+source, duration_ms), new `TopTrack`, `TrackCandidate` (+duration_ms, sources), `SongPick` (+sources). New config `songpick.w_sources`, `songpick.spotify.*`, `songpick.youtube.*`. New requirements `yt-dlp[default]>=2025.10.22`, `requests>=2.31`. New pytest marker `network`. The bootstrap passes the optional Colab Secret `SPOTIFY_CLIENT_ID`.
+
+## 2026-11-07 ET | Andrew | planning (2-week re-scope) | branch main
+- Done: re-scoped the extension to 4 people x 2 weeks and reframed the product as an **automatic montage maker** (one click; brief and notes optional; no timeline editor; a simple "My montages" gallery). ROADMAP.md rewritten; PLAN.md goal, tracks, phases, cut order and decisions updated; CLAUDE.md §1 and README intro updated.
+  - Song pick has three modes: Connect Spotify (songs played in the past year, released near the photos' median date), best vibe fit, full export upload.
+  - ML priority: 1. song-vibe matching, 2. CUFED photo importance, 3. contrastive song model (go/no-go on day 3), 4. story/event ordering. Cut order is the reverse.
+- Next: agree track owners; update `docs/spec/12_songpick.md` on `phase-12-songpick` for the release-date and best-vibe modes; Track 3 checks contrastive dataset access by day 3.
+- Blockers: track owners not agreed.
+- Heads-up: scope change. Phases 14 (temporal emotion), 16 (people-aware), 19 (learned preferences), 20 (9:16/variable length), 21 (FastAPI + timeline editor) are dropped. New phases 22 (contrastive model) and 23 (gallery). No code, schema or config changes.

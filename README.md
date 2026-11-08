@@ -1,6 +1,6 @@
 # bac_prototype
 
-Prototype for the BAC project: an **AI music video editor**. Upload 30-80 photos and videos plus a song, type a short "director's brief," and get back a 45-60 second, 16:9, 1080p montage whose cuts land on the beat and whose footage follows the song's energy. You direct with plain language ("open slow on the beach, save the party for the drop"), give notes, and recut in seconds.
+Prototype for the BAC project: an **automatic montage maker**. Drop in 30-80 photos and videos and get back a 45-60 second, 16:9, 1080p montage that tells their story: a song that fits the photos' vibe (picked from your Spotify listening, or uploaded), cuts on the beat, and the right photos at the right musical moments. If you want to steer, an optional plain-language brief ("open slow on the beach, save the party for the drop") and notes recut it in seconds. The current 2-week plan is in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 - **Status:** see [`docs/PLAN.md`](docs/PLAN.md) (phases, who is on what) and [`docs/LOG.md`](docs/LOG.md) (progress history).
 - **Latest numbers:** [`docs/RESULTS.md`](docs/RESULTS.md).

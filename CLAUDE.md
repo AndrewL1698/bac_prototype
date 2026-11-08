@@ -1,4 +1,4 @@
-# CLAUDE.md: bac_prototype (AI music video editor, package `montage`)
+# CLAUDE.md: bac_prototype (automatic montage maker, package `montage`)
 
 Read this file at the start of every session. It is the source of truth for architecture, conventions, collaboration, and how to operate the Colab GPU. Phase details live in `docs/spec/`. The plan and who owns what live in `docs/PLAN.md`. Progress history lives in `docs/LOG.md`.
 
@@ -6,13 +6,13 @@ Repo: https://github.com/AndrewL1698/bac_prototype (public). Four people work in
 
 ## 1. What we are building
 
-A proof-of-concept web app that turns 30-80 user photos/videos plus one uploaded song into a 45-60 second, 16:9, 1080p montage. Cuts land on musical beats, footage mood follows the song's energy, and the user steers everything with a natural-language "director's brief" plus revision notes.
+An **automatic montage maker**, not a video editor. A proof-of-concept web app that turns 30-80 user photos/videos into a 45-60 second, 16:9, 1080p montage that tells their story, in one click. The song is picked to fit the photos' vibe (from the user's Spotify listening, see `docs/ROADMAP.md` F1) or uploaded. Cuts land on musical beats, the right photos land on the right musical moments, and the footage follows the story's order. A natural-language "director's brief" plus revision notes are **optional** for users who want to steer; there is no timeline editor. Finished montages are saved in a simple "My montages" gallery.
 
-Roles: the **user is the director** (what to show, how it should feel), **the music owns timing** (every cut is on a beat), **the system does everything else** (selection, ordering, trimming, framing, rendering).
+Roles: **the music owns timing** (every cut is on a beat), **the system does everything else** (song pick, selection, ordering, trimming, framing, rendering), and the user can optionally direct (what to show, how it should feel).
 
 v1 is **cuts only**: no transitions, fades, or effects between shots. Ken Burns motion inside a photo shot is allowed (it is not a transition). Clip audio is muted; only the song plays.
 
-The MVP (phases 0-11) was a live workshop demo; the project is now an 8-week, 4-person extension (`docs/ROADMAP.md`, tracks in `docs/PLAN.md`). Optimize for: works every time, explains itself, fast recuts. Every learned component has a non-learned fallback so the app works end to end before any training finishes.
+The MVP (phases 0-11) was a live workshop demo; the project is now a 2-week, 4-person extension (`docs/ROADMAP.md`, tracks in `docs/PLAN.md`). Optimize for: works every time, explains itself, fast recuts. Every learned component has a non-learned fallback so the app works end to end before any training finishes.
 
 ## 2. Golden rules
 
