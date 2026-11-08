@@ -52,7 +52,8 @@ Deterministic, offline. Always available.
 
 **Pins from the UI** (storyboard): pinned candidate ids act like must_include at candidate level; excluded candidate ids are removed.
 
-**Chronology**: `plan.chronological` enables the chronology pairwise term. It is true unless the brief asks for another order (rules above; the LLM prompt says the same), so a one-click montage with no brief follows capture time.
+**Chronology**: `plan.chronological` enables the chronology terms (story order: the timeline unary term and the pairwise term, spec 06). It is true unless the brief asks for another order (rules above; the LLM prompt says the same), so a one-click montage with no brief follows capture time.
+The LLM adds segments only when the brief names a part of the song (intro, build-up, drop/peak, ending, a section). With no or a generic brief it used to invent per-section content, which pulled shots out of story order.
 
 **Length/excerpt**: `target_length_s` (0 -> config default) and `excerpt_hint`/`excerpt_start_s` pass to excerpt selection (spec 02).
 
