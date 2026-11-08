@@ -14,12 +14,14 @@ import gradio as gr
 
 from montage import paths
 from montage.app.demo_mode import demo_albums, demo_songs  # noqa: F401  (also re-exported for callers)
+from montage.app.theme import CSS, THEME
 from montage.log import get_logger
 from montage.types import UserError
 
 log = get_logger("app")
 BRIEF_PLACEHOLDER = ("Warm, nostalgic summer recap. Open slow on the beach at sunrise, build through the road trip, "
                      "save the party for the drop, end on the sunset. Skip anything blurry.")
+INSPECTOR_IDLE = "*No shot selected.*"  # theme.py mutes em in the inspector
 
 def status_line(res, edl, st) -> str:
     fb = set(res.fallbacks)
@@ -29,6 +31,13 @@ def status_line(res, edl, st) -> str:
     beats = "librosa" if "beats:librosa" in fb else "Beat This!"
     return (f"Director: {director} | Emotion: {emotion} | Importance: {imp} | Beats: {beats} | "
             f"{len(edl.shots)} shots | {st.music.tempo:.0f} BPM")
+
+
+def readout_html(tempo="---", shots="--", length="-:--", director="--", idle=True) -> str:
+    cells = [("Tempo", f"{tempo} BPM", "lit"), ("Shots", shots, ""), ("Length", length, ""),
+             ("Director", director, "word")]
+    return (f'<div class="readout{" idle" if idle else ""}">'
+            + "".join(f'<span><em>{k}</em><b class="{c}">{v}</b></span>' for k, v, c in cells) + "</div>")
 
 
 def plan_markdown(plan, profile=None) -> str:
@@ -58,6 +67,7 @@ def plan_markdown(plan, profile=None) -> str:
 def build_app():
     from montage import pipeline
     from montage.app.storyboard import gallery_items
+    from montage.music.profile import mmss
 
     def outputs_for(res, ui):
         edl = pipeline.load_edl(res.run_id)
@@ -70,7 +80,7 @@ def build_app():
         ui = dict(ui or {})
         # labels outlive the cut: an excluded shot drops out of the next EDL but should still read as "0:12 a003"
         labels = {**ui.get("labels", {}), **{c: " ".join(cap.split()[:2]) for _, cap, c in board}}
-        ui.update(session_id=s.session_id, run_id=res.run_id, selected=None, current_video=res.video_path,
+        ui.update(session_id=s.session_id, run_id=res.run_id, selected=None, why="", current_video=res.video_path,
                   pins=list(s.pins), excluded=list(s.excluded), board=board, labels=labels)
         timings = [[k, round(v, 2)] for k, v in res.timings.items()]
         notes = "\n".join(f"- {n}" for n in s.notes_history) or "(no notes yet)"
@@ -80,11 +90,16 @@ def build_app():
                 str(rd / "curves.png") if (rd / "curves.png").exists() else None,
                 str(rd / "costs.png") if (rd / "costs.png").exists() else None, timings, notes, ui,
                 *[gr.update(interactive=True)] * len(need_cut), *pin_buttons(ui),
-                pin_summary(ui) if ui["pins"] or ui["excluded"] else "")
+                pin_summary(ui) if ui["pins"] or ui["excluded"] else INSPECTOR_IDLE,
+                readout_html(f"{st.music.tempo:.0f}", len(edl.shots), mmss(edl.shots[-1].end) if edl.shots else "-:--",
+                             "Claude" if edl.plan.source == "llm" else "Built-in", idle=False),
+                gr.update(variant="secondary"))  # once a cut exists, Recut is the primary action
 
     def marked(ui):
+        # caption = "0:04 a002" (+ " · pinned" / " · out"): the timecode always fits; theme.py keys marks off the suffix
         pins, excl = ui.get("pins", []), ui.get("excluded", [])
-        return [(t, ("📌 " if c in pins else "✕ " if c in excl else "") + cap) for t, cap, c in ui.get("board", [])]
+        return [(t, ui["labels"][c] + (" · pinned" if c in pins else " · out" if c in excl else ""))
+                for t, _, c in ui.get("board", [])]
 
     def pin_summary(ui):
         names = lambda k: ", ".join(ui.get("labels", {}).get(c, c) for c in ui.get(k, [])) or "-"
@@ -161,12 +176,12 @@ def build_app():
             return "", ui, *pin_buttons(ui)
         cid = ui["board"][evt.index][2]
         shot = next(sh for sh in pipeline.load_edl(ui["run_id"]).shots if sh.candidate_id == cid)
-        ui.update(selected=cid, selected_idx=evt.index)
         sc = shot.scores
-        txt = (f"**{shot.asset_id}** ({shot.kind}, {shot.framing}) at {shot.start:.1f}-{shot.end:.1f}s\n\n"
+        why = (f"**{shot.asset_id}** ({shot.kind}, {shot.framing}) at {shot.start:.1f}-{shot.end:.1f}s\n\n"
                f"**Why:** {shot.reason}\n\nimportance {sc.importance:.2f} | mood cost {sc.mood:.2f} | "
-               f"director {sc.director:+.2f} | transition cost {sc.pairwise_in:.2f}\n\n{pin_summary(ui)}")
-        return txt, ui, *pin_buttons(ui)
+               f"director {sc.director:+.2f} | transition cost {sc.pairwise_in:.2f}")
+        ui.update(selected=cid, selected_idx=evt.index, why=why)
+        return f"{why}\n\n{pin_summary(ui)}", ui, *pin_buttons(ui)
 
     def toggle(kind):
         def fn(ui):
@@ -182,7 +197,8 @@ def build_app():
                 lst.append(c)
                 ui[other] = [x for x in ui.get(other, []) if x != c]
             ui[kind] = lst
-            return (pin_summary(ui) + " (applies on the next Recut)", ui,
+            why = f"{ui['why']}\n\n" if ui.get("why") else ""  # pinning keeps the shot's explanation on screen
+            return (why + pin_summary(ui) + " (applies on the next Recut)", ui,
                     gr.update(value=marked(ui), selected_index=ui.get("selected_idx")), *pin_buttons(ui))
         return fn
 
@@ -220,12 +236,16 @@ def build_app():
             return f"Thanks! Votes so far: {summary_line(analyze())}", rs
         return fn
 
-    with gr.Blocks(title="Montage: AI music video editor") as demo:
-        gr.Markdown("# Montage\nYou direct, the music sets the timing, the system does the rest.")
+    with gr.Blocks(title="Montage: AI music video editor", fill_width=True) as demo:
         ui = gr.State({})
         albums, songs = demo_albums(), demo_songs()
-        with gr.Row():
-            with gr.Column(scale=4):
+        with gr.Row(elem_id="topbar", equal_height=True):
+            gr.Markdown("# Montage\nYou direct, the music sets the timing, the system does the rest.",
+                        elem_id="wordmark")
+            exp_btn = gr.Button("Export 1080p", interactive=False, scale=0, min_width=150)
+        with gr.Row(elem_id="workspace"):
+            with gr.Column(scale=3, min_width=260, elem_classes="ws-panel"):
+                gr.Markdown("Media", elem_classes="panel-title")
                 # the source radios only show when demo media exists; they keep exactly one input live
                 media_src = gr.Radio(["Upload media", "Demo album"], value="Upload media", show_label=False,
                                      container=False, visible=bool(albums))
@@ -233,71 +253,78 @@ def build_app():
                 album = gr.Dropdown(choices=[""] + albums, value="", label="Demo album", visible=False)
                 song_src = gr.Radio(["Upload song", "Demo song"], value="Upload song", show_label=False,
                                     container=False, visible=bool(songs))
-                song_file = gr.Audio(label="Song", type="filepath")
+                song_file = gr.Audio(label="Song", type="filepath", elem_id="song")
                 song_choice = gr.Dropdown(choices=[""] + songs, value="", label="Demo song", visible=False)
-                brief = gr.Textbox(label="Director's brief", lines=3, placeholder=BRIEF_PLACEHOLDER)
-                gen_btn = gr.Button("Generate", variant="primary")
                 with gr.Accordion("Advanced", open=False):
                     seed = gr.Number(label="Seed", value=0, precision=0)
                     target_len = gr.Number(label="Target length (0 = auto, 45-60)", value=0, precision=0)
                     excerpt_start = gr.Textbox(label="Excerpt start override (seconds, blank = auto)", value="")
                     thumbs = gr.Checkbox(label="Let the director see thumbnails", value=False)
                     system = gr.Dropdown(choices=["full", "naive", "beat_random", "greedy"], value="full", label="System")
-            with gr.Column(scale=6):
-                video = gr.Video(label="Preview", interactive=False)
-                note_md = gr.Markdown("")
-                status = gr.Markdown("")
-                plan_md = gr.Markdown("")
+            with gr.Column(scale=6, min_width=420, elem_id="monitor-col"):
+                video = gr.Video(label="Preview", show_label=False, interactive=False, elem_id="monitor")
+                readout = gr.HTML(readout_html(), elem_id="readout")
+                shot_md = gr.Markdown(INSPECTOR_IDLE, elem_id="inspector")  # first viewport, under the readout
+                export_file = gr.File(label="1080p export", visible=False)
+            with gr.Column(scale=3, min_width=280, elem_classes="ws-panel"):
+                gr.Markdown("Director", elem_classes="panel-title")
+                brief = gr.Textbox(label="Director's brief", lines=4, placeholder=BRIEF_PLACEHOLDER, elem_id="brief")
+                gen_btn = gr.Button("Generate", variant="primary")
+                note_md = gr.Markdown("Your editor's note about each cut shows up here.", elem_id="editor-note")
+                note_box = gr.Textbox(label="Notes for the editor", lines=2,
+                                      placeholder="slower at the start, more of the beach")
+                recut_btn = gr.Button("Recut", variant="primary", interactive=False)
+                notes_md = gr.Markdown("(no notes yet)", elem_classes="muted")
+                with gr.Accordion("The plan", open=False):
+                    plan_md = gr.Markdown("")
+        with gr.Column(elem_id="timeline", elem_classes="ws-panel"):
+            with gr.Row(equal_height=True, elem_classes="panel-head"):
+                gr.Markdown('Timeline<span class="hint">click a shot to see why it is there</span>',
+                            elem_classes="panel-title")
+                pin_btn = gr.Button("Pin shot", size="sm", interactive=False, scale=0, min_width=120)
+                excl_btn = gr.Button("Exclude shot", size="sm", interactive=False, scale=0, min_width=120)
+            gallery = gr.Gallery(label="Storyboard", show_label=False, rows=1, height=150, object_fit="cover",
+                                 allow_preview=False, buttons=[])
+        with gr.Accordion("Lab", open=False, elem_id="lab"):
+            status = gr.Markdown("")
+            with gr.Tab("Under the hood"):
+                curves = gr.Image(label="Music curves and cuts", type="filepath")
+                costs = gr.Image(label="Per-shot score components", type="filepath")
+                timings = gr.Dataframe(headers=["stage", "seconds"], label="Stage timings")
                 with gr.Accordion("Director's plan (JSON)", open=False):
                     plan_json = gr.Code(language="json")
-                exp_btn = gr.Button("Export 1080p", interactive=False)
-                export_file = gr.File(label="1080p export", visible=False)
-        gr.Markdown("### Revise\nClick a shot to see why it was picked, pin or exclude it, add a note, then Recut.")
-        gallery = gr.Gallery(label="Storyboard", columns=8, height=260, allow_preview=False)
-        shot_md = gr.Markdown("")
-        with gr.Row():
-            pin_btn = gr.Button("Pin shot", size="sm", interactive=False)
-            excl_btn = gr.Button("Exclude shot", size="sm", interactive=False)
-        with gr.Row(equal_height=True):
-            note_box = gr.Textbox(label="Notes for the editor", placeholder="slower at the start, more of the beach",
-                                  scale=4)
-            recut_btn = gr.Button("Recut", variant="primary", scale=1, interactive=False)
-        notes_md = gr.Markdown("(no notes yet)")
-        with gr.Tab("Under the hood"):
-            curves = gr.Image(label="Music curves and cuts", type="filepath")
-            costs = gr.Image(label="Per-shot score components", type="filepath")
-            timings = gr.Dataframe(headers=["stage", "seconds"], label="Stage timings")
-        with gr.Tab("Compare"):
-            naive_btn = gr.Button("Render naive cut", interactive=False)
-            with gr.Row():
-                naive_video = gr.Video(label="Naive cut (random shots, fixed 2 s cuts)")
-                cur_video = gr.Video(label="Current cut")
-        with gr.Tab("Rate"):
-            gr.Markdown("Which cut is better? Two versions of the same album and song; the order is random.")
-            rate_state = gr.State({})
-            with gr.Row():
-                rater = gr.Textbox(label="Your name (optional)", scale=3)
-                load_pair = gr.Button("Load a pair", scale=1)
-            with gr.Row():
-                left_video = gr.Video(label="Left")
-                right_video = gr.Video(label="Right")
-            with gr.Row():
-                left_btn = gr.Button("Left better")
-                tie_btn = gr.Button("Tie")
-                right_btn = gr.Button("Right better")
-            vote_md = gr.Markdown("")
+            with gr.Tab("Compare"):
+                naive_btn = gr.Button("Render naive cut", interactive=False)
+                with gr.Row():
+                    naive_video = gr.Video(label="Naive cut (random shots, fixed 2 s cuts)")
+                    cur_video = gr.Video(label="Current cut")
+            with gr.Tab("Rate"):
+                gr.Markdown("Which cut is better? Two versions of the same album and song; the order is random.")
+                rate_state = gr.State({})
+                with gr.Row():
+                    rater = gr.Textbox(label="Your name (optional)", scale=3)
+                    load_pair = gr.Button("Load a pair", scale=1)
+                with gr.Row():
+                    left_video = gr.Video(label="Left")
+                    right_video = gr.Video(label="Right")
+                with gr.Row():
+                    left_btn = gr.Button("Left better")
+                    tie_btn = gr.Button("Tie")
+                    right_btn = gr.Button("Right better")
+                vote_md = gr.Markdown("")
 
         # first 11 outputs are the /generate and /recut API contract (tests/test_app.py indexes them); append only
         need_cut = [recut_btn, exp_btn, naive_btn]
         outs = [video, status, note_md, plan_md, plan_json, gallery, curves, costs, timings, notes_md, ui,
-                *need_cut, pin_btn, excl_btn, shot_md]
+                *need_cut, pin_btn, excl_btn, shot_md, readout, gen_btn]
         media_src.change(pick_source, [media_src], [files, album])
         song_src.change(pick_source, [song_src], [song_file, song_choice])
         gen_btn.click(on_generate, [files, album, song_file, song_choice, brief, seed, target_len, excerpt_start,
-                                    thumbs, system, ui], outs, api_name="generate")
-        recut_btn.click(on_recut, [note_box, ui], outs, api_name="recut")
-        exp_btn.click(on_export, [ui], [export_file], api_name="export")
-        naive_btn.click(on_naive, [ui], [naive_video, cur_video], api_name="naive")
+                                    thumbs, system, ui], outs, api_name="generate", show_progress_on=video)
+        # progress shows on the monitor only, not on every output panel (export's own output starts hidden)
+        recut_btn.click(on_recut, [note_box, ui], outs, api_name="recut", show_progress_on=video)
+        exp_btn.click(on_export, [ui], [export_file], api_name="export", show_progress_on=video)
+        naive_btn.click(on_naive, [ui], [naive_video, cur_video], api_name="naive", show_progress_on=naive_video)
         gallery.select(on_select, [ui], [shot_md, ui, pin_btn, excl_btn])
         pin_btn.click(toggle("pins"), [ui], [shot_md, ui, gallery, pin_btn, excl_btn])
         excl_btn.click(toggle("excluded"), [ui], [shot_md, ui, gallery, pin_btn, excl_btn])
@@ -326,6 +353,7 @@ def main(argv: list[str] | None = None) -> int:
     pw = os.environ.get("MONTAGE_APP_PASSWORD") or None
     auth = (os.environ.get("MONTAGE_APP_USER") or "montage", pw) if pw else None
     demo.launch(share=args.share, server_name="0.0.0.0", server_port=args.port, prevent_thread_lock=True,
+                theme=THEME, css=CSS,
                 allowed_paths=allowed, blocked_paths=blocked, show_error=True, auth=auth,
                 auth_message="Montage demo: sign in with the username and password you set." if auth else None)
     url = getattr(demo, "share_url", None) or getattr(demo, "local_url", None) or f"http://127.0.0.1:{args.port}"

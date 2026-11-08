@@ -1,0 +1,130 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-07T00:00:00Z",
+  "title": "Design System: Montage",
+  "extensions": {
+    "colorMeta": {
+      "apricot": { "role": "primary", "displayName": "Soft Apricot", "canonical": "#f2995c", "tonalRamp": ["#3a1f0c", "#5c3216", "#844a22", "#b06a37", "#d9834a", "#f2995c", "#f7c09a", "#fbe6d6"] },
+      "apricot-hover": { "role": "primary", "displayName": "Apricot Lift", "canonical": "#f7ab76" },
+      "apricot-soft": { "role": "primary", "displayName": "Apricot Wash", "canonical": "rgba(242, 153, 92, 0.14)" },
+      "apricot-ink": { "role": "primary", "displayName": "Apricot Ink", "canonical": "#1c130b" },
+      "graphite-ground": { "role": "neutral", "displayName": "Graphite Ground", "canonical": "#191714", "tonalRamp": ["#0c0b0a", "#191714", "#221f1b", "#2b2722", "#36312b", "#48413a", "#a69d91", "#efe9e1"] },
+      "graphite-panel": { "role": "neutral", "displayName": "Graphite Panel", "canonical": "#221f1b" },
+      "monitor-well": { "role": "neutral", "displayName": "Monitor Well", "canonical": "#0c0b0a" },
+      "graphite-input": { "role": "neutral", "displayName": "Graphite Input", "canonical": "#2b2722" },
+      "hairline": { "role": "neutral", "displayName": "Hairline", "canonical": "#36312b" },
+      "hairline-strong": { "role": "neutral", "displayName": "Strong Hairline", "canonical": "#48413a" },
+      "bone-text": { "role": "neutral", "displayName": "Bone", "canonical": "#efe9e1" },
+      "muted-text": { "role": "neutral", "displayName": "Muted Stone", "canonical": "#a69d91" },
+      "placeholder-text": { "role": "neutral", "displayName": "Placeholder Stone", "canonical": "#9e9589" }
+    },
+    "typographyMeta": {
+      "headline": { "displayName": "Wordmark", "purpose": "The Montage wordmark only." },
+      "title": { "displayName": "Panel Title", "purpose": "Media, Director, Timeline panel titles." },
+      "body": { "displayName": "Body", "purpose": "Tagline, editor's note, shot inspector (13-14px)." },
+      "label": { "displayName": "Readout Key", "purpose": "Muted keys in the readout strip." },
+      "readout": { "displayName": "Readout Value", "purpose": "Tabular mono values under the monitor; word values switch to Geist." },
+      "timecode": { "displayName": "Timecode", "purpose": "Timeline thumbnail captions." }
+    },
+    "shadows": [
+      { "name": "selection-ring", "value": "0 0 0 2px #f2995c", "purpose": "Selected timeline shot outline; the only box-shadow in the system." }
+    ],
+    "motion": [
+      { "name": "settle", "value": "0.45s cubic-bezier(.16, 1, .3, 1); from opacity .25, translateY(3px)", "purpose": "Readout values settle in when a cut lands. The one authored motion." },
+      { "name": "chevron", "value": "rotate 0.2s cubic-bezier(.2, .8, .2, 1)", "purpose": "Accordion disclosure chevron, -45deg to 45deg." }
+    ],
+    "breakpoints": [
+      { "name": "narrow", "value": "480px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Generate before a cut, Recut after; one live primary at a time.",
+      "html": "<button class=\"ds-btn-primary\">Generate</button>",
+      "css": ".ds-btn-primary { background: #f2995c; color: #1c130b; border: 1px solid #f2995c; border-radius: 4px; padding: 10px 20px; font: 600 14px Geist, system-ui, sans-serif; cursor: pointer; } .ds-btn-primary:hover { background: #f7ab76; } .ds-btn-primary:focus-visible { outline: 2px solid #f2995c; outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Export, Pin, Exclude, and Generate once a cut exists.",
+      "html": "<button class=\"ds-btn-secondary\">Export 1080p</button>",
+      "css": ".ds-btn-secondary { background: #2b2722; color: #efe9e1; border: 1px solid #48413a; border-radius: 4px; padding: 10px 20px; font: 600 14px Geist, system-ui, sans-serif; cursor: pointer; } .ds-btn-secondary:hover { background: #36312b; } .ds-btn-secondary:focus-visible { outline: 2px solid #f2995c; outline-offset: 2px; } .ds-btn-secondary:disabled { color: #9e9589; border-color: #36312b; cursor: not-allowed; }"
+    },
+    {
+      "name": "Brief Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Director's brief and revision notes.",
+      "html": "<textarea class=\"ds-input\" rows=\"3\" placeholder=\"Warm, nostalgic summer recap...\"></textarea>",
+      "css": ".ds-input { width: 100%; background: #2b2722; color: #efe9e1; border: 1px solid #48413a; border-radius: 4px; padding: 8px 10px; font: 400 14px/1.5 Geist, system-ui, sans-serif; caret-color: #f2995c; } .ds-input::placeholder { color: #9e9589; } .ds-input:focus { border-color: #f2995c; outline: none; } .ds-input:focus-visible { outline: 2px solid #f2995c; outline-offset: 2px; }"
+    },
+    {
+      "name": "Source Toggle",
+      "kind": "chip",
+      "refersTo": "button-secondary",
+      "description": "Radio toggles choosing upload vs demo media and song.",
+      "html": "<div class=\"ds-chips\"><label class=\"ds-chip\">Upload media</label><label class=\"ds-chip ds-chip-on\">Demo album</label></div>",
+      "css": ".ds-chips { display: flex; gap: 8px; } .ds-chip { background: #2b2722; color: #efe9e1; border: 1px solid #48413a; border-radius: 4px; padding: 6px 12px; font: 400 13px Geist, system-ui, sans-serif; cursor: pointer; } .ds-chip-on { background: rgba(242, 153, 92, 0.14); border-color: #f2995c; }"
+    },
+    {
+      "name": "Workspace Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Media bin, Director panel and Timeline frame.",
+      "html": "<section class=\"ds-panel\"><p class=\"ds-panel-title\">Timeline<span>click a shot to see why it is there</span></p><p class=\"ds-panel-body\">Panel content sits flat inside one frame.</p></section>",
+      "css": ".ds-panel { background: #221f1b; border: 1px solid #36312b; border-radius: 6px; padding: 10px; color: #efe9e1; font-family: Geist, system-ui, sans-serif; } .ds-panel-title { margin: 0 0 8px; padding-bottom: 10px; border-bottom: 1px solid #36312b; font-size: 13px; font-weight: 600; } .ds-panel-title span { font-weight: 400; color: #a69d91; margin-left: 10px; } .ds-panel-body { margin: 0; font-size: 13px; color: #a69d91; }"
+    },
+    {
+      "name": "Monitor with Readout Strip",
+      "kind": "custom",
+      "refersTo": "readout-strip",
+      "description": "Signature: 16:9 well with apricot viewfinder corners, tabular-mono readout attached beneath.",
+      "html": "<div class=\"ds-monitor\"></div><div class=\"ds-readout\"><span><em>Tempo</em><b class=\"lit\">120 BPM</b></span><span><em>Shots</em><b>8</b></span><span><em>Length</em><b>0:16</b></span><span><em>Director</em><b class=\"word\">Built-in</b></span></div>",
+      "css": ".ds-monitor { position: relative; aspect-ratio: 16 / 9; background: #0c0b0a; border-radius: 6px 6px 0 0; } .ds-monitor::after { content: ''; position: absolute; inset: 12px; opacity: .85; background: linear-gradient(#f2995c 0 0) top left / 18px 1.5px no-repeat, linear-gradient(#f2995c 0 0) top left / 1.5px 18px no-repeat, linear-gradient(#f2995c 0 0) top right / 18px 1.5px no-repeat, linear-gradient(#f2995c 0 0) top right / 1.5px 18px no-repeat, linear-gradient(#f2995c 0 0) bottom left / 18px 1.5px no-repeat, linear-gradient(#f2995c 0 0) bottom left / 1.5px 18px no-repeat, linear-gradient(#f2995c 0 0) bottom right / 18px 1.5px no-repeat, linear-gradient(#f2995c 0 0) bottom right / 1.5px 18px no-repeat; } .ds-readout { display: flex; flex-wrap: wrap; gap: 6px 32px; padding: 11px 16px; border: 1px solid #36312b; border-radius: 0 0 6px 6px; background: #221f1b; font-family: Geist, system-ui, sans-serif; } .ds-readout span { display: inline-flex; align-items: baseline; gap: 9px; white-space: nowrap; } .ds-readout em { font-style: normal; font-size: 12px; color: #a69d91; } .ds-readout b { font: 500 15px 'Geist Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; color: #efe9e1; animation: ds-settle .45s cubic-bezier(.16, 1, .3, 1) both; } .ds-readout b.lit { color: #f2995c; } .ds-readout b.word { font-family: Geist, system-ui, sans-serif; } @keyframes ds-settle { from { opacity: .25; transform: translateY(3px); } } @media (prefers-reduced-motion: reduce) { .ds-readout b { animation: none; } }"
+    },
+    {
+      "name": "Timeline Shot",
+      "kind": "custom",
+      "refersTo": "timeline-shot",
+      "description": "16:9 thumbnail with mono timecode; selected ring, pinned bar, excluded fade.",
+      "html": "<div class=\"ds-shots\"><button class=\"ds-shot\" style=\"background:#2a9d8f\"><i>0:02 a001</i></button><button class=\"ds-shot ds-shot-sel ds-shot-pin\" style=\"background:#e9c46a\"><i>0:04 a002 · pinned</i></button><button class=\"ds-shot ds-shot-out\" style=\"background:#e76f51\"><i>0:08 a004 · out</i></button></div>",
+      "css": ".ds-shots { display: flex; gap: 8px; overflow-x: auto; } .ds-shot { position: relative; flex: 0 0 192px; aspect-ratio: 16 / 9; border: 0; border-radius: 4px; padding: 0; cursor: pointer; } .ds-shot i { position: absolute; right: 4px; bottom: 4px; padding: 2px 4px; background: #0c0b0a; color: #efe9e1; font: normal 11px 'Geist Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; } .ds-shot-sel { box-shadow: 0 0 0 2px #f2995c; } .ds-shot-pin::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 3px; background: #f2995c; } .ds-shot-out { opacity: .35; filter: grayscale(1); } .ds-shot:focus-visible { outline: 2px solid #f2995c; outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Song Is the Clock",
+    "overview": "Montage is a friendly editor's workspace, not an upload form. The program monitor leads the screen, and everything the system knows about a cut (tempo, shot count, length, which director planned it) reads like an instrument: tabular mono numerals in a strip bolted under the monitor. Media sits in a bin on the left, the director's brief on the right, the shots run as one horizontal strip below.\n\nThe world is warm graphite: a dark ground, panels one step lighter, 1px warm hairlines between everything. One accent, a soft apricot, carries the primary action, the current selection, viewfinder corner marks and the single highlighted readout value. Dark ink sits on the apricot, never white. The app stays dark regardless of the visitor's OS colour scheme.\n\nThe system refuses the near-black-plus-neon-glow AI look: no glow, no gradients as surfaces, no drop shadows. Depth comes from tone steps and hairlines. Density is moderate and workspace-like: small radii, tight 8px gaps, 13px panel titles.",
+    "keyCharacteristics": [
+      "Warm graphite tonal layering (ground, panel, input, well) with 1px hairlines; no shadows.",
+      "One apricot accent, dark ink on it; used for action, selection and one live value.",
+      "Geist for UI, Geist Mono with tabular numerals for every timecode and readout.",
+      "Viewfinder corner marks on the 16:9 monitor well.",
+      "Instrument stack: monitor, readout strip and shot inspector share one frame."
+    ],
+    "rules": [
+      { "name": "The One Voice Rule", "body": "Apricot is the only hue. It marks what to do next, what is selected, and one live value; it never decorates.", "section": "colors" },
+      { "name": "The Ink-On-Apricot Rule", "body": "Text on an apricot fill is Apricot Ink, never white.", "section": "colors" },
+      { "name": "The Always-Dark Rule", "body": "Light and dark theme variables carry identical values; the workspace is dark whatever the OS says.", "section": "colors" },
+      { "name": "The Tabular Numbers Rule", "body": "Any timecode, BPM, count or duration is set in Geist Mono with tabular numerals. Words stay in Geist, even inside the readout.", "section": "typography" },
+      { "name": "The Tone-Not-Shadow Rule", "body": "Separate surfaces by a tone step and a hairline, never by a cast shadow or glow.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep apricot to action, selection, focus, viewfinder marks and the one lit readout value.",
+      "Do set every number that measures time, tempo or count in Geist Mono with tabular numerals.",
+      "Do separate surfaces with a tone step plus a 1px warm hairline.",
+      "Do keep exactly one primary button live per state (Generate before a cut, Recut after).",
+      "Do honour prefers-reduced-motion: the readout settle and chevron rotation switch off."
+    ],
+    "donts": [
+      "Don't add glow, neon, gradient surfaces or drop shadows (the near-black-plus-neon AI look).",
+      "Don't put white text on apricot; use Apricot Ink.",
+      "Don't add a light theme or let the OS scheme lighten the workspace.",
+      "Don't add a second accent hue.",
+      "Don't add motion beyond the readout settle and the chevron rotation."
+    ]
+  }
+}
