@@ -21,7 +21,6 @@ log = get_logger("app")
 BRIEF_PLACEHOLDER = ("Warm, nostalgic summer recap. Open slow on the beach at sunrise, build through the road trip, "
                      "save the party for the drop, end on the sunset. Skip anything blurry.")
 
-
 def status_line(res, edl, st) -> str:
     fb = set(res.fallbacks)
     director = "Claude" if edl.plan.source == "llm" else "rules"
@@ -66,16 +65,35 @@ def build_app():
         st = pipeline.state(s)
         rd = paths.run_dir(res.run_id)
         cands = {c.id: c for c in st.media.candidates}
+        shots = [sh for sh in edl.shots if sh.candidate_id in cands]
+        board = [[t, cap, sh.candidate_id] for (t, cap), sh in zip(gallery_items(edl, cands), shots)]
         ui = dict(ui or {})
-        ui.update(session_id=s.session_id, run_id=res.run_id, selected=None,
-                  pins=list(s.pins), excluded=list(s.excluded))
+        # labels outlive the cut: an excluded shot drops out of the next EDL but should still read as "0:12 a003"
+        labels = {**ui.get("labels", {}), **{c: " ".join(cap.split()[:2]) for _, cap, c in board}}
+        ui.update(session_id=s.session_id, run_id=res.run_id, selected=None, current_video=res.video_path,
+                  pins=list(s.pins), excluded=list(s.excluded), board=board, labels=labels)
         timings = [[k, round(v, 2)] for k, v in res.timings.items()]
         notes = "\n".join(f"- {n}" for n in s.notes_history) or "(no notes yet)"
         warn = ("\n\n" + "\n".join(f"> {n}" for n in edl.notes)) if edl.notes else ""
         return (res.video_path, status_line(res, edl, st), res.editor_note + warn, plan_markdown(edl.plan),
-                json.dumps(json.loads(edl.plan.model_dump_json()), indent=1), gallery_items(edl, cands),
+                json.dumps(json.loads(edl.plan.model_dump_json()), indent=1), marked(ui),
                 str(rd / "curves.png") if (rd / "curves.png").exists() else None,
-                str(rd / "costs.png") if (rd / "costs.png").exists() else None, timings, notes, ui)
+                str(rd / "costs.png") if (rd / "costs.png").exists() else None, timings, notes, ui,
+                *[gr.update(interactive=True)] * len(need_cut), *pin_buttons(ui),
+                pin_summary(ui) if ui["pins"] or ui["excluded"] else "")
+
+    def marked(ui):
+        pins, excl = ui.get("pins", []), ui.get("excluded", [])
+        return [(t, ("📌 " if c in pins else "✕ " if c in excl else "") + cap) for t, cap, c in ui.get("board", [])]
+
+    def pin_summary(ui):
+        names = lambda k: ", ".join(ui.get("labels", {}).get(c, c) for c in ui.get(k, [])) or "-"
+        return f"Pinned: {names('pins')} | Excluded: {names('excluded')}"
+
+    def pin_buttons(ui):
+        c = ui.get("selected")
+        return (gr.update(value="Unpin shot" if c in ui.get("pins", []) else "Pin shot", interactive=bool(c)),
+                gr.update(value="Include shot" if c in ui.get("excluded", []) else "Exclude shot", interactive=bool(c)))
 
     def friendly(fn):
         @functools.wraps(fn)  # keeps the signature so Gradio still injects gr.Progress
@@ -125,7 +143,7 @@ def build_app():
     def on_export(ui, progress=gr.Progress()):
         if not (ui or {}).get("run_id"):
             raise UserError("Generate a cut first.")
-        return pipeline.export(ui["run_id"], progress=lambda f, m: progress(f, desc=m))
+        return gr.update(value=pipeline.export(ui["run_id"], progress=lambda f, m: progress(f, desc=m)), visible=True)
 
     @friendly
     def on_naive(ui, progress=gr.Progress()):
@@ -140,23 +158,22 @@ def build_app():
     def on_select(ui, evt: gr.SelectData):
         ui = dict(ui or {})
         if not ui.get("run_id"):
-            return "", ui
-        edl = pipeline.load_edl(ui["run_id"])
-        shot = edl.shots[evt.index]
-        ui["selected"] = shot.candidate_id
+            return "", ui, *pin_buttons(ui)
+        cid = ui["board"][evt.index][2]
+        shot = next(sh for sh in pipeline.load_edl(ui["run_id"]).shots if sh.candidate_id == cid)
+        ui.update(selected=cid, selected_idx=evt.index)
         sc = shot.scores
         txt = (f"**{shot.asset_id}** ({shot.kind}, {shot.framing}) at {shot.start:.1f}-{shot.end:.1f}s\n\n"
                f"**Why:** {shot.reason}\n\nimportance {sc.importance:.2f} | mood cost {sc.mood:.2f} | "
-               f"director {sc.director:+.2f} | transition cost {sc.pairwise_in:.2f}\n\n"
-               f"Pinned: {', '.join(ui.get('pins', [])) or '-'} | Excluded: {', '.join(ui.get('excluded', [])) or '-'}")
-        return txt, ui
+               f"director {sc.director:+.2f} | transition cost {sc.pairwise_in:.2f}\n\n{pin_summary(ui)}")
+        return txt, ui, *pin_buttons(ui)
 
     def toggle(kind):
         def fn(ui):
             ui = dict(ui or {})
             c = ui.get("selected")
             if not c:
-                return "Select a storyboard shot first.", ui
+                return "Select a storyboard shot first.", ui, gr.update(), *pin_buttons(ui)
             lst = list(ui.get(kind, []))
             other = "excluded" if kind == "pins" else "pins"
             if c in lst:
@@ -165,9 +182,15 @@ def build_app():
                 lst.append(c)
                 ui[other] = [x for x in ui.get(other, []) if x != c]
             ui[kind] = lst
-            return (f"Pinned: {', '.join(ui.get('pins', [])) or '-'} | Excluded: {', '.join(ui.get('excluded', [])) or '-'}"
-                    " (applies on the next Recut)"), ui
+            return (pin_summary(ui) + " (applies on the next Recut)", ui,
+                    gr.update(value=marked(ui), selected_index=ui.get("selected_idx")), *pin_buttons(ui))
         return fn
+
+    def pick_source(src):
+        # clear the hidden input so it can never silently win in on_generate
+        if not src.startswith("Demo"):
+            return gr.update(visible=True), gr.update(visible=False, value="")
+        return gr.update(visible=False, value=None), gr.update(visible=True)
 
     def on_load_pair(rs):
         import random
@@ -200,47 +223,52 @@ def build_app():
     with gr.Blocks(title="Montage: AI music video editor") as demo:
         gr.Markdown("# Montage\nYou direct, the music sets the timing, the system does the rest.")
         ui = gr.State({})
+        albums, songs = demo_albums(), demo_songs()
         with gr.Row():
             with gr.Column(scale=4):
-                files = gr.File(label="Photos and videos", file_count="multiple")
-                album = gr.Dropdown(choices=[""] + demo_albums(), value="", label="...or a demo album")
+                # the source radios only show when demo media exists; they keep exactly one input live
+                media_src = gr.Radio(["Upload media", "Demo album"], value="Upload media", show_label=False,
+                                     container=False, visible=bool(albums))
+                files = gr.File(label="Photos and videos", file_count="multiple", height=140)
+                album = gr.Dropdown(choices=[""] + albums, value="", label="Demo album", visible=False)
+                song_src = gr.Radio(["Upload song", "Demo song"], value="Upload song", show_label=False,
+                                    container=False, visible=bool(songs))
                 song_file = gr.Audio(label="Song", type="filepath")
-                song_choice = gr.Dropdown(choices=[""] + demo_songs(), value="", label="...or a demo song")
-                brief = gr.Textbox(label="Director's brief", lines=4, placeholder=BRIEF_PLACEHOLDER)
+                song_choice = gr.Dropdown(choices=[""] + songs, value="", label="Demo song", visible=False)
+                brief = gr.Textbox(label="Director's brief", lines=3, placeholder=BRIEF_PLACEHOLDER)
+                gen_btn = gr.Button("Generate", variant="primary")
                 with gr.Accordion("Advanced", open=False):
                     seed = gr.Number(label="Seed", value=0, precision=0)
                     target_len = gr.Number(label="Target length (0 = auto, 45-60)", value=0, precision=0)
                     excerpt_start = gr.Textbox(label="Excerpt start override (seconds, blank = auto)", value="")
                     thumbs = gr.Checkbox(label="Let the director see thumbnails", value=False)
                     system = gr.Dropdown(choices=["full", "naive", "beat_random", "greedy"], value="full", label="System")
-                with gr.Row():
-                    gen_btn = gr.Button("Generate", variant="primary")
-                    exp_btn = gr.Button("Export 1080p")
-                export_file = gr.File(label="1080p export")
             with gr.Column(scale=6):
-                video = gr.Video(label="Preview")
-                status = gr.Markdown("")
+                video = gr.Video(label="Preview", interactive=False)
                 note_md = gr.Markdown("")
+                status = gr.Markdown("")
                 plan_md = gr.Markdown("")
                 with gr.Accordion("Director's plan (JSON)", open=False):
                     plan_json = gr.Code(language="json")
+                exp_btn = gr.Button("Export 1080p", interactive=False)
+                export_file = gr.File(label="1080p export", visible=False)
+        gr.Markdown("### Revise\nClick a shot to see why it was picked, pin or exclude it, add a note, then Recut.")
+        gallery = gr.Gallery(label="Storyboard", columns=8, height=260, allow_preview=False)
+        shot_md = gr.Markdown("")
         with gr.Row():
-            with gr.Column(scale=4):
-                note_box = gr.Textbox(label="Notes for the editor", placeholder="slower at the start, more of the beach")
-                recut_btn = gr.Button("Recut", variant="primary")
-                notes_md = gr.Markdown("(no notes yet)")
-            with gr.Column(scale=6):
-                gallery = gr.Gallery(label="Storyboard", columns=8, height=260, allow_preview=False)
-                shot_md = gr.Markdown("")
-                with gr.Row():
-                    pin_btn = gr.Button("Pin shot")
-                    excl_btn = gr.Button("Exclude shot")
+            pin_btn = gr.Button("Pin shot", size="sm", interactive=False)
+            excl_btn = gr.Button("Exclude shot", size="sm", interactive=False)
+        with gr.Row(equal_height=True):
+            note_box = gr.Textbox(label="Notes for the editor", placeholder="slower at the start, more of the beach",
+                                  scale=4)
+            recut_btn = gr.Button("Recut", variant="primary", scale=1, interactive=False)
+        notes_md = gr.Markdown("(no notes yet)")
         with gr.Tab("Under the hood"):
             curves = gr.Image(label="Music curves and cuts", type="filepath")
             costs = gr.Image(label="Per-shot score components", type="filepath")
             timings = gr.Dataframe(headers=["stage", "seconds"], label="Stage timings")
         with gr.Tab("Compare"):
-            naive_btn = gr.Button("Render naive cut")
+            naive_btn = gr.Button("Render naive cut", interactive=False)
             with gr.Row():
                 naive_video = gr.Video(label="Naive cut (random shots, fixed 2 s cuts)")
                 cur_video = gr.Video(label="Current cut")
@@ -259,16 +287,20 @@ def build_app():
                 right_btn = gr.Button("Right better")
             vote_md = gr.Markdown("")
 
-        outs = [video, status, note_md, plan_md, plan_json, gallery, curves, costs, timings, notes_md, ui]
+        # first 11 outputs are the /generate and /recut API contract (tests/test_app.py indexes them); append only
+        need_cut = [recut_btn, exp_btn, naive_btn]
+        outs = [video, status, note_md, plan_md, plan_json, gallery, curves, costs, timings, notes_md, ui,
+                *need_cut, pin_btn, excl_btn, shot_md]
+        media_src.change(pick_source, [media_src], [files, album])
+        song_src.change(pick_source, [song_src], [song_file, song_choice])
         gen_btn.click(on_generate, [files, album, song_file, song_choice, brief, seed, target_len, excerpt_start,
                                     thumbs, system, ui], outs, api_name="generate")
         recut_btn.click(on_recut, [note_box, ui], outs, api_name="recut")
         exp_btn.click(on_export, [ui], [export_file], api_name="export")
         naive_btn.click(on_naive, [ui], [naive_video, cur_video], api_name="naive")
-        gallery.select(on_select, [ui], [shot_md, ui])
-        pin_btn.click(toggle("pins"), [ui], [shot_md, ui])
-        excl_btn.click(toggle("excluded"), [ui], [shot_md, ui])
-        video.change(lambda v, u: {**(u or {}), "current_video": v}, [video, ui], [ui])
+        gallery.select(on_select, [ui], [shot_md, ui, pin_btn, excl_btn])
+        pin_btn.click(toggle("pins"), [ui], [shot_md, ui, gallery, pin_btn, excl_btn])
+        excl_btn.click(toggle("excluded"), [ui], [shot_md, ui, gallery, pin_btn, excl_btn])
         load_pair.click(on_load_pair, [rate_state], [left_video, right_video, vote_md, rate_state], api_name="load_pair")
         for btn, choice in ((left_btn, "left"), (tie_btn, "tie"), (right_btn, "right")):
             btn.click(vote_handler(choice), [rater, rate_state], [vote_md, rate_state], api_name=f"vote_{choice}")
