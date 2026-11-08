@@ -241,3 +241,14 @@ Format:
 - Next: agree track owners; update `docs/spec/12_songpick.md` on `phase-12-songpick` for the release-date and best-vibe modes; Track 3 checks contrastive dataset access by day 3.
 - Blockers: track owners not agreed.
 - Heads-up: scope change. Phases 14 (temporal emotion), 16 (people-aware), 19 (learned preferences), 20 (9:16/variable length), 21 (FastAPI + timeline editor) are dropped. New phases 22 (contrastive model) and 23 (gallery). No code, schema or config changes.
+
+## 2026-11-08 18:20 ET | Andrew | phase 12 | branch phase-12-songpick (PR)
+- Done: fixes from the first Colab test, and the three song-pick modes from the Nov 7 roadmap.
+  - **Modes** (`pick.suggest(mode=...)`, app radio **How to pick**): "Songs from back then" (default: past-year songs whose album release date is in an age-scaled window around the photos' median date, or that were played during the album; remaster/compilation dates skipped), "Best vibe fit" (dates ignored; a placeholder ranked by listening until the vibe match lands), "My full Spotify history" (the export inside an age-scaled listening window). Before this, every pick was the top 5 of the year, because the 1-year list overlapped any photo date.
+  - **YouTube on Colab:** optional Colab Secret `YOUTUBE_COOKIES` (spare account; raw or base64), `deno` for yt-dlp's challenges, clearer errors, and a YouTube search link + upload when the fetch is off or blocked.
+  - **start_app.py** now switches to `--branch` before loading the bootstrap, so a fresh runtime no longer runs main's bootstrap (which ignored `SPOTIFY_CLIENT_ID`).
+  - Rebased onto main (render cache, Nov 7 re-scope); spec 12, schemas, README, CLAUDE §11 and PLAN decisions updated.
+- Tests: `tests/test_songpick*.py` (new `test_songpick_modes.py`) + hygiene: 74 pass locally, 1 network test skipped. The app builds with gradio 6.30.0. `test_jobs.py::test_job_stop` still fails on macOS only (unrelated).
+- Next: Andrew tests on Colab (add `YOUTUBE_COOKIES`; until this merges, run `!cd /content/bac_prototype && git fetch -q && git checkout -q phase-12-songpick && git pull -q` before the start cell on a fresh runtime); full `pytest -q` on Colab; review and merge the PR. Then 12.8, the stage A vibe match.
+- Blockers: Track 1 owner still to confirm. YouTube may still block even with cookies (cloud IPs); upload stays the fallback.
+- Heads-up (branch, lands with the PR): schemas `ListeningEvent`, `TopTrack`, `TrackCandidate` gain `release_date`, `release_precision`, `release_reliable`; `SongPick` gains `mode`, `period_source` gains `release`/`release_widened`. Config: new `songpick.default_mode`, `window_by_age_days`, `max_window_days`, `release.*`, `youtube.cookies_env`; `songpick.max_pad_days` removed. Requirements: `yt-dlp[default]>=2026.10.26`, new `deno==2.9.8`. New optional Colab Secret `YOUTUBE_COOKIES`. Hygiene blocks `*cookies*.txt`.

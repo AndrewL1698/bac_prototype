@@ -184,7 +184,7 @@ If a spec is ambiguous, choose the simplest option consistent with this file, re
 
 - Do not add transitions, filters, or text overlays (v1 is cuts only).
 - Do not send images or audio to any external API unless `director.send_thumbnails: true` (then only the low-res contact sheet).
-- Song pick (phase 12): only track/artist names and the user's own Spotify token may leave the machine (Spotify API, YouTube search). Spotify tokens and listening data stay in the app session: never written to disk, logged, or committed. The YouTube audio fetch stays opt-in (`songpick.youtube.enabled: false`, a per-session checkbox); fetched audio stays on the private Drive (`cache/youtube_audio/`).
+- Song pick (phase 12): only track/artist names and the user's own Spotify token may leave the machine (Spotify API, YouTube search). Spotify tokens and listening data stay in the app session: never written to disk, logged, or committed. The YouTube audio fetch stays opt-in (`songpick.youtube.enabled: false`, a per-session checkbox); fetched audio stays on the private Drive (`cache/youtube_audio/`). YouTube cookies (Colab Secret `YOUTUBE_COOKIES`, a spare account only) live only in the secret and on the VM's local disk (`/content/.yt_cookies.txt`): never on Drive, in the repo, or in logs.
 - Do not use GoogLeNet/precomputed dataset features for training. Extract features with our pipeline.
 - Do not commit data, weights, media, secrets, or personal info (public repo).
 - Do not rewrite or delete other people's LOG entries, force-push `main`, or work on a phase someone else has claimed.
