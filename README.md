@@ -25,6 +25,7 @@ _Keep this list current. Update it when a phase merges to `main`._
 - **Phase 9B (music emotion):** a MERT-based head trained on DEAM (`weights/emotion_head.pt`) gives per-moment valence and arousal; test CCC 0.74 valence / 0.82 arousal. The app's status line shows `Emotion: MERT`.
 - **Phase 10A (importance ranker):** a RankNet ranker trained on SumMe/TVSum with features from our own pipeline (`weights/importance_ranker.pt`), blended 0.75 learned + 0.25 heuristic; in cross-validation it beats the heuristic (Kendall tau SumMe 0.17 vs 0.12, TVSum 0.41 vs -0.02). The status line shows `Importance: learned+heuristic`.
 - **Phase 11 (evaluation):** `scripts/make_eval_set.py` builds held-out eval albums and songs; `python -m montage.eval.run_grid` (as a job) plans every album x song with the full editor, three baselines and five ablations (3 seeds each) and writes metrics, slide figures, and `montage_data/eval/report.md`; `python -m montage.eval.render_check` renders the full cuts and checks with scene detection that every cut lands on its planned frame. Headline numbers in [`docs/RESULTS.md`](docs/RESULTS.md).
+- **Phase 17 (story order):** every montage follows capture time by default, also with no brief; a brief that asks for another order ("shuffle", "mix it up", "random order") turns it off.
 
 ## How it works (one paragraph)
 
