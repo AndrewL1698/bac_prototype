@@ -89,7 +89,7 @@ Extension (2 weeks, see ROADMAP.md)
   - [x] per-shot render cache (Keshav; `spec/13_render_cache.md`; merged 2026-11-05, PR #1)
   - [ ] Beat This! mirror (whoever finishes first; spec TBD)
 - [ ] **15. Photo-album importance (CUFED)** (Track 2; ROADMAP item 2; spec TBD)
-- [ ] **17. Story/event ordering: event segmentation + coverage term** (Track 4; ROADMAP item 4; spec TBD)
+- [ ] **17. Story/event ordering: event segmentation + coverage term** (Track 4; ROADMAP item 4; story order is on by default on `phase-17-story-order`, spec 05; the coverage term waits on a check of real cuts)
 - [ ] **18. Eval v2 (slim): more albums, with/without brief, song-pick mini study** (Track 4; ROADMAP item 8; spec TBD)
 - [ ] **22. Image-set <-> music contrastive model** (Track 3; ROADMAP F1 stage B; go/no-go on day 3; spec TBD)
 - [ ] **23. "My montages" gallery** (Track 4; ROADMAP F5; spec TBD)
@@ -99,7 +99,7 @@ Extension (2 weeks, see ROADMAP.md)
 
 | Phase | Person | Branch | Started (ET) | Notes |
 |---|---|---|---|---|
-| 13. Per-shot render cache (render half; spec 13_render_cache.md) | Keshav | phase-13-render-cache | 2026-11-05 | Track 4; PR for review |
+| 17. Story order by default (+ coverage term only if cuts skip events) | Keshav | phase-17-story-order | 2026-11-08 | Track 4 (provisional, owners TBD); PR for review |
 | 12. Song pick (fallback: 12.1-12.4) | Andrew | phase-12-songpick | 2026-11-04 | provisional: Track 1 owner not agreed yet; branch not merged until the team agrees on ROADMAP.md |
 
 ## Decisions
@@ -188,3 +188,4 @@ New dev 2 (name TBD)
 - 2026-11-07 | Andrew | "Best vibe fit" ranks the user's own songs (recent plays, top tracks, export if given), not an open catalog | no catalog with usable audio; Spotify has no audio features for new apps
 - 2026-11-07 | Andrew | ML priority: 1. song-vibe matching, 2. CUFED photo importance, 3. contrastive song model (go/no-go on day 3 on dataset access), 4. story/event ordering; cut order is the reverse, with the gallery cut after story ordering | all four are wanted; two weeks is tight
 - 2026-11-07 | Andrew | "My montages" gallery: SQLite index + files on the shared Drive, written only by the app process, per MONTAGE_USER, no login; builds on the persisted Session json | simplest durable store on Colab; personal media never leaves Drive
+- 2026-11-08 | Keshav | Story order is the default: `plan.chronological` is true unless the brief asks for another order (rules: shuffle/mix it up/random order/...; the LLM prompt says the same) | the product promises a story-ordered montage in one click, and before this an empty brief gave no ordering at all
