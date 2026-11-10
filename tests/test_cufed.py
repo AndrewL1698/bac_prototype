@@ -16,6 +16,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from conftest import gpu_available
+
 
 def _jpeg(path: Path, seed: int, size=(48, 36)) -> Path:
     from PIL import Image
@@ -324,3 +326,129 @@ def test_sources_official_and_hf(fresh_root, monkeypatch):
     monkeypatch.setitem(sys.modules, "huggingface_hub",
                         types.SimpleNamespace(HfApi=Gated, snapshot_download=fake_snapshot))
     assert cufed.fetch_hf("someone/gated", "main") == (None, {})  # logged, next source is tried
+
+
+# ---------- album features (pipeline stubbed; parity on Colab) ----------
+
+def fake_album_features(photo_paths, drop=()):
+    """Stand-in for build_media + extract with the same shapes: one asset and one candidate per photo, except
+    paths in `drop` (what ingest does with an exact duplicate file)."""
+    from types import SimpleNamespace as NS
+    kept = [p for p in photo_paths if p not in drop]
+    assets = [NS(id=f"a{i:03d}", src_path=str(p)) for i, p in enumerate(kept)]
+    cands = [NS(id=f"c{i:03d}", asset_id=a.id) for i, a in enumerate(assets)]
+    n = len(cands)
+    rng = np.random.default_rng(n)
+    emb = rng.normal(size=(n, 768))
+    emb /= np.linalg.norm(emb, axis=1, keepdims=True)
+    arrays = {"emb": emb.astype(np.float32), "aesthetic": rng.normal(5, 1, n), "sharpness": rng.normal(4, 1, n),
+              "brightness": rng.random(n), "contrast": rng.random(n), "exposure_clip": rng.random(n) * 0.1,
+              "colorfulness": rng.random(n), "face_count": rng.integers(0, 4, n).astype(float),
+              "face_area": rng.random(n) * 0.2, "motion": np.zeros(n), "shake": np.zeros(n),
+              "is_video": np.zeros(n, bool)}
+    f = NS(arrays=arrays, table=NS(tags={c.id: [] for c in cands}), ids=[c.id for c in cands])
+    return NS(assets=assets, candidates=cands), f
+
+
+def _mapping(fresh_root, albums):
+    from training.importance.cufed import build_mapping, index_album_dirs, read_events, read_labels
+    root = make_cufed(fresh_root / "cufed", albums)
+    labels = read_labels(root)
+    return build_mapping(root, labels, read_events(root), index_album_dirs(root, set(labels)), _cfg())
+
+
+def test_album_rows_drops_ingest_duplicates(fresh_root):
+    from montage.importance.heuristic import heuristic_scores
+    from montage.importance.ranker import ranker_features
+    from training.importance.cufed_features import album_rows
+    m = _mapping(fresh_root, {"0_a@N00": (SCORES12, "all")})
+    entry = m["albums"]["0_a@N00"]
+    top = max(entry["photos"], key=lambda p: p["score"])  # ingest drops the top photo as an exact duplicate
+    ms, f = fake_album_features([p["path"] for p in entry["photos"]], drop={top["path"]})
+    rows, why = album_rows(entry, ms, f, min_photos=10)
+    assert why == "ok" and rows["X"].shape == (11, 776) and top["photo"] not in rows["photo"]
+    assert rows["y"].min() == 0.0 and rows["y"].max() == 1.0  # re-normalized without the dropped photo
+    by_photo = {p["photo"]: p["score"] for p in entry["photos"]}
+    assert rows["y"][list(rows["photo"]).index(max(rows["photo"], key=by_photo.get))] == 1.0
+    assert np.allclose(rows["X"], ranker_features(f.arrays))
+    assert np.allclose(rows["heuristic"], heuristic_scores(f.arrays, f.table.tags, f.ids))  # within the album
+    assert str(rows["event"]) == "unknown"
+    rows, why = album_rows(entry, ms, f, min_photos=12)
+    assert rows is None and why == "few_photos_after_ingest"
+
+
+def test_extract_albums_resume_and_combine(fresh_root, monkeypatch):
+    from training.importance import cufed_features as cf
+    m = _mapping(fresh_root, {"0_a@N00": (SCORES12, "all"), "1_b@N00": (SCORES12, "all"),
+                              "2_c@N00": (SCORES12[:10] + [0.0, 0.0], "all")})
+    calls = []
+    monkeypatch.setattr(cf, "album_features", lambda ps: calls.append(len(ps)) or fake_album_features(ps))
+    assert cf.extract_albums(m, limit=1) == {"ok": 1}
+    s = cf.combine(m)
+    assert s["albums"] == 1 and s["albums_pending"] == 2
+    assert cf.extract_albums(m) == {"ok": 2} and len(calls) == 3
+    assert cf.extract_albums(m) == {} and len(calls) == 3  # resumable: nothing recomputed
+    s = cf.combine(m)
+    assert s == {"albums": 3, "photos": 36, "albums_skipped": {}, "albums_pending": 0,
+                 "photos_by_event": {"unknown": 36}}
+    from montage import cache
+    z = cache.load_npz(fresh_root / "datasets/importance/cufed_photos.npz")
+    assert set(z) == {"X", "y", "heuristic", "aesthetic", "group", "dataset", "event", "photo"}
+    assert z["X"].shape == (36, 776) and set(z["dataset"]) == {"cufed"}
+    assert sorted(set(z["group"])) == ["cufed/0_a@N00", "cufed/1_b@N00", "cufed/2_c@N00"]
+    for g in set(z["group"]):
+        y = z["y"][z["group"] == g]
+        assert y.min() == 0.0 and y.max() == 1.0
+
+
+def test_extract_albums_failures(fresh_root, monkeypatch):
+    from montage import config
+    from training.importance import cufed_features as cf
+    m = _mapping(fresh_root, {f"{i}_x@N00": (SCORES12, "all") for i in range(5)})
+    bad = {"1_x@N00"}
+
+    def flaky(ps):
+        if any(f"/{a}/" in ps[0] for a in bad):
+            raise OSError("cannot identify image file")
+        return fake_album_features(ps)
+
+    monkeypatch.setattr(cf, "album_features", flaky)
+    assert cf.extract_albums(m) == {"ok": 4, "error": 1}  # one bad album is skipped, the job goes on
+    assert json.loads(cf.skip_of("1_x@N00").read_text())["reason"] == "error"
+    assert cf.combine(m)["albums_skipped"] == {"error": 1}
+    bad.clear()
+    assert cf.extract_albums(m) == {}  # error skips stay skipped ...
+    assert cf.extract_albums(m, retry_errors=True) == {"ok": 1}  # ... unless retried
+
+    m2 = _mapping(fresh_root / "second", {f"{i}_y@N00": (SCORES12, "all") for i in range(4)})
+    monkeypatch.setattr(cf, "album_features", lambda ps: (_ for _ in ()).throw(RuntimeError("CUDA error")))
+    with config.override({"importance.cufed.max_consecutive_failures": 3}):
+        with pytest.raises(SystemExit, match="3 albums failed in a row"):
+            cf.extract_albums(m2)
+    assert not any(cf.skip_of(a).exists() for a in m2["albums"])  # systemic failure: nothing marked as skipped
+
+
+@pytest.mark.gpu
+@pytest.mark.media
+def test_cufed_parity(fixtures):
+    """Training rows for a CUFED-style album equal the app's features for the same photos uploaded as one
+    album (same code path, same cache entries, heuristic within the album)."""
+    if not gpu_available():
+        pytest.skip("no GPU")
+    from montage import config
+    from montage.candidates import build_media
+    from montage.features.extract import extract
+    from montage.importance.heuristic import heuristic_scores
+    from montage.importance.ranker import ranker_features
+    from training.importance.cufed_features import LIFT, album_features, album_rows
+    photos = sorted(str(p) for p in fixtures.glob("photo_*.jpg"))
+    entry = {"events": ["Show"],
+             "photos": [{"photo": Path(p).stem, "path": p, "score": float(i), "y": 0.0} for i, p in enumerate(photos)]}
+    ms, f = album_features(photos)
+    rows, why = album_rows(entry, ms, f, min_photos=3)
+    with config.override(LIFT):
+        ms2 = build_media(photos)
+        g = extract(ms2.assets, ms2.candidates, ms2.frames)
+    assert why == "ok" and [c.id for c in ms.candidates] == [c.id for c in ms2.candidates]
+    assert np.allclose(rows["X"], ranker_features(g.arrays))
+    assert np.allclose(rows["heuristic"], heuristic_scores(g.arrays, g.table.tags, g.ids))
