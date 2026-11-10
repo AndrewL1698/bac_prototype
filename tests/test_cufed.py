@@ -293,7 +293,7 @@ def test_sources_official_and_hf(fresh_root, monkeypatch):
     with pytest.raises(SystemExit, match="web page"):
         cufed.fetch_official("https://example.org/html")
     root, info = cufed.fetch_official("https://example.org/CUFED.zip")
-    assert root == cufed.raw_dir() / "official" / "CUFED" and info == {"url": "https://example.org/CUFED.zip"}
+    assert root == cufed.raw_dir() / "official" / "CUFED" and info["url"] == "https://example.org/CUFED.zip"
     assert cufed.fetch_official(None) == (None, {})
 
     seen = {}
@@ -317,7 +317,9 @@ def test_sources_official_and_hf(fresh_root, monkeypatch):
     assert seen == {"info": ("someone/CUFED-mirror", "main"),
                     "snapshot": ("someone/CUFED-mirror", "dataset", "abc123def")}
     assert root == cufed.raw_dir() / "hf" and (root / "images/0_b@N00/7.jpg").exists()
-    assert info == {"repo": "someone/CUFED-mirror", "revision": "main", "sha": "abc123def"}
+    assert {k: info[k] for k in ("repo", "revision", "sha")} == {
+        "repo": "someone/CUFED-mirror", "revision": "main", "sha": "abc123def"}
+    assert json.loads((root / "_source.json").read_text())["sha"] == "abc123def"
 
     class Gated(FakeApi):
         def dataset_info(self, repo, revision=None):
@@ -452,3 +454,42 @@ def test_cufed_parity(fixtures):
     assert why == "ok" and [c.id for c in ms.candidates] == [c.id for c in ms2.candidates]
     assert np.allclose(rows["X"], ranker_features(g.arrays))
     assert np.allclose(rows["heuristic"], heuristic_scores(g.arrays, g.table.tags, g.ids))
+
+
+def test_source_priority(fresh_root, monkeypatch):
+    """Sources keep their own folders, so a later official link or manual copy is not shadowed by an earlier
+    mirror download; a source already on disk is reused with no network call; a dead link falls through."""
+    from training.importance import cufed
+    make_cufed(cufed.raw_dir() / "hf" / "mirror", {"0_a@N00": (SCORES12, "all")})
+    (cufed.raw_dir() / "hf" / "_source.json").write_text(json.dumps({"repo": "x/y", "sha": "abc"}))
+    downloads = []
+
+    def fake_download(url, dest, *a, **k):
+        downloads.append(url)
+        if "dead" in url:
+            raise OSError("HTTP Error 404")
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as zf:
+            zf.writestr("CUFED/image_importance.json", json.dumps({"0_a@N00": [["u", "0_a@N00/1", 1.0]]}))
+            for i in range(2):
+                zf.writestr(f"CUFED/images/{i}_z@N00/1.jpg", _jpeg_bytes(i))
+        dest.write_bytes(buf.getvalue())
+        return dest
+
+    monkeypatch.setattr(cufed, "download", fake_download)
+    monkeypatch.setattr(cufed, "fetch_hf", lambda *a: pytest.fail("hf is on disk: no download expected"))
+    root, info = cufed.ensure_dataset(_cfg())  # official_url null: the mirror on disk is used as is
+    assert info["source"] == "hf" and info["sha"] == "abc" and root == cufed.raw_dir() / "hf" / "mirror"
+    root, info = cufed.ensure_dataset(_cfg(official_url="https://example.org/dead.zip"))
+    assert info["source"] == "hf" and downloads == ["https://example.org/dead.zip"]  # dead link: falls through
+    root, info = cufed.ensure_dataset(_cfg(official_url="https://example.org/CUFED.zip"))
+    assert info["source"] == "official" and root == cufed.raw_dir() / "official" / "CUFED"
+    assert json.loads((cufed.raw_dir() / "official" / "_source.json").read_text())["url"].endswith("CUFED.zip")
+    root, info = cufed.ensure_dataset(_cfg(official_url="https://example.org/CUFED.zip"))
+    assert info["source"] == "official" and len(downloads) == 2  # reused from disk, not downloaded again
+    make_cufed(cufed.raw_dir() / "my_copy", {"0_a@N00": (SCORES12, "all")})
+    root, info = cufed.ensure_dataset(_cfg(official_url="https://example.org/CUFED.zip"))
+    assert info["source"] == "manual" and root == cufed.raw_dir() / "my_copy"
+    root, info = cufed.ensure_dataset(_cfg(), inspect_only=True)
+    assert info["source"] == "manual"

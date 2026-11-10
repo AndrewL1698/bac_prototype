@@ -4,8 +4,9 @@
     python -m training.importance.cufed --inspect          # report what is on disk; downloads nothing
     python -m training.importance.cufed --set importance.cufed.flickr.enabled=true   # also fill from Flickr
 
-1. Find or fetch the dataset, trying the sources in `importance.cufed.sources` (manual -> official -> hf).
-   The dataset root is the folder that holds image_importance.json, anywhere under cufed/raw/.
+1. Find or fetch the dataset, trying the sources in `importance.cufed.sources` (manual -> official -> hf) on
+   every run. Each remote source keeps its own folder (raw/official, raw/hf) and is reused once on disk; "manual"
+   is any other copy under raw/. The dataset root is the folder that holds image_importance.json.
 2. Optionally fetch labeled photos missing on disk from their Flickr URLs (off by default).
 3. Write the label mapping DATA_ROOT/datasets/importance/cufed/mapping.json: one group per album, one item
    per labeled photo, y = min-max of the score within the album's photos on disk.
@@ -85,12 +86,19 @@ def _skip_name(name: str) -> bool:
 
 # ---------- dataset root and labels ----------
 
-def find_root(base: Path) -> Path | None:
-    """The folder holding image_importance.json under `base`. With several, the one with the most album
-    folders wins (ties: the shallowest)."""
+def find_root(base: Path, exclude: tuple[str, ...] = ()) -> Path | None:
+    """The folder holding image_importance.json under `base` (top-level folders in `exclude` are not searched;
+    images/ folders are never walked, they hold the photos). With several, the one with the most album folders
+    wins (ties: the shallowest)."""
     if not base.exists():
         return None
-    hits = [p.parent for p in base.rglob(IMPORTANCE_FILE) if not _skip_name(str(p.relative_to(base)))]
+    hits = []
+    for dirpath, dirnames, filenames in os.walk(base):
+        d = Path(dirpath)
+        dirnames[:] = sorted(n for n in dirnames if not n.startswith(".") and n not in ("__MACOSX", "images")
+                             and not (d == base and n in exclude))
+        if IMPORTANCE_FILE in filenames:
+            hits.append(d)
     if not hits:
         return None
 
@@ -263,13 +271,30 @@ def extract_all(folder: Path, max_rounds: int = 3) -> int:
 
 
 # ---------- sources ----------
+# Each remote source downloads into its own folder under raw/ ("manual" = anything else under raw/), so a later
+# official link or a manual copy is never shadowed by an earlier mirror download: every run walks the sources in
+# priority order and reuses a source's folder when it already holds a valid root.
+
+SOURCE_DIRS = {"official": "official", "hf": "hf"}
+SOURCE_INFO = "_source.json"
+
+
+def local_root(src: str) -> Path | None:
+    if src == "manual":
+        return find_root(raw_dir(), exclude=tuple(SOURCE_DIRS.values()))
+    return find_root(raw_dir() / SOURCE_DIRS[src])
+
 
 def fetch_official(url: str | None) -> tuple[Path | None, dict]:
     if not url:
         log.info("official: importance.cufed.official_url is not set; skipped")
         return None, {}
     name = Path(urllib.parse.urlparse(url).path).name or "archive"
-    arc = download(url, paths.scratch_dir("downloads") / f"cufed_official_{name}", 0.0, 0.6, "CUFED (official)")
+    try:
+        arc = download(url, paths.scratch_dir("downloads") / f"cufed_official_{name}", 0.0, 0.6, "CUFED (official)")
+    except Exception as e:  # dead link, no network: try the next source
+        log.warning("official: download failed (%s: %s); trying the next source", type(e).__name__, e)
+        return None, {}
     with open(arc, "rb") as f:
         head = f.read(512).lstrip().lower()
     if head.startswith((b"<!doctype html", b"<html")):
@@ -277,17 +302,19 @@ def fetch_official(url: str | None) -> tuple[Path | None, dict]:
         raise SystemExit("official_url returned a web page, not an archive (e.g. a Google Drive warning page). "
                          f"Download it in a browser and copy the extracted folder into {raw_dir()} "
                          "(the 'manual' source picks it up).")
-    dest = raw_dir() / "official"
+    dest = raw_dir() / SOURCE_DIRS["official"]
     safe_extract(arc, dest)
     extract_all(dest)
-    return find_root(dest), {"url": url}
+    info = {"url": url, "downloaded": datetime.now().isoformat(timespec="seconds")}
+    cache.write_json(dest / SOURCE_INFO, info)
+    return find_root(dest), info
 
 
 def fetch_hf(repo: str, revision: str) -> tuple[Path | None, dict]:
     try:
         from huggingface_hub import HfApi, snapshot_download
         sha = HfApi().dataset_info(repo, revision=revision).sha
-        dest = raw_dir() / "hf"
+        dest = raw_dir() / SOURCE_DIRS["hf"]
         jobs.report(0.05, f"downloading {repo}@{(sha or revision)[:8]}")
         snapshot_download(repo_id=repo, repo_type="dataset", revision=sha or revision, local_dir=str(dest))
     except Exception as e:  # missing repo, gated repo without HF_TOKEN, network: try the next source
@@ -296,25 +323,22 @@ def fetch_hf(repo: str, revision: str) -> tuple[Path | None, dict]:
         return None, {}
     jobs.report(0.6, "extracting archives")
     extract_all(dest)
-    return find_root(dest), {"repo": repo, "revision": revision, "sha": sha}
+    info = {"repo": repo, "revision": revision, "sha": sha, "downloaded": datetime.now().isoformat(timespec="seconds")}
+    cache.write_json(dest / SOURCE_INFO, info)
+    return find_root(dest), info
 
 
 def ensure_dataset(cfg: CufedCfg, inspect_only: bool = False) -> tuple[Path | None, dict]:
-    """(dataset root, info). Reuses the recorded root while it is valid; otherwise tries the sources in
-    order. inspect_only never downloads and never writes the marker."""
-    marker = raw_dir() / DOWNLOADED
-    info = cache.read_json(marker)
-    if info and (Path(info["root"]) / IMPORTANCE_FILE).exists():
-        return Path(info["root"]), info
+    """(dataset root, info): the first source in cfg.sources that has (or downloads) a valid root. A source
+    already on disk is reused without any network call. inspect_only never downloads and never writes
+    raw/_downloaded.json (the record of which root the mapping used)."""
     for src in cfg.sources:
-        if src == "manual":
-            root, extra = find_root(raw_dir()), {}
-        elif inspect_only:
-            continue
-        elif src == "official":
-            root, extra = fetch_official(cfg.official_url)
-        else:
-            root, extra = fetch_hf(cfg.hf_repo, cfg.hf_revision)
+        root, extra = local_root(src), {}
+        if root is not None and src in SOURCE_DIRS:
+            extra = cache.read_json(raw_dir() / SOURCE_DIRS[src] / SOURCE_INFO) or {}
+        elif root is None and src in SOURCE_DIRS and not inspect_only:
+            root, extra = (fetch_official(cfg.official_url) if src == "official"
+                           else fetch_hf(cfg.hf_repo, cfg.hf_revision))
         if root is None:
             has_files = any(p for p in raw_dir().iterdir() if not p.name.startswith("_"))
             if src == "manual" and has_files:
@@ -330,7 +354,7 @@ def ensure_dataset(cfg: CufedCfg, inspect_only: bool = False) -> tuple[Path | No
         info = {"source": src, "root": str(root), **extra, **stats,
                 "found": datetime.now().isoformat(timespec="seconds")}
         if not inspect_only:
-            cache.write_json(marker, info)
+            cache.write_json(raw_dir() / DOWNLOADED, info)
         return root, info
     return None, {}
 
