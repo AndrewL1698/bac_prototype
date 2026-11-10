@@ -69,8 +69,8 @@ importance:
   ranker_weights: "importance_ranker.pt"
   cufed:                          # phase 15 (spec 15): CUFED / ML-CUFED photo albums for training the ranker
     sources: ["manual", "official", "hf"]   # tried in order; the first that yields a valid dataset root wins
-    official_url: null            # direct archive link from the authors' dataset page (spec 15 section 2); null = skip
-    hf_repo: "Shawn-Huang/CUFED-AlbumBench"   # mirror; as of 2026-11-10 images for the 133-album test split only
+    official_url: null            # authors' archive link; their site and Drive file are gone (2026-11-10, spec 15 section 2)
+    hf_repo: "Shawn-Huang/CUFED-AlbumBench"   # main source; as of 2026-11-10 images for the 133-album test split only
     hf_revision: "main"           # the resolved commit sha is recorded in raw/_downloaded.json
     min_photos: 10                # albums with fewer labeled photos on disk are dropped (= ingest.min_assets)
     score_range: [-2.0, 2.0]      # CUFED mean ratings; scores outside are counted and logged

@@ -273,3 +273,8 @@ Format:
 - Next: on Colab, `python -m training.importance.cufed --inspect`, then the `cufed_dl` job (first try the official link: copy it from the authors' page into `--set importance.cufed.official_url=...`), then `cufed_features --limit 5` as a smoke run, then the full `cufed_feats` job and `pytest -q` (incl. `test_cufed_parity`). Days 4-7: generalize `evaluate.py` to a CUFED column, train, compare with the deployed ranker, deploy decision.
 - Blockers: none in code. Needs the shared `montage_data` Drive and Colab access for Shiven; the full 1,883-album dataset needs the official link (the mirror is the 133-album test split).
 - Heads-up: new config section `importance.cufed` (`CufedCfg`, required in `ImportanceCfg`). No schema changes. New data under `montage_data/datasets/importance/cufed/` and `cufed_photos.npz` (Drive only).
+
+## 2026-11-10 12:25 ET | Shiven | phase 15 | branch phase-15-cufed (local)
+- Done: checked the official CUFED download by hand. The authors' site times out from a normal browser too. Its last Wayback Machine capture (2024-04-20) leads, through the Yahoo YFCC100M terms page, to a Google Drive file that now says "file does not exist"; the Wayback Machine has no copy. Spec 15, config comments and a PLAN decision updated: the Hugging Face mirror (133 albums) is the main source, plus the opt-in Flickr fill. CUFED data follows the YFCC100M terms (no redistribution, no identifying people, attribution in published results).
+- Next: Colab: `--inspect`, the `cufed_dl` job, check whether the mirror's labels cover more than the 133 albums with photos (then try the Flickr fill), then the feature job.
+- Blockers: the full 1,883-album set is only available if the authors re-share it.
