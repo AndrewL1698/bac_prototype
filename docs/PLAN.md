@@ -4,18 +4,17 @@ This is the plan of record. Progress history goes in `docs/LOG.md`; this file sh
 
 How to use it: claim a phase in **Current work** before starting (person, branch, start time), tick the box and clear your row when it is merged to `main`, and record any judgment calls under **Decisions**.
 
-> **Now a 4-person, 8-week project (2026-11-04).** The MVP (phases 0-11) is done. The extension (Spotify-history song picking, deeper ML, timeline editor) follows [`ROADMAP.md`](ROADMAP.md). Track owners are TBD until the team agrees; nothing in the Extension section below is claimed yet.
+> **Now a 4-person, 2-week project (re-scoped 2026-11-07).** The product is an **automatic montage maker**: photos/videos in, a story-ordered montage with a song that fits their vibe out, in one click (brief and notes optional; no timeline editor). The MVP (phases 0-11) is done. The extension follows [`ROADMAP.md`](ROADMAP.md). Track owners are TBD.
 
 ## Goal and schedule
 
-### Extension (4 people, 8 weeks; proposed, see ROADMAP.md)
-Team: Andrew, Keshav, and two new devs, one per track (owners TBD). The goal is an ML cohort project with real depth: new trained models, datasets, baselines, ablations, and human evaluation. Every model ships with a fallback and a RESULTS.md table, as in 9B/10A.
-- **Weeks 1-2:** fallbacks complete end to end. Song-pick shortlist from listening history, Beat This! mirror, per-shot render cache, expanded eval set, dataset downloads (PMEmo/EmoMusic, CUFED).
-- **Weeks 3-4:** first learned models. Temporal emotion, photo importance (CUFED), music-video contrastive v1, face clustering. Preference logging, mid-point human study.
-- **Weeks 5-6:** integration. Coverage/diversity term, people in the director, reward model and preference-tuned weights, final song ranking. Timeline editor v1.
-- **Weeks 7-8:** editor locks and re-solve, full eval grid, human studies, RESULTS.md, DEMO.md v2, freeze.
+### Extension (4 people, 2 weeks = 10 working days; see ROADMAP.md)
+Team: Andrew, Keshav, and two more, one per track (owners TBD). An ML cohort project: every learned model ships with a fallback and a RESULTS.md table, as in 9B/10A. ML priority: 1. song-vibe matching, 2. CUFED photo importance, 3. image-set <-> music contrastive model, 4. story/event ordering.
+- **Days 1-3:** three song modes + tag/CLIP and mood vibe match; CUFED download + labels; contrastive dataset access (**go/no-go on day 3**); event segmentation; one-click generate with the brief optional.
+- **Days 4-7:** MERT sentiment match + shortlist UI; CUFED ranker training; contrastive feature extraction + model code; coverage term; "My montages" gallery.
+- **Days 8-10:** "why this song" + song-pick mini study; contrastive training + Recall@K; eval grid with the new components; DEMO.md v2; freeze.
 
-**Cut in this order if time runs short:** 1. 9:16 output and variable length, 2. timeline editor locks/re-solve (keep v1), 3. learned editing preferences (F3), 4. people-aware editing (F2), 5. contrastive song model (ship the period-affinity + tag/mood fallback). F1's fallback shortlist is never cut.
+**Cut in this order if time runs short:** 1. story/event coverage term (chronological ordering stays), 2. gallery, 3. contrastive model (ship the vibe fallback), 4. CUFED (keep the SumMe/TVSum ranker). Song-vibe matching and the three song modes are never cut.
 
 ### MVP (done 2026-10-27)
 A live workshop demo of the AI music video editor in two days.
@@ -37,10 +36,12 @@ A live workshop demo of the AI music video editor in two days.
 
 | Track | Scope | Week-1 deliverables | Owner |
 |---|---|---|---|
-| **1: Song pick (F1)** | Spotify history -> period affinity -> tag/CLIP and mood vibe match -> image-set <-> music contrastive model -> shortlist UI | history parser, album time window, affinity score, spec 12 | TBD |
-| **2: Music + emotion** | Beat This! mirror, temporal emotion model (DEAM + PMEmo/EmoMusic), structure, preference-tuned planner weights | Beat This! mirror; temporal emotion spec; dataset downloads | TBD |
-| **3: Visual understanding** | CUFED photo importance, face clustering + naming, people in the director, event coverage/diversity, personalization | CUFED/ML-CUFED download + label mapping | TBD |
-| **4: Platform, eval, editor** | per-shot render cache, eval grid v2 + VLM judge, preference logging, reward model, FastAPI layer, timeline editor | render cache; expanded eval set; FastAPI skeleton | TBD |
+| **1: Song vibe (F1, ML #1)** | three song modes (Spotify sign-in by release date, best vibe fit, full export) -> tag/CLIP and mood vibe match -> MERT sentiment match -> shortlist UI + "why this song" | three modes, release-date window, stage A vibe match | TBD |
+| **2: Photo importance (ML #2)** | CUFED / ML-CUFED ranker + blend, personalization if time | download + label mapping, features | TBD |
+| **3: Contrastive song model (ML #3)** | image-set <-> music contrastive model (CLIP + MERT, InfoNCE), Recall@K vs baselines, plug into song ranking | dataset access, go/no-go on day 3 | TBD |
+| **4: Story + product (ML #4)** | event segmentation + coverage term, one-click generate (brief optional), "My montages" gallery, eval, DEMO.md v2 | event segmentation, optional brief | TBD |
+
+The Beat This! mirror (half a day) goes to whoever finishes first.
 
 ### MVP tracks (two people in parallel; history)
 
@@ -82,26 +83,24 @@ Day 2
   - [x] demo parts (Track A): demo mode, backups, Rate tab + vote analysis, DEMO.md (merged 2026-10-27; real-album prep run waits for the demo album)
   - [x] evaluation parts (Track B): eval grid, metrics, render check, report, RESULTS.md (merged 2026-10-27; the live vote runs at the demo)
 
-Extension (phases 12+, proposed; numbering and specs set when the team agrees, see ROADMAP.md)
-- [ ] **12. Song pick from listening history** (Track 1; ROADMAP F1; `spec/12_songpick.md`; claimed by Andrew, provisional)
-- [ ] **13. Beat This! mirror + per-shot render cache** (Tracks 2 and 4; ROADMAP items 6-7)
-  - [ ] per-shot render cache (Track 4, Keshav; `spec/13_render_cache.md`; in review on `phase-13-render-cache`)
-  - [ ] Beat This! mirror (Track 2; spec TBD)
-- [ ] **14. Temporal emotion model** (Track 2; ROADMAP item 1; spec TBD)
-- [ ] **15. Photo-album importance (CUFED) + personalization** (Track 3; ROADMAP item 2; spec TBD)
-- [ ] **16. People-aware editing** (Track 3; ROADMAP F2 / item 5; spec TBD)
-- [ ] **17. Coverage and diversity term** (Track 3; ROADMAP item 4; spec TBD)
-- [ ] **18. Eval v2: larger eval set, multiple briefs, VLM judge, human studies** (Track 4; ROADMAP item 8; spec TBD)
-- [ ] **19. Learned editing preferences** (Tracks 2 and 4; ROADMAP F3 / item 3; spec TBD)
-- [ ] **20. 9:16 output and variable length** (Tracks 2 and 4; ROADMAP item 9; spec TBD)
-- [ ] **21. FastAPI layer + timeline editor** (Track 4; ROADMAP item 10 / F4; spec TBD)
+Extension (2 weeks, see ROADMAP.md)
+- [ ] **12. Song pick: three modes + vibe/sentiment match** (Track 1; ROADMAP F1; `spec/12_songpick.md`; claimed by Andrew, provisional; spec needs the release-date and best-vibe modes)
+- [ ] **13. Per-shot render cache + Beat This! mirror** (ROADMAP items 6-7)
+  - [x] per-shot render cache (Keshav; `spec/13_render_cache.md`; merged 2026-11-05, PR #1)
+  - [ ] Beat This! mirror (whoever finishes first; spec TBD)
+- [ ] **15. Photo-album importance (CUFED)** (Track 2; ROADMAP item 2; spec TBD)
+- [ ] **17. Story/event ordering: event segmentation + coverage term** (Track 4; ROADMAP item 4; spec TBD)
+- [ ] **18. Eval v2 (slim): more albums, with/without brief, song-pick mini study** (Track 4; ROADMAP item 8; spec TBD)
+- [ ] **22. Image-set <-> music contrastive model** (Track 3; ROADMAP F1 stage B; go/no-go on day 3; spec TBD)
+- [ ] **23. "My montages" gallery** (Track 4; ROADMAP F5; spec TBD)
+- Dropped in the 2-week re-scope (2026-11-07): 14 temporal emotion, 16 people-aware editing, 19 learned editing preferences, 20 9:16 and variable length, 21 FastAPI + timeline editor.
 
 ## Current work
 
 | Phase | Person | Branch | Started (ET) | Notes |
 |---|---|---|---|---|
 | 13. Per-shot render cache (render half; spec 13_render_cache.md) | Keshav | phase-13-render-cache | 2026-11-05 | Track 4; PR for review |
-| 12. Song pick (fallback: 12.1-12.4) | Andrew | phase-12-songpick | 2026-11-04 | provisional: Track 1 owner not agreed yet; branch not merged until the team agrees on ROADMAP.md |
+| 12. Song pick (12.1-12.7b: export, Connect Spotify, three modes, YouTube) | Andrew | phase-12-songpick | 2026-11-04 | PR open for review (2026-11-08); Track 1 owner still to confirm |
 
 ## Decisions
 
@@ -182,3 +181,16 @@ New dev 2 (name TBD)
 - [ ] Push access to the repo; local clone; `uv` installed
 - [ ] Colab Secrets: `ANTHROPIC_API_KEY`, `MONTAGE_USER=<name>`
 - [ ] Drive shortcut to `montage_data` (shared as Editor)
+- 2026-11-07 | Andrew | Project re-scoped to 4 people x 2 weeks; ROADMAP.md rewritten; phases 14, 16, 19, 20, 21 dropped; new phases 22 (contrastive model) and 23 (gallery) | the group's timeline is 2 weeks, not 8
+- 2026-11-07 | Andrew | The product is an automatic montage maker, not a video editor: one-click generate, the brief and notes/recut stay optional, no timeline editor | the premise is effortless storytelling from a set of photos and videos
+- 2026-11-07 | Andrew | Song pick has three user-chosen modes: Connect Spotify (songs played in the past year whose release date is near the photos' median capture date), best vibe fit (ignore dates), full export upload (period affinity + vibe) | Spotify sign-in only reaches about a year back
+- 2026-11-07 | Andrew | Release dates prefer the earliest release (MusicBrainz first-release-date) over Spotify's album date, and the release window widens when few songs qualify | Spotify dates are often remaster/compilation dates
+- 2026-11-07 | Andrew | "Best vibe fit" ranks the user's own songs (recent plays, top tracks, export if given), not an open catalog | no catalog with usable audio; Spotify has no audio features for new apps
+- 2026-11-07 | Andrew | ML priority: 1. song-vibe matching, 2. CUFED photo importance, 3. contrastive song model (go/no-go on day 3 on dataset access), 4. story/event ordering; cut order is the reverse, with the gallery cut after story ordering | all four are wanted; two weeks is tight
+- 2026-11-07 | Andrew | "My montages" gallery: SQLite index + files on the shared Drive, written only by the app process, per MONTAGE_USER, no login; builds on the persisted Session json | simplest durable store on Colab; personal media never leaves Drive
+- 2026-11-08 | Andrew | Mode "Songs from back then" (sign-in): eligible = past-year songs whose album release date falls in an age-scaled window around the photos' median date (asymmetric: `release.before_days_by_age`, after = 0.25 x before; widened until 5 songs), or songs actually played during the album (recent plays; the 4-week list for photos that recent); ranked by listening affinity, ties by release closeness | sign-in has no play dates older than the last 50 plays; the 1-year list made every pick "your top 5 of the year"
+- 2026-11-08 | Andrew | Remaster/compilation dates are skipped by a name heuristic (`release.unreliable_words`, `album_type: compilation`); a MusicBrainz first-release lookup is deferred | keeps this PR small; MusicBrainz is 1 request/s
+- 2026-11-08 | Andrew | "Best vibe fit" ships as a placeholder ranked by listening affinity, with a note; the stage A vibe match (tags -> CLIP text vs album CLIP/mood) is the next PR | keeps the YouTube and time-window fixes reviewable on their own
+- 2026-11-08 | Andrew | YouTube on Colab: optional Colab Secret `YOUTUBE_COOKIES` from a spare Google account (raw or base64 cookies.txt), written to local VM disk (`/content/.yt_cookies.txt`, mode 600), never Drive or the repo (hygiene blocks `*cookies*.txt`); `deno` pinned for yt-dlp's YouTube challenges; when still blocked the app links to a YouTube search and asks for an upload | YouTube blocks cloud IPs; the cookies are a full Google login, so never a personal account
+- 2026-11-08 | Andrew | Export mode uses the age-scaled listening window (`window_by_age_days`, widened up to `max_window_days` 365) instead of a fixed 7-day pad (`max_pad_days` removed) | the roadmap's "a month for last year, a season for 5 years ago"
+- 2026-11-08 | Andrew | `start_app.py` switches to `--branch` first and then loads that branch's own bootstrap (re-running itself once if it changed) | a fresh runtime started on main ran main's bootstrap, which silently ignored new secrets such as SPOTIFY_CLIENT_ID
