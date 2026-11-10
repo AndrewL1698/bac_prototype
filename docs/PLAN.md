@@ -101,6 +101,7 @@ Extension (2 weeks, see ROADMAP.md)
 |---|---|---|---|---|
 | 13. Per-shot render cache (render half; spec 13_render_cache.md) | Keshav | phase-13-render-cache | 2026-11-05 | Track 4; PR for review |
 | 12. Song pick (12.1-12.7b: export, Connect Spotify, three modes, YouTube) | Andrew | phase-12-songpick | 2026-11-04 | PR open for review (2026-11-08); Track 1 owner still to confirm |
+| 15. Photo-album importance (CUFED; spec 15_cufed.md) | Shiven | phase-15-cufed | 2026-11-10 | Track 2; days 1-3: download, label mapping, features |
 
 ## Decisions
 
