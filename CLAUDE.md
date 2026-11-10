@@ -154,6 +154,8 @@ Author = the human driving the session (from `git config user.name` or `MONTAGE_
 
 ## 8. Coding conventions
 
+- **Readable first, then concise.** The top priority is code our human colleagues can read and follow. Within that, write as little code as possible: at every step, ask whether it can be shorter (fewer lines, fewer helpers, no dead branches, no restating what the code already says) without getting harder to read. When concise and readable conflict, readable wins.
+- **One consistent style.** Match the conventions of the surrounding code and the rest of the repo (naming, structure, comments, error handling) rather than introducing a new pattern.
 - Python 3.10+ (Colab's version), type hints everywhere, pydantic v2 models for contracts and config.
 - Pure functions where possible; side effects (files, models) at module edges.
 - Models load lazily once per process via small singleton loaders (`get_clip()`, `get_mert()`), on GPU if available, fp16 on CUDA.
