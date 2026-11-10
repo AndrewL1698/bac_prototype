@@ -273,3 +273,9 @@ Format:
 - Blockers: `montage_data` access for Andy (shards, weights).
 - Heads-up: new config keys `music.emotion.use_temporal`, `music.emotion.temporal_weights`, `music.emotion.temporal.*` (with defaults). New internal field `FullAnalysis.emotion_model`: existing cached song analyses are recomputed once. No `types.py` / `schemas.md` change.
 - Heads-up: EmoMusic is a subset of DEAM, so it is dropped from the ROADMAP item 1 data plan (see PLAN Decisions).
+
+## 2026-11-10 ET | Andy | phase 14 | branch phase-14-temporal-emotion (pushed, not merged)
+- Done: rebased the phase 14 branch onto main (after the 2-week re-scope and PR #5). PLAN.md conflict resolved: main's re-scoped phase list kept, with a note that Andy continues 14 on this branch; Current work and Decisions keep both sides. Added `docs/MUSIC_EMOTION.md` (track overview and Colab run book). Branch pushed so Colab can pull it.
+- Tests: local `pytest -q` 150 passed, 78 skipped (torch/GPU/media tests skip on the laptop; `test_job_stop` deselected, known macOS issue).
+- Next: 14.1 on Colab: bootstrap with `--branch phase-14-temporal-emotion`, run `tests/test_temporal_emotion.py`, then the `emo_temporal` training job (MUSIC_EMOTION.md section 5).
+- Blockers: `montage_data` access for Andy (DEAM MERT shards); phase 14 is outside the 2-week re-scope until the team agrees.
