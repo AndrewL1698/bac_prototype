@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Spotify sign-in</title>
+<style>
+  :root { --bg: #ffffff; --fg: #1d1d1f; --muted: #5f6368; --box: #f2f3f5; --accent: #1db954; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #121212; --fg: #f1f1f1; --muted: #a8a8a8; --box: #232323; } }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+  main { max-width: 34rem; margin: 12vh auto; padding: 0 16px; }
+  h1 { font-size: 1.4rem; margin: 0 0 .5rem; }
+  p { color: var(--muted); }
+  code { display: block; background: var(--box); padding: .75rem; border-radius: 8px; word-break: break-all; }
+  button { margin-top: .75rem; background: var(--accent); color: #000; border: 0; border-radius: 999px;
+           padding: .55rem 1.2rem; font-weight: 600; cursor: pointer; }
+</style>
+</head>
+<body>
+<main>
+  <h1 id="title">Connecting Spotify…</h1>
+  <p id="msg">Taking you back to the Montage app.</p>
+  <code id="code" hidden></code>
+  <button id="copy" hidden>Copy code</button>
+</main>
+<script>
+// Spotify redirects here (a fixed URL) because the app's own share link changes on every restart.
+// `state` is "<nonce>~<base64url(app URL)>". Send the browser back to that app URL, but only to the
+// hosts the app itself allows (montage.songpick.spotify.safe_return_url): https://*.gradio.live or a
+// local address. Anything else shows the code to paste instead, so this page is never an open redirect.
+(function () {
+  const q = new URLSearchParams(window.location.search);
+  const code = q.get("code"), state = q.get("state") || "", error = q.get("error");
+  const $ = (id) => document.getElementById(id);
+  function decode(s) {
+    try {
+      s = s.replace(/-/g, "+").replace(/_/g, "/");
+      while (s.length % 4) s += "=";
+      return decodeURIComponent(escape(atob(s)));
+    } catch (e) { return null; }
+  }
+  function allowed(u) {
+    try {
+      const x = new URL(u);
+      if (x.username || x.password) return false;
+      const h = x.hostname.toLowerCase();
+      if (x.protocol === "https:" && h.endsWith(".gradio.live") && h.length > ".gradio.live".length) return true;
+      if ((x.protocol === "http:" || x.protocol === "https:") && (h === "127.0.0.1" || h === "localhost")) return true;
+      return false;
+    } catch (e) { return false; }
+  }
+  if (error) {
+    $("title").textContent = "Spotify sign-in was cancelled";
+    $("msg").textContent = "Close this tab and press Connect Spotify in the app to try again.";
+    return;
+  }
+  const app = decode(state.split("~")[1] || "");
+  if (code && app && allowed(app)) {
+    const back = new URL(app);
+    back.searchParams.set("spotify_code", code);
+    back.searchParams.set("state", state);
+    window.location.replace(back.toString());
+    return;
+  }
+  $("title").textContent = code ? "Almost done" : "No sign-in code";
+  $("msg").textContent = code
+    ? "Could not return to the app automatically. Copy this code and paste it into the app's Spotify code box."
+    : "Open the Montage app and press Connect Spotify.";
+  if (code) {
+    $("code").textContent = code + " " + state;
+    $("code").hidden = false;
+    $("copy").hidden = false;
+    $("copy").onclick = () => navigator.clipboard.writeText(code + " " + state)
+      .then(() => { $("copy").textContent = "Copied"; });
+  }
+})();
+</script>
+</body>
+</html>

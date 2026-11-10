@@ -91,12 +91,15 @@ def build_app():
                 raise gr.Error(f"Something went wrong ({type(e).__name__}). See the app log.")
         return wrapped
 
+    def media_list(files, album):
+        return [str(paths.data_root() / "demo" / album)] if album else [f if isinstance(f, str) else f.name
+                                                                         for f in (files or [])]
+
     @friendly
     def on_generate(files, album, song_file, song_choice, brief, seed, target_len, excerpt_start, thumbs, system, ui,
                     progress=gr.Progress()):
         from montage import config
-        media = [str(paths.data_root() / "demo" / album)] if album else [f if isinstance(f, str) else f.name
-                                                                          for f in (files or [])]
+        media = media_list(files, album)
         song = str(paths.data_root() / "demo" / "songs" / song_choice) if song_choice else song_file
         if not media:
             raise UserError("Add photos and videos, or pick a demo album.")
@@ -197,6 +200,36 @@ def build_app():
             return f"Thanks! Votes so far: {summary_line(analyze())}", rs
         return fn
 
+    # ---- Pick a song for me (phase 12): Spotify sign-in -> suggestions -> opt-in YouTube audio ----
+    from montage.app import songpick_ui
+
+    @friendly
+    def on_sp_connect(page_url):
+        return songpick_ui.connect(page_url)
+
+    def on_sp_load(sp, request: gr.Request):
+        new, msg = songpick_ui.on_page_load(dict(request.query_params) if request else {})
+        return (new if new is not None else sp), msg
+
+    @friendly
+    def on_sp_paste(text):
+        return songpick_ui.paste_code(text)
+
+    @friendly
+    def on_sp_suggest(files, album, hist_files, sp, mode, progress=gr.Progress()):
+        progress(0.2, desc="reading capture dates")
+        hist = [f if isinstance(f, str) else f.name for f in (hist_files or [])]
+        choices, pick, md = songpick_ui.suggest(media_list(files, album), hist or None, sp, mode)
+        return gr.Radio(choices=choices, value=choices[0][1] if choices else None), pick, md
+
+    @friendly
+    def on_sp_use(choice, pick, yt_ok, progress=gr.Progress()):
+        progress(0.2, desc="finding the song on YouTube")
+        path, md = songpick_ui.use_song(choice, pick, bool(yt_ok))
+        if path is None:  # fetch off or blocked: keep the Song box as it is, show the manual route
+            return gr.update(), gr.update(), md
+        return path, "", md
+
     with gr.Blocks(title="Montage: AI music video editor") as demo:
         gr.Markdown("# Montage\nYou direct, the music sets the timing, the system does the rest.")
         ui = gr.State({})
@@ -204,6 +237,30 @@ def build_app():
             with gr.Column(scale=4):
                 files = gr.File(label="Photos and videos", file_count="multiple")
                 album = gr.Dropdown(choices=[""] + demo_albums(), value="", label="...or a demo album")
+                sp_state = gr.State({})
+                sp_pick = gr.State(None)
+                with gr.Accordion("Pick a song for me (Spotify)", open=False):
+                    gr.Markdown("Connect Spotify first (read-only: recent plays and top songs), then add photos, "
+                                "choose how to pick, and press **Suggest songs**. Connecting reloads this page.")
+                    from montage.config import get_config as _cfg
+                    sp_mode = gr.Radio(label="How to pick", choices=songpick_ui.MODE_CHOICES,
+                                       value=_cfg().songpick.default_mode)
+                    with gr.Row():
+                        sp_connect = gr.Button("Connect Spotify")
+                        sp_suggest = gr.Button("Suggest songs")
+                    sp_status = gr.Markdown("")
+                    sp_url_in = gr.Textbox(visible=False)
+                    sp_url_out = gr.Textbox(visible=False)
+                    sp_hist = gr.File(label="Your Spotify history (data export JSON files)", file_count="multiple",
+                                      file_types=[".json"], visible=_cfg().songpick.default_mode == "export")
+                    sp_choice = gr.Radio(label="Suggested songs", choices=[])
+                    sp_md = gr.Markdown("")
+                    sp_yt = gr.Checkbox(label="Fetch the song's audio from YouTube (only for songs you're allowed to use)",
+                                        value=_cfg().songpick.youtube.enabled)
+                    sp_use = gr.Button("Use this song")
+                    with gr.Accordion("Spotify page asked you to paste a code?", open=False):
+                        sp_code = gr.Textbox(label="Code from the Spotify sign-in page")
+                        sp_code_btn = gr.Button("Finish connecting")
                 song_file = gr.Audio(label="Song", type="filepath")
                 song_choice = gr.Dropdown(choices=[""] + demo_songs(), value="", label="...or a demo song")
                 brief = gr.Textbox(label="Director's brief", lines=4, placeholder=BRIEF_PLACEHOLDER)
@@ -259,6 +316,16 @@ def build_app():
                 right_btn = gr.Button("Right better")
             vote_md = gr.Markdown("")
 
+        # Drop ?spotify_code=&state= from the address bar once read: a refresh would retry a used-up code.
+        demo.load(on_sp_load, [sp_state], [sp_state, sp_status]).then(
+            None, None, None, js="() => { history.replaceState(null, '', location.pathname); }")
+        sp_connect.click(on_sp_connect, [sp_url_in], [sp_url_out, sp_status],
+                         js="(u) => window.location.href.split('?')[0].split('#')[0]"
+                         ).success(None, [sp_url_out], None, js="(u) => { if (u) { window.location.href = u; } }")
+        sp_code_btn.click(on_sp_paste, [sp_code], [sp_state, sp_status])
+        sp_mode.change(lambda m: gr.update(visible=m == "export"), [sp_mode], [sp_hist])
+        sp_suggest.click(on_sp_suggest, [files, album, sp_hist, sp_state, sp_mode], [sp_choice, sp_pick, sp_md])
+        sp_use.click(on_sp_use, [sp_choice, sp_pick, sp_yt], [song_file, song_choice, sp_md])
         outs = [video, status, note_md, plan_md, plan_json, gallery, curves, costs, timings, notes_md, ui]
         gen_btn.click(on_generate, [files, album, song_file, song_choice, brief, seed, target_len, excerpt_start,
                                     thumbs, system, ui], outs, api_name="generate")
@@ -275,6 +342,17 @@ def build_app():
     return demo
 
 
+def served_paths() -> tuple[list[str], list[str]]:
+    """(allowed, blocked) for demo.launch. Serve only generated outputs (videos/plots in runs/, storyboard
+    thumbnails). Never the whole Drive folder or /content: /content/montage_env.sh holds the API key and the
+    share link is public. Fetched YouTube songs (cache/youtube_audio) stay private: the app plays a temp copy."""
+    allowed = [str(paths.data_root() / "runs"), str(paths.scratch_dir("thumbs")),
+               str(paths.data_root() / "demo" / "vote"), str(paths.data_root() / "demo" / "backups")]
+    blocked = [str(paths.COLAB_ENV_FILE), str(paths.data_root() / "sessions"), str(paths.data_root() / "jobs"),
+               str(paths.cache_dir("youtube_audio"))]
+    return allowed, blocked
+
+
 def main(argv: list[str] | None = None) -> int:
     from montage.config import get_config
     paths.load_colab_env()
@@ -285,11 +363,7 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
     demo = build_app()
     demo.queue(default_concurrency_limit=1)
-    # Serve only generated outputs (videos/plots in runs/, storyboard thumbnails). Never the whole Drive
-    # folder or /content: /content/montage_env.sh holds the API key and the share link is public.
-    allowed = [str(paths.data_root() / "runs"), str(paths.scratch_dir("thumbs")),
-               str(paths.data_root() / "demo" / "vote"), str(paths.data_root() / "demo" / "backups")]
-    blocked = [str(paths.COLAB_ENV_FILE), str(paths.data_root() / "sessions"), str(paths.data_root() / "jobs")]
+    allowed, blocked = served_paths()
     # Optional password (Colab Secret APP_PASSWORD -> MONTAGE_APP_PASSWORD via the bootstrap). Never logged.
     pw = os.environ.get("MONTAGE_APP_PASSWORD") or None
     auth = (os.environ.get("MONTAGE_APP_USER") or "montage", pw) if pw else None

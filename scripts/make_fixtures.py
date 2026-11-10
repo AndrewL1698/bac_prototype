@@ -2,8 +2,8 @@
 
     python scripts/make_fixtures.py [--force]
 
-Writes videos, photos, click tracks, a 3-section song, and truth.json (beats, downbeats,
-section boundaries, scene cuts).
+Writes videos, photos, click tracks, a 3-section song, a synthetic Spotify history
+(spotify_history/, made-up tracks), and truth.json (beats, downbeats, section boundaries, scene cuts).
 """
 
 from __future__ import annotations
@@ -269,6 +269,9 @@ def main(argv: list[str] | None = None) -> int:
         truth[name] = click_track(name, bpm)
     truth["click_120_dynamic.wav"] = click_track("click_120_dynamic.wav", 120, dynamic=True)
     truth["song_sections.wav"] = song_sections()
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from fixtures_history import write_history
+    truth["spotify_history"] = write_history(OUT / "spotify_history")
     if not args.no_video:
         if shutil.which("ffmpeg") is None:
             print("ffmpeg not found; run with --no-video or install FFmpeg", file=sys.stderr)

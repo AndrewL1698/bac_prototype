@@ -284,6 +284,64 @@ class EvalCfg(_B):
     default_brief: str
 
 
+class SpotifyCfg(_B):
+    client_id_env: str
+    redirect_uri: str
+    scopes: list[str]
+    return_hosts: list[str]
+    auth_ttl_s: float
+    timeout_s: float
+    top_limit: int
+    range_days: dict[str, float]
+    range_weight: dict[str, float]
+
+
+class YoutubeCfg(_B):
+    enabled: bool
+    max_results: int
+    duration_tol_s: float
+    min_song_s: float
+    max_song_s: float
+    min_match: float
+    topic_bonus: float
+    bad_words: list[str]
+    bad_penalty: float
+    duration_penalty: float
+    cookies_file: str
+    cookies_env: str
+
+
+class ReleaseCfg(_B):
+    before_days_by_age: list[list[float]]
+    after_frac: float
+    min_candidates: int
+    max_before_days: float
+    unreliable_words: list[str]
+
+
+class SongpickCfg(_B):
+    min_play_ms: int
+    full_play_ms: int
+    skip_penalty: float
+    period_trim_frac: float
+    pad_days: float
+    min_window_days: float
+    min_window_events: int
+    widen_factor: float
+    recency_half_life_days: float
+    lift_prior: float
+    sig_weight: float
+    min_window_plays: int
+    shortlist_size: int
+    alpha: float
+    w_sources: dict[str, float]
+    default_mode: Literal["release", "vibe", "export"]
+    window_by_age_days: list[list[float]]
+    max_window_days: float
+    release: ReleaseCfg
+    spotify: SpotifyCfg
+    youtube: YoutubeCfg
+
 class Config(_B):
     seed: int
     ingest: IngestCfg
@@ -296,6 +354,7 @@ class Config(_B):
     director: DirectorCfg
     planner: PlannerCfg
     render: RenderCfg
+    songpick: SongpickCfg
     app: AppCfg
     eval: EvalCfg
 
