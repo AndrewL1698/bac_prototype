@@ -31,6 +31,7 @@ _Keep this list current. Update it when a phase merges to `main`._
     - **My full Spotify history**: upload the Spotify data export to get songs you actually played back then.
   - Opt-in: tick **Fetch the song's audio from YouTube** and press **Use this song** to fill the Song box. On Colab this needs the `YOUTUBE_COOKIES` secret (below); otherwise the app links to a YouTube search and you upload the file.
   - CLI for the export: `python -m montage.songpick --history DIR --start YYYY-MM-DD --end YYYY-MM-DD [--mode vibe]`.
+- **Phase 15 (photo-album importance, branch `phase-15-cufed`, not merged yet; days 1-3 of 10):** the CUFED / ML-CUFED event albums (per-photo human importance) are downloaded and turned into ranker training data with our own pipeline. `python -m training.importance.cufed` finds or fetches the dataset (a copy under `montage_data/datasets/importance/cufed/raw/`, the authors' link via `--set importance.cufed.official_url=...`, or the Hugging Face mirror, which only has the 133-album test split) and writes the label mapping; `python -m training.importance.cufed_features` runs every album through the app's own feature pipeline into `cufed_photos.npz`. Training and the evaluation against the SumMe/TVSum ranker come next (spec [`15_cufed.md`](docs/spec/15_cufed.md)).
 - **Phase 11 (evaluation):** `scripts/make_eval_set.py` builds held-out eval albums and songs; `python -m montage.eval.run_grid` (as a job) plans every album x song with the full editor, three baselines and five ablations (3 seeds each) and writes metrics, slide figures, and `montage_data/eval/report.md`; `python -m montage.eval.render_check` renders the full cuts and checks with scene detection that every cut lands on its planned frame. Headline numbers in [`docs/RESULTS.md`](docs/RESULTS.md).
 
 ## How it works (one paragraph)
@@ -81,6 +82,8 @@ python scripts/run_job.py --name emo_train   -- python -m training.emotion.train
 python scripts/run_job.py --name vsum_dl     -- python -m training.importance.download
 python scripts/run_job.py --name vsum_feats  -- python -m training.importance.extract_clip
 python scripts/run_job.py --name rank_train  -- python -m training.importance.train
+python scripts/run_job.py --name cufed_dl    -- python -m training.importance.cufed            # phase 15
+python scripts/run_job.py --name cufed_feats -- python -m training.importance.cufed_features   # phase 15
 python scripts/run_job.py --name eval_grid   -- python -m montage.eval.run_grid
 python scripts/run_job.py --name demo_prep   -- python -m montage.app.demo_mode --prepare
 python scripts/job_status.py                 # all your jobs
@@ -130,11 +133,11 @@ README.md  CLAUDE.md  KICKOFF.md
 configs/      default.yaml (every weight and threshold), tags.txt
 docs/         PLAN.md  LOG.md  RESULTS.md  DEMO.md  spec/
 montage/      the app: ingest, candidates, features, importance, music, director, planning, render, app, eval
-training/     emotion (MERT + DEAM), importance (SumMe/TVSum ranker)
+training/     emotion (MERT + DEAM), importance (SumMe/TVSum ranker, CUFED photo albums)
 scripts/      colab_bootstrap, run_job, job_status, make_fixtures, smoke_models
 tests/        pytest suite (fixtures are generated, not committed)
 ```
 
 ## Licenses and data notes
 
-Prototype for non-commercial demo use. MERT-v1-95M is CC-BY-NC-4.0 and SumMe is non-commercial; both would need replacing before any commercial use. DEAM audio is Creative Commons. Datasets and weights are downloaded at runtime and never stored in this repo.
+Prototype for non-commercial demo use. MERT-v1-95M is CC-BY-NC-4.0, SumMe is non-commercial, and CUFED is for non-commercial research (its Hugging Face mirror states CC BY-NC 2.0); all would need replacing before any commercial use. DEAM audio is Creative Commons. Datasets and weights are downloaded at runtime and never stored in this repo.
