@@ -100,7 +100,7 @@ Extension (2 weeks, see ROADMAP.md)
 | Phase | Person | Branch | Started (ET) | Notes |
 |---|---|---|---|---|
 | 13. Per-shot render cache (render half; spec 13_render_cache.md) | Keshav | phase-13-render-cache | 2026-11-05 | Track 4; PR for review |
-| 12. Song pick (fallback: 12.1-12.4) | Andrew | phase-12-songpick | 2026-11-04 | provisional: Track 1 owner not agreed yet; branch not merged until the team agrees on ROADMAP.md |
+| 12. Song pick (12.1-12.7b: export, Connect Spotify, three modes, YouTube) | Andrew | phase-12-songpick | 2026-11-04 | PR open for review (2026-11-08); Track 1 owner still to confirm |
 
 ## Decisions
 
@@ -188,3 +188,9 @@ New dev 2 (name TBD)
 - 2026-11-07 | Andrew | "Best vibe fit" ranks the user's own songs (recent plays, top tracks, export if given), not an open catalog | no catalog with usable audio; Spotify has no audio features for new apps
 - 2026-11-07 | Andrew | ML priority: 1. song-vibe matching, 2. CUFED photo importance, 3. contrastive song model (go/no-go on day 3 on dataset access), 4. story/event ordering; cut order is the reverse, with the gallery cut after story ordering | all four are wanted; two weeks is tight
 - 2026-11-07 | Andrew | "My montages" gallery: SQLite index + files on the shared Drive, written only by the app process, per MONTAGE_USER, no login; builds on the persisted Session json | simplest durable store on Colab; personal media never leaves Drive
+- 2026-11-08 | Andrew | Mode "Songs from back then" (sign-in): eligible = past-year songs whose album release date falls in an age-scaled window around the photos' median date (asymmetric: `release.before_days_by_age`, after = 0.25 x before; widened until 5 songs), or songs actually played during the album (recent plays; the 4-week list for photos that recent); ranked by listening affinity, ties by release closeness | sign-in has no play dates older than the last 50 plays; the 1-year list made every pick "your top 5 of the year"
+- 2026-11-08 | Andrew | Remaster/compilation dates are skipped by a name heuristic (`release.unreliable_words`, `album_type: compilation`); a MusicBrainz first-release lookup is deferred | keeps this PR small; MusicBrainz is 1 request/s
+- 2026-11-08 | Andrew | "Best vibe fit" ships as a placeholder ranked by listening affinity, with a note; the stage A vibe match (tags -> CLIP text vs album CLIP/mood) is the next PR | keeps the YouTube and time-window fixes reviewable on their own
+- 2026-11-08 | Andrew | YouTube on Colab: optional Colab Secret `YOUTUBE_COOKIES` from a spare Google account (raw or base64 cookies.txt), written to local VM disk (`/content/.yt_cookies.txt`, mode 600), never Drive or the repo (hygiene blocks `*cookies*.txt`); `deno` pinned for yt-dlp's YouTube challenges; when still blocked the app links to a YouTube search and asks for an upload | YouTube blocks cloud IPs; the cookies are a full Google login, so never a personal account
+- 2026-11-08 | Andrew | Export mode uses the age-scaled listening window (`window_by_age_days`, widened up to `max_window_days` 365) instead of a fixed 7-day pad (`max_pad_days` removed) | the roadmap's "a month for last year, a season for 5 years ago"
+- 2026-11-08 | Andrew | `start_app.py` switches to `--branch` first and then loads that branch's own bootstrap (re-running itself once if it changed) | a fresh runtime started on main ran main's bootstrap, which silently ignored new secrets such as SPOTIFY_CLIENT_ID

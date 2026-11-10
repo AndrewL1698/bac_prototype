@@ -18,5 +18,6 @@ markers = [
     "gpu: needs a CUDA GPU (run on Colab)",
     "media: needs FFmpeg and generated fixtures (run on Colab)",
     "api: needs ANTHROPIC_API_KEY",
+    "network: needs the internet (Spotify/YouTube); run on Colab",
 ]
 filterwarnings = ["ignore::DeprecationWarning"]

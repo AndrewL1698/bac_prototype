@@ -4,7 +4,7 @@ Implement these exactly (pydantic v2). Times are seconds (float) on the **excerp
 
 ```python
 from __future__ import annotations
-from datetime import datetime
+from datetime import date, datetime
 from enum import Enum
 from typing import Literal
 from pydantic import BaseModel, Field
@@ -183,6 +183,70 @@ class RunResult(BaseModel):
     editor_note: str
     timings: dict[str, float]
     fallbacks: list[str]             # e.g. ["director:rules", "emotion:heuristic"]
+
+# ---------- Song pick (phase 12) ----------
+class ListeningEvent(BaseModel):
+    """One play from a Spotify streaming-history export. Personal data: never commit or log lists of these."""
+    ts: datetime                     # end of the play, naive UTC
+    ms_played: int
+    track: str
+    artist: str
+    album: str = ""
+    uri: str | None = None           # "spotify:track:..." when the export has it
+    skipped: bool = False            # export's `skipped`, or reason_end == "fwdbtn"
+    source: Literal["export", "recent"] = "export"   # data export, or Spotify sign-in "recently played"
+    duration_ms: int | None = None   # track length when known (sign-in data)
+    release_date: date | None = None  # album release date (sign-in data); the first day of its year/month when less precise
+    release_precision: Literal["year", "month", "day"] | None = None
+    release_reliable: bool = True    # False for compilations/remasters/deluxe editions (the date is not the song's)
+
+
+class TopTrack(BaseModel):
+    """One entry of a Spotify sign-in top-tracks list (no play dates; Spotify only gives the rank)."""
+    track: str
+    artist: str
+    album: str = ""
+    uri: str | None = None
+    duration_ms: int | None = None
+    time_range: Literal["short_term", "medium_term", "long_term"]   # about 4 weeks / 6 months / 1 year
+    rank: int                        # 1 = most played in that range
+    release_date: date | None = None  # album release date (sign-in data); the first day of its year/month when less precise
+    release_precision: Literal["year", "month", "day"] | None = None
+    release_reliable: bool = True    # False for compilations/remasters/deluxe editions (the date is not the song's)
+
+class TrackCandidate(BaseModel):
+    key: str                         # "artist|track", lowercased, whitespace collapsed
+    track: str
+    artist: str
+    album: str
+    uri: str | None
+    plays_window: float              # weighted plays inside the period (skips subtract)
+    plays_total: float               # weighted plays over the whole history
+    n_plays_window: int              # plays of at least songpick.min_play_ms inside the period
+    n_skips_window: int
+    lift: float                      # period share vs whole-history share, smoothed (1 = as usual)
+    affinity: float                  # [0,1], max-normalized over the candidates of one pick
+    vibe: float | None = None        # [0,1] from a vibe stage (later phases); None = not computed
+    score: float                     # final rank score
+    reason: str                      # short human-readable "why this song"
+    duration_ms: int | None = None   # track length when known (sign-in data)
+    sources: list[str] = []          # "export", "recent", "top:<time_range>"
+    release_date: date | None = None  # album release date (sign-in data); the first day of its year/month when less precise
+    release_precision: Literal["year", "month", "day"] | None = None
+    release_reliable: bool = True    # False for compilations/remasters/deluxe editions (the date is not the song's)
+
+class SongPick(BaseModel):
+    period_start: datetime | None    # naive; None when the album has no capture dates
+    period_end: datetime | None
+    period_source: Literal["album", "album_widened", "history", "release", "release_widened"]
+    n_events: int                    # music plays in the cleaned history
+    n_events_window: int             # of those, inside the period
+    candidates: list[TrackCandidate] # shortlist, best first
+    vibe_source: Literal["none", "tags", "contrastive"] = "none"
+    notes: list[str] = []            # warnings (widened period, few plays, no dates)
+    sources: list[str] = []          # listening data used: "export", "recent", "top:<time_range>"
+    mode: Literal["release", "vibe", "export"] = "vibe"   # release: songs that came out around the photos;
+    # vibe: best fit regardless of dates (ranked by listening until a vibe stage exists); export: played back then
 ```
 
 ## On-disk layout per run
