@@ -479,6 +479,8 @@ def test_source_priority(fresh_root, monkeypatch):
 
     monkeypatch.setattr(cufed, "download", fake_download)
     monkeypatch.setattr(cufed, "fetch_hf", lambda *a: pytest.fail("hf is on disk: no download expected"))
+    half = make_cufed(cufed.raw_dir() / "official" / "CUFED", {"0_a@N00": (SCORES12, set())})  # died mid-extract
+    assert cufed.local_root("official") is None and cufed.local_root("hf") is not None and half.exists()
     root, info = cufed.ensure_dataset(_cfg())  # official_url null: the mirror on disk is used as is
     assert info["source"] == "hf" and info["sha"] == "abc" and root == cufed.raw_dir() / "hf" / "mirror"
     root, info = cufed.ensure_dataset(_cfg(official_url="https://example.org/dead.zip"))

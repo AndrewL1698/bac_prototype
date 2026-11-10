@@ -37,7 +37,7 @@ Finding the root never walks `images/` folders (they hold the photos; on the Dri
 
 Archive extraction refuses members that would land outside the target folder (absolute paths, `..`), skips links and `__MACOSX`/`._*` entries, and writes a `_extracted_<archive>.json` marker so reruns skip it.
 
-Provenance: each remote source writes `_source.json` in its folder (url, or repo + revision + resolved sha, and the download time). `cufed/raw/_downloaded.json` records which root the last mapping used: source, provenance, root path, and counts (labeled albums, labeled photos, album folders, photo files).
+Provenance: each remote source writes `_source.json` in its folder (url, or repo + revision + resolved sha, and the download time) after extraction finishes; a remote folder without it (a download that died half-extracted) does not count as on disk and is fetched again. `cufed/raw/_downloaded.json` records which root the last mapping used: source, provenance, root path, and counts (labeled albums, labeled photos, album folders, photo files).
 
 **Optional Flickr fill** (`importance.cufed.flickr.enabled: false` by default; turn on with `--set importance.cufed.flickr.enabled=true`): `image_importance.json` stores each photo's original Flickr URL, and it may cover more albums than the images on disk (e.g. the mirror). For labeled photos missing on disk, fetch the URL (`flickr.workers` threads, `flickr.delay_s` between requests per worker, `flickr.timeout_s`), check that the bytes decode as an image, and write `images/<album>/<photo>.jpg` atomically. Dead links are recorded in `cufed/raw/_flickr_failed.json` and skipped on later runs (`--retry-failed` tries them again). Only image bytes are downloaded; nothing about the user leaves the machine.
 

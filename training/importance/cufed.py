@@ -280,9 +280,12 @@ SOURCE_INFO = "_source.json"
 
 
 def local_root(src: str) -> Path | None:
+    """A source's root already on disk. A remote source counts only once its _source.json exists: that file is
+    written after extraction finishes, so a download that died half-extracted is fetched/resumed again."""
     if src == "manual":
         return find_root(raw_dir(), exclude=tuple(SOURCE_DIRS.values()))
-    return find_root(raw_dir() / SOURCE_DIRS[src])
+    d = raw_dir() / SOURCE_DIRS[src]
+    return find_root(d) if (d / SOURCE_INFO).exists() else None
 
 
 def fetch_official(url: str | None) -> tuple[Path | None, dict]:
