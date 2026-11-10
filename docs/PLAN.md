@@ -100,7 +100,7 @@ Extension (2 weeks, see ROADMAP.md)
 | Phase | Person | Branch | Started (ET) | Notes |
 |---|---|---|---|---|
 | 13. Per-shot render cache (render half; spec 13_render_cache.md) | Keshav | phase-13-render-cache | 2026-11-05 | Track 4; PR for review |
-| 12. Song pick (12.1-12.7b: export, Connect Spotify, three modes, YouTube) | Andrew | phase-12-songpick | 2026-11-04 | PR open for review (2026-11-08); Track 1 owner still to confirm |
+| 12.8 Song vibe match, stage A (tags -> CLIP + mood vs the photos) | Andrew | phase-12-vibe | 2026-11-10 | Track 1; 12.1-12.7b merged (PR #5) |
 
 ## Decisions
 
