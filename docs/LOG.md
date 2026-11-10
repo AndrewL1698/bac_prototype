@@ -268,3 +268,10 @@ Format:
 - Next: full `pytest -q` on Colab; merge. If #3 or #4 lands first, rebase and keep every PLAN.md row and decision from both sides.
 - Blockers: none.
 - Heads-up: the YouTube audio cache is never an allowed Gradio path (CLAUDE.md §11).
+
+## 2026-11-10 01:49 ET | Keshav | app UI: Print Table look + Revise panel | branch claude/montage-ui-design-critique-1fa16d (PR #2)
+- Done: (1) Revise loop in one panel, in task order: print strip, Selected shot (with why), Note for the editor, Changes with Recut first. Pin/Exclude became Keep/Stop keeping and Remove/Put back; pending changes listed live with "Recut · N changes"; the note clears after a recut; "Put back removed shots" undoes removals after a recut. (2) Print Table look, picked in an Impeccable direction round: neutral black, white text, one signal red; Archivo with tabular figures; timeline shots are white instant prints with a state cell in the bottom margin. Themed error/empty states; Gradio footer hidden. (3) Merged main (phase 12) into the PR: the "Pick a song for me (Spotify)" accordion now sits in the Media panel; "Use this song" switches the song source to Upload so the picked song shows. (4) Planner error now ends "Put back at least one shot, then recut."
+- Tests: Colab A100 full `pytest -q` on the merged commit ee03dd5: 215 passed, 8 skipped (7 need ANTHROPIC_API_KEY, 1 timing test needs MONTAGE_TIMING=1), 0 failed. Local non-GPU suite: 154 passed, 2 skipped. Playwright replay of the Revise loop on a stub pipeline passes at 1440x900 and 390 wide.
+- Next: teammate review of PR #2.
+- Blockers: none.
+- Heads-up: montage/app/gradio_app.py layout changed again (Revise panel, Spotify accordion moved into the Media panel); /generate and /recut keep their first 11 outputs (new outputs appended). The app's look lives in montage/app/theme.py; DESIGN.md and .impeccable/design.json describe it. No schema or config changes.
