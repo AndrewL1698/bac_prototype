@@ -116,4 +116,4 @@ def use_song(choice: str | None, pick: SongPick | None, youtube_ok: bool) -> tup
     dur = meta.get("duration")
     length = f", {int(dur) // 60}:{int(dur) % 60:02d}" if isinstance(dur, (int, float)) else ""
     who = meta.get("channel") or meta.get("uploader") or "YouTube"
-    return str(Path(path)), f"Using **{c.artist} - {c.track}** (from YouTube: \"{meta.get('title', '')}\", {who}{length})."
+    return str(youtube.serve_copy(path)), f"Using **{c.artist} - {c.track}** (from YouTube: \"{meta.get('title', '')}\", {who}{length})."

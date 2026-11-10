@@ -97,10 +97,3 @@ def padded(span: tuple[datetime, datetime], pad_days: float) -> tuple[datetime, 
     if short > timedelta(0):
         start, end = start - short / 2, end + short / 2
     return start, end
-
-
-def album_period(taken_at: Iterable[datetime | None], pad_days: float | None = None) -> tuple[datetime, datetime] | None:
-    span = album_span(taken_at)
-    if span is None:
-        return None
-    return padded(span, get_config().songpick.pad_days if pad_days is None else pad_days)

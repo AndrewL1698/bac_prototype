@@ -207,7 +207,9 @@ songpick:                         # phase 12: pick a song from the user's listen
     client_id_env: "SPOTIFY_CLIENT_ID"
     redirect_uri: "https://andrewl1698.github.io/bac_prototype/spotify/callback.html"
     scopes: ["user-read-recently-played", "user-top-read"]
-    return_hosts: [".gradio.live", "127.0.0.1", "localhost"]   # where the callback page may send the browser back
+    # Where the callback page may send the browser back. docs/spotify/callback.html (allowed()) hardcodes the
+    # same hosts (a static page cannot read this file): change both together (tests check they match).
+    return_hosts: [".gradio.live", "127.0.0.1", "localhost"]
     auth_ttl_s: 600               # a sign-in must finish within 10 minutes
     timeout_s: 10
     top_limit: 50

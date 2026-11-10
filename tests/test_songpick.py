@@ -12,7 +12,7 @@ from montage import config
 from montage.songpick import load_history, shortlist
 from montage.songpick.affinity import play_weight, score_tracks, track_key
 from montage.songpick.history import parse_row
-from montage.songpick.period import album_period, album_span
+from montage.songpick.period import album_span, padded
 from montage.types import ListeningEvent, UserError
 from scripts.fixtures_history import write_history
 
@@ -94,22 +94,23 @@ def test_load_history_errors(tmp_path):
 
 # ---------- period ----------
 
-def test_album_period_pads_and_trims():
+def test_album_span_trims_and_padded_pads():
     dates = [datetime(2026, 7, d) for d in range(3, 11)] * 3 + [datetime(2019, 1, 1)]
     span = album_span(dates)
     assert span == (datetime(2026, 7, 3), datetime(2026, 7, 10))  # the stray 2019 photo is trimmed
-    start, end = album_period(dates)
     pad = config.get_config().songpick.pad_days
+    start, end = padded(span, pad)
     assert (span[0] - start).days == pad and (end - span[1]).days == pad
 
 
-def test_album_period_minimum_length_and_no_dates():
-    with config.override({"songpick.pad_days": 0, "songpick.min_window_days": 3}):
-        start, end = album_period([datetime(2026, 7, 4, 12)])
+def test_padded_minimum_length_and_no_dates():
+    with config.override({"songpick.min_window_days": 3}):
+        one = datetime(2026, 7, 4, 12)
+        start, end = padded(album_span([one]), 0)
         assert (end - start).total_seconds() == pytest.approx(3 * 86400)
-        assert start < datetime(2026, 7, 4, 12) < end
-    assert album_period([None, None]) is None
-    assert album_period([]) is None
+        assert start < one < end
+    assert album_span([None, None]) is None
+    assert album_span([]) is None
 
 
 # ---------- affinity ----------

@@ -252,3 +252,13 @@ Format:
 - Next: Andrew tests on Colab (add `YOUTUBE_COOKIES`; until this merges, run `!cd /content/bac_prototype && git fetch -q && git checkout -q phase-12-songpick && git pull -q` before the start cell on a fresh runtime); full `pytest -q` on Colab; review and merge the PR. Then 12.8, the stage A vibe match.
 - Blockers: Track 1 owner still to confirm. YouTube may still block even with cookies (cloud IPs); upload stays the fallback.
 - Heads-up (branch, lands with the PR): schemas `ListeningEvent`, `TopTrack`, `TrackCandidate` gain `release_date`, `release_precision`, `release_reliable`; `SongPick` gains `mode`, `period_source` gains `release`/`release_widened`. Config: new `songpick.default_mode`, `window_by_age_days`, `max_window_days`, `release.*`, `youtube.cookies_env`; `songpick.max_pad_days` removed. Requirements: `yt-dlp[default]>=2026.10.26`, new `deno==2.9.8`. New optional Colab Secret `YOUTUBE_COOKIES`. Hygiene blocks `*cookies*.txt`.
+
+## 2026-11-09 19:13 ET | Andrew | phase 12 | branch phase-12-songpick (PR #5)
+- Done: review fixes from Keshav on PR #5.
+  - Fetched YouTube songs are no longer served: `cache/youtube_audio` moved from Gradio's `allowed_paths` to `blocked_paths` (`gradio_app.served_paths`); "Use this song" plays a temp copy (`youtube.serve_copy`).
+  - After Connect Spotify the page drops `?spotify_code=&state=` from the address bar, so a refresh no longer shows "link expired".
+  - Windows-safe tests (path compare via `Path`, no chmod check on win32); one score blend (`pick._blend`) for `_rank` and `_release_pick`; `return_hosts` comment plus a test that `callback.html` lists the same hosts; removed the unused `period.album_period` and `spotify.state_app_url`.
+- Tests: `tests/test_songpick*.py` + hygiene: 75 pass locally, 1 network test skipped; the app builds with gradio 6.30.0.
+- Next: full `pytest -q` on Colab; merge. If #3 or #4 lands first, rebase and keep every PLAN.md row and decision from both sides.
+- Blockers: none.
+- Heads-up: the YouTube audio cache is never an allowed Gradio path (CLAUDE.md §11).

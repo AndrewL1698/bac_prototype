@@ -3,6 +3,10 @@ YouTube matching, and the app handlers. No network: HTTP and yt-dlp are replaced
 
 from __future__ import annotations
 
+import base64
+import re
+import sys
+import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -18,6 +22,13 @@ from scripts.fixtures_history import (BACKGROUND, FAVOURITE, TOP_PICK, spotify_r
 
 NOW = datetime(2026, 11, 5, 12, 0, 0)
 APP = "https://abc123def.gradio.live/"
+CALLBACK = Path(__file__).resolve().parents[1] / "docs" / "spotify" / "callback.html"
+
+
+def state_app_url(state: str) -> str:
+    """What docs/spotify/callback.html does with the state: base64url-decode the part after '~'."""
+    s = state.split("~", 1)[1]
+    return base64.urlsafe_b64decode(s + "=" * (-len(s) % 4)).decode("utf-8")
 
 
 @pytest.fixture
@@ -80,9 +91,11 @@ def test_safe_return_url(url, ok):
 
 def test_state_round_trip_and_callback_page_rule():
     s = spotify.make_state(APP)
-    assert spotify.state_app_url(s) == APP and spotify.state_app_url("garbage") is None
-    page = (Path(__file__).resolve().parents[1] / "docs" / "spotify" / "callback.html").read_text()
-    assert ".gradio.live" in page and "127.0.0.1" in page and "innerHTML" not in page
+    assert state_app_url(s) == APP and s.split("~")[0]
+    page = CALLBACK.read_text()
+    assert "innerHTML" not in page
+    for host in config.get_config().songpick.spotify.return_hosts:  # the page hardcodes the config's hosts
+        assert re.search(r'"' + re.escape(host) + r'"', page), f"{host} missing from callback.html allowed()"
     assert config.get_config().songpick.spotify.redirect_uri.endswith("/spotify/callback.html")
 
 
@@ -105,7 +118,7 @@ def test_auth_flow_with_fake_spotify(client_id, monkeypatch):
     state = [p.split("=", 1)[1] for p in url.split("?", 1)[1].split("&") if p.startswith("state=")][0]
     from urllib.parse import unquote
     state = unquote(state)
-    assert spotify.state_app_url(state) == APP  # old query stripped from the return URL
+    assert state_app_url(state) == APP  # old query stripped from the return URL
     tok = spotify.finish_auth("the-code", state)
     assert tok["access_token"] == "tok"
     sent = calls[-1][2]["data"]
@@ -327,7 +340,7 @@ def test_ui_page_load_and_connect(client_id, monkeypatch):
         songpick_ui.paste_code("only-one-part")
 
 
-def test_ui_suggest_and_use_song(monkeypatch):
+def test_ui_suggest_and_use_song(monkeypatch, tmp_path):
     recent, top = listening()
     sp = {"token": token(), "recent": recent, "top": top}
     monkeypatch.setattr(songpick_ui, "_album_dates", lambda media: [datetime.utcnow() - timedelta(days=1)])
@@ -341,10 +354,16 @@ def test_ui_suggest_and_use_song(monkeypatch):
         songpick_ui.suggest(["album"], None, sp, "export")
     path, md = songpick_ui.use_song("0", pick, youtube_ok=False)
     assert path is None and "tick" in md and "youtube.com/results?search_query=" in md
+    cached = tmp_path / "cache" / "youtube_audio" / "abcdefghijk.m4a"
+    cached.parent.mkdir(parents=True)
+    cached.write_bytes(b"fake m4a")
     monkeypatch.setattr(youtube, "find_and_fetch",
-                        lambda t, a, d: (Path("/x/song.m4a"), {"title": t, "channel": "Topic", "duration": 196}))
+                        lambda t, a, d: (cached, {"title": t, "channel": "Topic", "duration": 196}))
     path, md = songpick_ui.use_song("0", pick, youtube_ok=True)
-    assert path == "/x/song.m4a" and "3:16" in md
+    assert "3:16" in md
+    served = Path(path)  # a temp copy, never the private cache file itself
+    assert served.read_bytes() == b"fake m4a" and served.name == cached.name and served.parent != cached.parent
+    assert served.resolve().is_relative_to(Path(tempfile.gettempdir()).resolve())
 
     def blocked(t, a, d):
         raise UserError("YouTube is blocking downloads from this server right now.")
@@ -354,6 +373,15 @@ def test_ui_suggest_and_use_song(monkeypatch):
     with pytest.raises(UserError, match="Suggest songs"):
         songpick_ui.use_song("0", None, True)
 
+
+
+def test_app_never_serves_the_youtube_cache():
+    pytest.importorskip("gradio")
+    from montage import paths
+    from montage.app.gradio_app import served_paths
+    allowed, blocked = served_paths()
+    cache = str(paths.cache_dir("youtube_audio"))
+    assert not any(cache.startswith(a) or a.startswith(cache) for a in allowed) and cache in blocked
 
 # ---------- network (Colab only) ----------
 

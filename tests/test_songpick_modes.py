@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import base64
 import importlib.util
+import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -126,7 +127,9 @@ def test_bootstrap_cookies_secret_formats(tmp_path, monkeypatch):
     assert boot.cookies_text("not cookies") is None and boot.cookies_text("") is None
     monkeypatch.setattr(boot, "YT_COOKIES_FILE", tmp_path / "yt.txt")
     out = boot.write_cookies(COOKIES)
-    assert out.read_text().startswith("# Netscape") and (out.stat().st_mode & 0o777) == 0o600
+    assert out.read_text().startswith("# Netscape")
+    if sys.platform != "win32":  # Windows chmod only toggles read-only
+        assert (out.stat().st_mode & 0o777) == 0o600
     assert boot.write_cookies("junk") is None
 
 

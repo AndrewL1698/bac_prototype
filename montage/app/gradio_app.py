@@ -316,7 +316,9 @@ def build_app():
                 right_btn = gr.Button("Right better")
             vote_md = gr.Markdown("")
 
-        demo.load(on_sp_load, [sp_state], [sp_state, sp_status])
+        # Drop ?spotify_code=&state= from the address bar once read: a refresh would retry a used-up code.
+        demo.load(on_sp_load, [sp_state], [sp_state, sp_status]).then(
+            None, None, None, js="() => { history.replaceState(null, '', location.pathname); }")
         sp_connect.click(on_sp_connect, [sp_url_in], [sp_url_out, sp_status],
                          js="(u) => window.location.href.split('?')[0].split('#')[0]"
                          ).success(None, [sp_url_out], None, js="(u) => { if (u) { window.location.href = u; } }")
@@ -340,6 +342,17 @@ def build_app():
     return demo
 
 
+def served_paths() -> tuple[list[str], list[str]]:
+    """(allowed, blocked) for demo.launch. Serve only generated outputs (videos/plots in runs/, storyboard
+    thumbnails). Never the whole Drive folder or /content: /content/montage_env.sh holds the API key and the
+    share link is public. Fetched YouTube songs (cache/youtube_audio) stay private: the app plays a temp copy."""
+    allowed = [str(paths.data_root() / "runs"), str(paths.scratch_dir("thumbs")),
+               str(paths.data_root() / "demo" / "vote"), str(paths.data_root() / "demo" / "backups")]
+    blocked = [str(paths.COLAB_ENV_FILE), str(paths.data_root() / "sessions"), str(paths.data_root() / "jobs"),
+               str(paths.cache_dir("youtube_audio"))]
+    return allowed, blocked
+
+
 def main(argv: list[str] | None = None) -> int:
     from montage.config import get_config
     paths.load_colab_env()
@@ -350,12 +363,7 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
     demo = build_app()
     demo.queue(default_concurrency_limit=1)
-    # Serve only generated outputs (videos/plots in runs/, storyboard thumbnails). Never the whole Drive
-    # folder or /content: /content/montage_env.sh holds the API key and the share link is public.
-    allowed = [str(paths.data_root() / "runs"), str(paths.scratch_dir("thumbs")),
-               str(paths.data_root() / "demo" / "vote"), str(paths.data_root() / "demo" / "backups"),
-               str(paths.cache_dir("youtube_audio"))]  # songs fetched for "Pick a song for me" (opt-in)
-    blocked = [str(paths.COLAB_ENV_FILE), str(paths.data_root() / "sessions"), str(paths.data_root() / "jobs")]
+    allowed, blocked = served_paths()
     # Optional password (Colab Secret APP_PASSWORD -> MONTAGE_APP_PASSWORD via the bootstrap). Never logged.
     pw = os.environ.get("MONTAGE_APP_PASSWORD") or None
     auth = (os.environ.get("MONTAGE_APP_USER") or "montage", pw) if pw else None

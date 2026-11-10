@@ -190,11 +190,16 @@ def _short_term_keys(top, album_period, now) -> set[str]:
 
 # ---------- ranking ----------
 
-def _rank(cands: list[TrackCandidate], k: int) -> list[TrackCandidate]:
+def _blend(cands: list[TrackCandidate]) -> None:
+    """score = alpha * affinity + (1 - alpha) * vibe; no vibe stage yet, so vibe is None and score stays affinity."""
     alpha = get_config().songpick.alpha
-    for c in cands:  # no vibe stage yet: vibe is None and score = affinity (alpha only applies with a vibe)
+    for c in cands:
         if c.vibe is not None:
             c.score = round(alpha * c.affinity + (1 - alpha) * c.vibe, 6)
+
+
+def _rank(cands: list[TrackCandidate], k: int) -> list[TrackCandidate]:
+    _blend(cands)
     cands.sort(key=lambda c: (-c.score, -c.n_plays_window, c.key))
     return cands[:k]
 
@@ -244,10 +249,7 @@ def _release_pick(cands, taken_at, now, played_then, k):
         a, b = rel.interval(c.release_date, c.release_precision)
         return 0.0 if a <= med <= b else min(abs((a - med).total_seconds()), abs((b - med).total_seconds()))
 
-    alpha = get_config().songpick.alpha
-    for c in elig:
-        if c.vibe is not None:
-            c.score = round(alpha * c.affinity + (1 - alpha) * c.vibe, 6)
+    _blend(elig)
     elig.sort(key=lambda c: (-c.score, dist(c), c.key))
     if len(elig) < k:
         notes.append(f"Only {len(elig)} of your songs from the past year came out around then.")

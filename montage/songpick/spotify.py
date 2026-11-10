@@ -45,10 +45,6 @@ def _b64url(data: bytes) -> str:
     return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
 
 
-def _b64url_decode(s: str) -> bytes:
-    return base64.urlsafe_b64decode(s + "=" * (-len(s) % 4))
-
-
 def make_verifier() -> str:
     """43-128 characters from the unreserved set (RFC 7636 section 4.1)."""
     return secrets.token_urlsafe(64)[:96]
@@ -82,13 +78,6 @@ def safe_return_url(url: str) -> bool:
 def make_state(app_url: str) -> str:
     """'<nonce>~<base64url(app_url)>': the callback page decodes the part after '~'."""
     return f"{secrets.token_urlsafe(16)}~{_b64url(app_url.encode('utf-8'))}"
-
-
-def state_app_url(state: str) -> str | None:
-    try:
-        return _b64url_decode(state.split("~", 1)[1]).decode("utf-8")
-    except (IndexError, ValueError, UnicodeDecodeError):
-        return None
 
 
 def client_id() -> str | None:

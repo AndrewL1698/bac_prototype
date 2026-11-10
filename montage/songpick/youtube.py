@@ -4,7 +4,8 @@ Downloading from YouTube is against YouTube's terms and the songs are copyrighte
 it when the user ticks the opt-in box and clicks "Use this song" (PLAN Decisions, 2026-11-05). Only the
 search text "<artist> - <track>" leaves the machine. Audio is cached on the private Drive at
 `cache/youtube_audio/<video_id>.m4a` (media is gitignored and blocked by the hygiene test), so recut
-and export keep working. Upload stays the fallback for every failure.
+and export keep working. The app never serves that folder: it plays a temp copy (`serve_copy`), which
+Gradio moves into its own content-hashed cache. Upload stays the fallback for every failure.
 
 `pick_best` is a pure function (unit-tested): title/artist similarity, a bonus for official
 "<Artist> - Topic" uploads, a penalty for live/cover/remix-style versions, and a duration check
@@ -156,6 +157,17 @@ def _download(video_id: str, out_dir: Path) -> Path:
 
 def audio_path(video_id: str) -> Path:
     return paths.cache_dir("youtube_audio") / f"{video_id}.m4a"
+
+
+def serve_copy(path: Path | str) -> Path:
+    """Copy a cached song into the system temp dir for the app's Song player. The Drive cache is not an
+    allowed Gradio path (anyone with the share link could fetch songs by video id); temp files are."""
+    src = Path(path)
+    out_dir = Path(tempfile.gettempdir()) / "montage_songpick"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out = out_dir / src.name
+    shutil.copy2(src, out)
+    return out
 
 
 def fetch_audio(video_id: str) -> Path:

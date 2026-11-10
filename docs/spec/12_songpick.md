@@ -166,7 +166,7 @@ Sign-in exposes only the last 50 plays (with dates) and top tracks for about 4 w
   - a **How to pick** radio (the three modes; default `songpick.default_mode`); the export upload shows only in the export mode;
   - the YouTube opt-in checkbox (default `youtube.enabled: false`) and **Use this song**, which fills the Song player, or (fetch off or blocked) leaves it as it is and shows a YouTube search link plus "drop the file in the Song box";
   - a paste box for the callback page's fallback code.
-- **Serving:** the `cache/youtube_audio` folder is added to Gradio's `allowed_paths` so the player can play the file.
+- **Serving:** the `cache/youtube_audio` folder is never served (it is in `blocked_paths`; anyone with the share link could fetch songs by video id). `use_song` returns a copy in the system temp dir (`youtube.serve_copy`), which Gradio moves into its own content-hashed cache.
 
 ### Later
 - **12.8 Vibe/sentiment match (ROADMAP F1 pieces 4-5), the next PR:**
