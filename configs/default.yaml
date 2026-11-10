@@ -188,7 +188,6 @@ songpick:                         # phase 12: pick a song from the user's listen
   sig_weight: 0.5                 # affinity = plays_window * lift ** sig_weight ("song of that period")
   min_window_plays: 2             # a candidate needs at least this many real plays in the period
   shortlist_size: 5
-  alpha: 1.0                      # score = alpha * affinity + (1 - alpha) * vibe; 1.0 until a vibe stage exists
   w_sources: {export: 1.0, recent: 1.0, top: 1.0}   # per-source affinities (each max-normalized) are summed with these weights
   default_mode: release           # app default: release (songs that came out around the photos) | vibe | export
   # Export mode: listening window centered on the photos' median date, total width by photo age in years
@@ -203,6 +202,38 @@ songpick:                         # phase 12: pick a song from the user's listen
     max_before_days: 1095         # stop widening here, then fall back to "best vibe fit" with a note
     # album/track names with these words carry a re-release date (remaster, compilation), not the song's own
     unreliable_words: ["remaster", "remastered", "deluxe", "anniversary", "greatest hits", "best of", "collection", "edition", "expanded"]
+  vibe:                           # 12.8 stage A: the song's tags (Last.fm, MusicBrainz) vs the photos (CLIP + mood)
+    enabled: true
+    max_tracks: 40                # tags are looked up for at most this many songs (best listening affinity first)
+    # score = alpha * affinity + (1 - alpha) * vibe, per mode: listening still counts most where it means "back then"
+    alpha_by_mode: {release: 0.3, vibe: 0.15, export: 0.5}
+    w_clip: 0.5                   # vibe = weighted mean of the available terms (CLIP tag match, mood match)
+    w_mood: 0.5
+    templates: ["a photo that feels {}", "a {} moment"]   # each tag is embedded with these CLIP text prompts
+    tag_mood_file: configs/tag_mood.tsv   # tag -> valence, arousal in [-1, 1] (hand-set, Russell's circumplex)
+    top_tags: 8                   # tags kept per song (best first)
+    min_tag_weight: 10            # Last.fm counts are 0-100 relative to the song's top tag; MusicBrainz votes rescaled
+    reason_tags: 3                # tags named in the "why this song" line
+    artist_tag_weight: 0.5        # a song with few tags of its own gets its artist's tags at this weight
+    junk_tags: ["seen live", "favorites", "favourites", "favorite", "favourite", "favorite songs", "my favorite",
+                "love", "loved", "awesome", "beautiful", "amazing", "good", "best", "cool", "spotify", "albums i own",
+                "under 2000 listeners", "check out", "all", "music", "song", "songs", "playlist", "my music"]
+    # album mood = tanh(mean raw CLIP mood pole score / scale); raw = 100 * (cos(high) - cos(low)), see features/mood.py
+    album_mood_scale: {valence: 2.0, arousal: 2.0}
+    mood_word_min: 0.2            # |valence| or |arousal| below this counts as neutral in the reason line
+    lastfm:
+      api_key_env: "LASTFM_API_KEY"
+      url: "https://ws.audioscrobbler.com/2.0/"
+      timeout_s: 5
+      workers: 4                  # parallel requests (Last.fm asks for at most ~5 per second)
+      min_tags: 3                 # fewer track tags than this -> add the artist's tags
+    musicbrainz:                  # fills gaps without a key (genres + tags); 1 request per second
+      url: "https://musicbrainz.org/ws/2/"
+      user_agent: "bac_prototype/0.1 (https://github.com/AndrewL1698/bac_prototype)"
+      interval_s: 1.1
+      max_lookups: 10             # artists looked up per suggestion (one request each, cached per process)
+      min_score: 90               # search match score (0-100) needed to trust the artist found
+      timeout_s: 5
   spotify:                        # "Connect Spotify" (OAuth with PKCE; read-only listening data)
     client_id_env: "SPOTIFY_CLIENT_ID"
     redirect_uri: "https://andrewl1698.github.io/bac_prototype/spotify/callback.html"

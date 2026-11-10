@@ -262,3 +262,13 @@ Format:
 - Next: full `pytest -q` on Colab; merge. If #3 or #4 lands first, rebase and keep every PLAN.md row and decision from both sides.
 - Blockers: none.
 - Heads-up: the YouTube audio cache is never an allowed Gradio path (CLAUDE.md §11).
+
+## 2026-11-10 ET | Andrew | phase 12.8 | branch phase-12-vibe
+- Done: stage A song-vibe match (Track 1, ML #1), spec 12 section 6b.
+  - `montage/songpick/vibe.py`: album side from the editor's cached ingest + features (pooled CLIP embedding per asset; absolute mood from the raw CLIP mood poles), song side from tags (CLIP text prompt ensemble + a hand-set tag valence/arousal lexicon `configs/tag_mood.tsv`). vibe = mean of the CLIP match and the mood match; untagged songs get the median.
+  - `montage/songpick/tags.py`: Last.fm track/artist tags (new optional Colab Secret `LASTFM_API_KEY`), MusicBrainz artist tags for the gaps (no key, 1 request/s, capped). Names only leave the machine; tags are cached in memory only.
+  - `pick.suggest(vibe_scorer=...)`: the vibe orders all three modes (`alpha_by_mode`); release eligibility unchanged. The app's Suggest songs computes the photos' mood (so Generate is warm afterwards) and shows the tags in each reason.
+- Tests: `tests/test_songpick_vibe.py` (19 local + 1 gpu + 1 network) and the existing song-pick tests: 102 pass locally, 2 skipped; the live MusicBrainz lookup passes from the laptop.
+- Next: Colab (Andrew): add the `LASTFM_API_KEY` secret, start the app from `phase-12-vibe`, calibrate `songpick.vibe.album_mood_scale` on the demo + eval albums (currently a guess, 2.0), run the gpu/network tests and full `pytest -q`, try a party vs a calm album in all three modes; RESULTS.md table; PR. Then 12.9 (MERT sentiment on fetched audio).
+- Blockers: none.
+- Heads-up: schemas: `TrackCandidate` gains `vibe_clip`, `vibe_mood`, `valence`, `arousal`, `tags`; `SongPick` gains `album_valence`, `album_arousal` (all optional). Config: new `songpick.vibe.*`; `songpick.alpha` removed (now `songpick.vibe.alpha_by_mode`). New file `configs/tag_mood.tsv`. Bootstrap passes the optional Colab Secret `LASTFM_API_KEY`.

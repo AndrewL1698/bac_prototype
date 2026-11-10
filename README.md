@@ -24,10 +24,10 @@ _Keep this list current. Update it when a phase merges to `main`._
 - **Demo media tools:** `scripts/pick_subset.py --src BIG_ALBUM --dest demo/<album> --n 60` copies a demo-sized subset (longest clips up to 60 s + photos spread over time); demo prep builds cached SDR proxies for HDR phone videos so warm generates stay under 30 s (28 s on the 60-item demo album).
 - **Phase 9B (music emotion):** a MERT-based head trained on DEAM (`weights/emotion_head.pt`) gives per-moment valence and arousal; test CCC 0.74 valence / 0.82 arousal. The app's status line shows `Emotion: MERT`.
 - **Phase 10A (importance ranker):** a RankNet ranker trained on SumMe/TVSum with features from our own pipeline (`weights/importance_ranker.pt`), blended 0.75 learned + 0.25 heuristic; in cross-validation it beats the heuristic (Kendall tau SumMe 0.17 vs 0.12, TVSum 0.41 vs -0.02). The status line shows `Importance: learned+heuristic`.
-- **Phase 12 (song pick, branch `phase-12-songpick`, not merged yet):**
+- **Phase 12 (song pick):**
   - In the app, open **Pick a song for me**: **Connect Spotify** (read-only: recent plays and top songs), choose **How to pick**, then **Suggest songs** (3-5 songs with a reason each):
     - **Songs from back then** (default): songs you listened to this year that came out around when the photos were taken (or that you played during them);
-    - **Best vibe fit**: dates ignored (for now ranked by how much you play them; vibe matching is next);
+    - **Best vibe fit**: dates ignored; ranked by how well each song's genre and mood tags (Last.fm, MusicBrainz) fit your photos' look and mood (12.8, branch `phase-12-vibe`). The other two modes use the same vibe match to order their songs.
     - **My full Spotify history**: upload the Spotify data export to get songs you actually played back then.
   - Opt-in: tick **Fetch the song's audio from YouTube** and press **Use this song** to fill the Song box. On Colab this needs the `YOUTUBE_COOKIES` secret (below); otherwise the app links to a YouTube search and you upload the file.
   - CLI for the export: `python -m montage.songpick --history DIR --start YYYY-MM-DD --end YYYY-MM-DD [--mode vibe]`.
@@ -45,6 +45,7 @@ The app **sees** your media (CLIP embeddings, an aesthetic score, mood, tags, sh
    - `ANTHROPIC_API_KEY` (optional): without it the director uses rules.
    - `APP_PASSWORD` (optional): password-protects the app (username `montage`). Recommended, because anyone with the link can use the app and your API credits.
    - `SPOTIFY_CLIENT_ID` (optional): turns on **Pick a song for me** (Connect Spotify). One-time setup is in [`docs/spec/12_songpick.md`](docs/spec/12_songpick.md) ("Human setup"). Spotify's Development Mode allows 5 users, who must be added in the Spotify dashboard.
+   - `LASTFM_API_KEY` (optional): song tags for the **vibe match** in Pick a song for me. Get a free key at last.fm/api/account/create. Without it, MusicBrainz tags (slower, sparser) are used.
    - `YOUTUBE_COOKIES` (optional): lets **Use this song** fetch audio from YouTube on Colab, which YouTube otherwise blocks. Use a **spare** Google account, never your own: the cookies work as that account's full login, and YouTube may flag it. Sign in to YouTube in a private window, export youtube.com cookies with a cookies.txt extension, close the window, and paste `base64 -i cookies.txt` output as the secret. Re-export if the app says they expired.
 3. Make sure the shared `montage_data` Drive folder is in your My Drive (see "Data and secrets").
 4. Run one cell **from the Colab UI** (Secrets are only readable from cells you run yourself):
