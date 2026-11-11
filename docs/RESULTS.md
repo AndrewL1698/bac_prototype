@@ -18,6 +18,22 @@ MERT-v1-95M (frozen, revision 12af15f) features over 5 s centered windows, softm
 
 Takeaways: the head beats predict-mean by a wide margin and matches or beats the best single-layer probe on the test clips; on the full-song set the probe is slightly better. Agreement within a single song is low (arousal CCC about 0.1 per song): the model mostly gets each song's overall mood right rather than moment-to-moment changes. MERT normalizes each window's loudness, so pure volume changes do not move its arousal; the intensity curve keeps its loudness and onset terms for that. Valence, previously always 0, is now non-zero, so the planner's valence term is active.
 
+## Temporal music emotion head (phase 14)
+Last updated 2026-11-11 by Andy (git phase-14-temporal-emotion@7a07514, T4). Full report: `montage_data/eval/emotion_temporal/report.md` (+ `metrics.json`, `curves_<song>.png`).
+
+BiGRU over each song's MERT window sequence (spec 14), same MERT features, DEAM split and windows as 9B. Mean +- std over seeds 0/1/2. "Per song" = CCC inside each song, averaged over songs (follows the curve's shape); plain CCC is pooled over all songs (mostly the song's overall level). Both heads are shown with the app's 1 s smoothing.
+
+| Model | Split | Arousal CCC per song | Valence CCC per song | Arousal CCC | Valence CCC | Arousal RMSE | Valence RMSE |
+|---|---|---|---|---|---|---|---|
+| Window head (9B, smoothed) | test | 0.096 +- 0.004 | 0.046 +- 0.004 | 0.822 +- 0.003 | 0.723 +- 0.019 | 0.168 | 0.173 |
+| **Temporal head (deployed, smoothed)** | test | **0.177 +- 0.006** | **0.116 +- 0.008** | **0.838 +- 0.007** | **0.735 +- 0.011** | 0.163 | 0.174 |
+| Window head (9B, smoothed) | full songs | 0.154 +- 0.010 | 0.013 +- 0.009 | 0.541 +- 0.013 | 0.393 +- 0.008 | 0.223 | 0.224 |
+| Temporal head (smoothed) | full songs | 0.129 +- 0.025 | 0.084 +- 0.010 | 0.630 +- 0.014 | 0.404 +- 0.068 | 0.192 | 0.223 |
+
+Deploy gate: passed (val score: temporal 0.435, seed 2, vs window 0.389). `weights/emotion_temporal.pt` is written; `emotion_head.pt` stays as the fallback. Only code on the phase 14 branch loads the new file until that branch is merged.
+
+Takeaways: on the test clips, context almost doubles within-song tracking (arousal 0.10 -> 0.18, valence 0.05 -> 0.12), and the pooled numbers improve too, so it is not trading level for shape. The absolute within-song numbers are still low, so the curves are better, not good. On the 58 full songs, within-song valence and both pooled CCCs improve, but within-song arousal is slightly worse than the window head (0.13 vs 0.15, with a larger spread across seeds). The full songs only carry annotations from 15 to 45 s, so this is not yet a real test of length generalization. The annotator-lag study (14.3) is needed to tell how much of the gain is just learning the lag.
+
 ## Importance ranker (phase 10A)
 Last updated 2026-10-27 by Keshav (git track-b@a288f7f). Full report: `montage_data/eval/importance/report.md` (+ `metrics.json`, `heldout_<video>.png`).
 

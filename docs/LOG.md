@@ -285,3 +285,10 @@ Format:
 - Tests: local `pytest -q` 150 passed, 78 skipped (torch/GPU/media tests skip on the laptop; `test_job_stop` deselected, known macOS issue).
 - Next: 14.1 on Colab: bootstrap with `--branch phase-14-temporal-emotion`, run `tests/test_temporal_emotion.py`, then the `emo_temporal` training job (MUSIC_EMOTION.md section 5).
 - Blockers: `montage_data` access for Andy (DEAM MERT shards); phase 14 is outside the 2-week re-scope until the team agrees.
+
+## 2026-11-11 ET | Andy | phase 14 | branch phase-14-temporal-emotion (pushed, not merged)
+- Done: 14.1. Colab set up for Andy (T4, montage_data shortcut). `tests/test_temporal_emotion.py` 7 passed on the GPU runtime. `emo_temporal` job trained on the 9B DEAM shards (8 min, most of it loading shards from Drive) and passed the deploy gate: `weights/emotion_temporal.pt` written (9B `emotion_head.pt` untouched). Bootstrap fix: no crash on a runtime without `nvidia-smi`.
+- Next: 14.3 annotator-lag study; 14.2 PMEmo; 14.4 eval grid with the temporal head; then the phase 14 PR.
+- Blockers: none. Phase 14 is still outside the 2-week re-scope until the team agrees.
+- Heads-up: `weights/emotion_temporal.pt` is on the shared Drive, but only code on this branch loads it; main is unaffected until merge (then each cached song analysis is recomputed once).
+- Results: test arousal CCC per song 0.096 -> 0.177, valence 0.046 -> 0.116; pooled arousal CCC 0.822 -> 0.838. Full songs: within-song arousal 0.154 -> 0.129 (slightly worse), valence and pooled better. See RESULTS.md.

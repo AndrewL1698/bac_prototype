@@ -2,7 +2,7 @@
 
 Owner: Andy. Branch: `phase-14-temporal-emotion`. Spec: [`spec/14_temporal_emotion.md`](spec/14_temporal_emotion.md) (binding for the details; this file is the overview and run book).
 
-> **Status (2026-11-10).** This is Track 2 of the 8-week plan (2026-11-04). The 2-week re-scope of 2026-11-07 (`ROADMAP.md`, `PLAN.md`) dropped phase 14 and reused "Track 2" for CUFED photo importance. Andy is continuing this track and is raising the re-scope with the team; until that is settled, `PLAN.md` on `main` does not list this work. Phase 14 code and tests are done; the DEAM training run has not happened yet.
+> **Status (2026-11-10).** This is Track 2 of the 8-week plan (2026-11-04). The 2-week re-scope of 2026-11-07 (`ROADMAP.md`, `PLAN.md`) dropped phase 14 and reused "Track 2" for CUFED photo importance. Andy is continuing this track and is raising the re-scope with the team; until that is settled, `PLAN.md` on `main` does not list this work. Phase 14 code and tests are done; the DEAM training run (14.1) finished on 2026-11-11 and the temporal head is deployed (`RESULTS.md`).
 
 ## 1. Why this track exists
 
@@ -77,7 +77,7 @@ per window:  [projection, GRU state] -> Dropout -> Linear -> tanh -> (valence, a
 | Step | What | Why | Status |
 |---|---|---|---|
 | 14.0 | Push the branch; rebase on `main`; resolve the `PLAN.md` conflict | Colab only pulls from GitHub; nothing is backed up yet | done 2026-11-10 |
-| 14.1 | Train on DEAM (Colab job), copy the table to `RESULTS.md` | The core result: does context improve within-song tracking? | to do (needs `montage_data` access for the MERT shards) |
+| 14.1 | Train on DEAM (Colab job), copy the table to `RESULTS.md` | The core result: does context improve within-song tracking? | done 2026-11-11: deployed; test arousal CCC per song 0.10 -> 0.18 (`RESULTS.md`) |
 | 14.2 | Add PMEmo (794 pop choruses, dynamic V/A at 2 Hz) | More and more varied training data; report per dataset | after 14.1 |
 | 14.3 | Annotator-lag study (shift targets 0-4 s, re-score the window head) | Shows how much of any gain is just learning the lag | after 14.1 |
 | 14.4 | Rerun the phase 11 eval grid with the temporal head | Shows the effect on the edit itself (mood and pace coupling) | after 14.1 deploys |
