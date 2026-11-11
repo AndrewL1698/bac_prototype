@@ -51,6 +51,8 @@ Then update `docs/RESULTS.md` (ranker table + one-line takeaway, including an ho
 
 ## 7. Phase 10B (optional): CUFED photo albums
 
+> Superseded by phase 15 ([`15_cufed.md`](15_cufed.md)), which specifies the download, label mapping, features, evaluation and deploy rule. Kept below as history.
+
 Only if 9A, 9B, and 10A are done and more than 4 hours remain before the demo.
 - CUFED: 1,883 Flickr event albums (23 event types, 30-100 photos each) with per-photo importance from crowd votes. Find the download from the dataset authors' page (Wang et al., CVPR 2016; ML-CUFED, BMVC 2017). If no working link is found within 15 minutes, skip and log it.
 - Each album is a group; each photo is an item; run the photo path of `montage.features`; add groups to training; evaluate per-album Spearman (published inter-annotator agreement is about 0.4, a useful ceiling); re-select and redeploy only if photo-album rank correlation improves without hurting SumMe.
