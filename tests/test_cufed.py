@@ -83,9 +83,11 @@ def test_parse_importance_formats():
             parse_importance(bad)
 
 
-def test_find_root_nested_and_rejects_superres(fresh_root, caplog):
+def test_find_root_nested_and_rejects_superres(fresh_root, caplog, monkeypatch):
+    import logging
     from montage import config
     from training.importance.cufed import ensure_dataset, find_root, raw_dir
+    monkeypatch.setattr(logging.getLogger("montage"), "propagate", True)  # montage logs stop at their own handler
     sr = raw_dir() / "CUFED"  # super-resolution CUFED: images, no importance labels
     _jpeg(sr / "input" / "000_0.png", 1)
     with config.override({"importance.cufed.sources": ["manual"]}):
