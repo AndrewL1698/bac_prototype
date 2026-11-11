@@ -151,6 +151,14 @@ def test_training_job_end_to_end(fresh_root, monkeypatch):
     report = (temporal.out_dir() / "report.md").read_text()
     assert "temporal head" in report and "window head (smoothed)" in report and "deployed" in report
     assert len(list(temporal.out_dir().glob("curves_*.png"))) >= 3
+    for sid in range(1, 21):                          # PMEmo-like shards: ids overlap DEAM's on purpose
+        s = _split(1, 24, rng)
+        cache.save_npz(shard_dir("pmemo") / f"{sid}.npz", times=s.times.astype(np.float32), feats=s.feats,
+                       valence=s.y[:, 0], arousal=s.y[:, 1])
+    with config.override({"music.emotion.temporal.proj_dim": 16, "music.emotion.temporal.hidden": 8}):
+        assert temporal.main(["--seeds", "0", "--epochs", "2", "--no-deploy", "--train-on", "deam", "pmemo",
+                              "--tag", "both"]) == 0
+    assert "## pmemo_test set" in (temporal.out_dir("both") / "report.md").read_text()
     monkeypatch.setattr(emotion, "_temporal", None)
     monkeypatch.setattr(emotion, "mert_window_features", lambda w: np.zeros((len(w), 13, 768), np.float16))
     grid = np.arange(0, 20, 0.5)
@@ -188,3 +196,14 @@ def test_edit_compare_changed_shots(tmp_path):
     (tmp_path / "b.json").write_text(json.dumps(shots(["x", "q", "z", "w"])))
     assert changed_shots(tmp_path / "a.json", tmp_path / "b.json") == pytest.approx(0.25, abs=0.02)
     assert changed_shots(tmp_path / "a.json", tmp_path / "a.json") == 0
+
+
+def test_pmemo_annotations_parse():
+    from training.emotion.download_pmemo import parse_annotations
+    rows = ["musicId,frameTime,Arousal(mean),Valence(mean)"]
+    rows += [f"1,{15.5 + 0.5 * i},0.75,0.25" for i in range(12)]             # kept, mapped to [-1, 1]
+    rows += [f"2,{15.5 + 0.5 * i},0.5,0.5" for i in range(3)]                # too short: dropped
+    rows += [f"3,{15.5 + i},0.5,0.5" for i in range(12)]                     # 1 s gaps: dropped
+    d = parse_annotations("\n".join(rows).encode())
+    assert list(d["songs"]) == ["1"] and d["start_s"] == 15.5 and d["step_s"] == 0.5
+    assert d["songs"]["1"]["arousal"][0] == 0.5 and d["songs"]["1"]["valence"][0] == -0.5
