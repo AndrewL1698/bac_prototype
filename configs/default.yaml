@@ -75,6 +75,14 @@ importance:
     min_photos: 10                # albums with fewer labeled photos on disk are dropped (= ingest.min_assets)
     score_range: [-2.0, 2.0]      # CUFED mean ratings; scores outside are counted and logged
     max_consecutive_failures: 10  # the feature job stops after this many failing albums in a row
+    eval:                         # days 4-7 (spec 15 section 5): training/importance/evaluate_cufed.py
+      sources: ["summe", "tvsum", "both", "cufed", "all"]   # training sets compared (both = SumMe + TVSum)
+      kinds: ["linear", "mlp"]
+      folds: 5                    # CV folds by group (video or album), each dataset split on its own
+      epochs: 30                  # RankNet epochs (early stopping on an inner validation split)
+      clearly_worse: 0.03         # SumMe tau points below the deployed configuration that make a candidate ineligible
+      bootstrap: 2000             # album resamples for the 95% CI of the CUFED tau gain
+      require_ci: true            # deploy only if that CI is above 0 (133 albums: small gains can be noise)
 
 music:
   use_beat_this: true            # false = librosa beats only (fallback / tests)
