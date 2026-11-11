@@ -305,3 +305,9 @@ Format:
 - Blockers: none.
 - Heads-up: `weights/emotion_temporal.pt` was replaced (2 s lag). Only code on this branch loads it.
 - Results: test arousal CCC per song 0.168, valence 0.115 (against 2 s-shifted targets); curves lead the annotations by 2.0 s (no-lag head: 0.5 s). See RESULTS.md.
+
+## 2026-11-11 ET | Andy | phase 14 | branch phase-14-temporal-emotion (pushed, not merged)
+- Done: 14.4 edit comparison (`training/emotion/edit_compare.py`, job `emo_edit`, 8 min): full editor on the phase 11 eval set with the 9B head vs the deployed temporal head, same plans and code; output in `eval/emotion_edit/` (phase 11 grid files untouched). Diagnosed why the temporal curves look flat in the excerpt (smoother within 30 s, not a song-length problem).
+- Next: human side-by-side of a few renders (window vs temporal); then 14.2 PMEmo; phase 14 PR after the team agrees on the re-scope.
+- Blockers: none.
+- Results: beat hit and section cuts 100% for both; 94% of screen time shows different shots; mood coupling +0.39 -> +0.50, pace coupling +0.65 -> +0.53, brief adherence +0.81 -> +1.03 (couplings measured against each run's own curves). Arousal std in the excerpt 0.046 -> 0.017. No measurable gain in the edits yet; see RESULTS.md.
