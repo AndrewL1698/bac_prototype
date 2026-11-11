@@ -27,17 +27,19 @@ from montage.log import get_logger
 from montage.music.emotion import make_temporal_head, temporal_path
 from montage.music.energy import gauss_smooth
 from training.emotion import evaluate
-from training.emotion.dataset import Split, load_all
+from training.emotion.dataset import FULL_SONG_MIN_ID, Split, load_all
 from training.emotion.extract_mert import shard_dir
 
 log = get_logger("emo_temporal")
 DIMS = evaluate.DIMS
 SMOOTH_S = 1.0          # the app smooths arousal/valence with gauss_smooth(x, 1.0) (montage.music.profile)
 STEP_S = 0.5            # DEAM annotations and our windows are on a 2 Hz grid
+PMEMO_ID_OFFSET = 100_000   # keeps PMEmo song ids apart from DEAM's once the datasets are combined
+EVAL_SPLITS = ("test", "full", "pmemo_test")
 
 
-def out_dir() -> Path:
-    d = paths.data_root() / "eval" / "emotion_temporal"
+def out_dir(tag: str = "") -> Path:
+    d = paths.data_root() / "eval" / ("emotion_temporal" + (f"_{tag}" if tag else ""))
     d.mkdir(parents=True, exist_ok=True)
     return d
 
@@ -60,6 +62,22 @@ def shift_split(s: Split, k: int) -> Split:
     _, starts, lengths = song_runs(s)
     x = np.concatenate([np.arange(st, st + n - k) for st, n in zip(starts, lengths) if n > k]).astype(int)
     return Split(s.feats[x], s.y[x + k], s.song[x], s.times[x])
+
+
+def cat(*ss: Split) -> Split:
+    return Split(*(np.concatenate([getattr(s, f) for s in ss]) for f in ("feats", "y", "song", "times")))
+
+
+def load_datasets(seed: int) -> tuple[dict[str, list[int]], dict[str, Split]]:
+    """DEAM splits (train/val/test/full) plus, when its shards exist, PMEmo's as pmemo_train/pmemo_val/pmemo_test."""
+    ids, splits = load_all(shard_dir(), seed=seed)
+    if any(shard_dir("pmemo").glob("*.npz")):
+        pid, ps = load_all(shard_dir("pmemo"), seed=seed)
+        assert not pid["full"], f"PMEmo ids must stay below {FULL_SONG_MIN_ID}"
+        for k in ("train", "val", "test"):
+            ps[k].song = ps[k].song + PMEMO_ID_OFFSET
+            ids[f"pmemo_{k}"], splits[f"pmemo_{k}"] = pid[k], ps[k]
+    return ids, splits
 
 
 def crop_index(starts: np.ndarray, lengths: np.ndarray, rng: np.random.Generator,
@@ -188,11 +206,12 @@ def _mean_std(ms: list[dict]) -> dict:
                 for k in ms[0][d]} for d in DIMS}
 
 
-def write_report(res: dict) -> None:
-    lines = ["# Temporal music emotion head (MERT-v1-95M + DEAM, spec 14)", "",
-             f"Songs: {res['songs']}; seeds: {res['seeds']}; annotation lag: {res['lag_s']} s. Mean +- std over seeds. "
-             f"Main metric: CCC within each song (per song), averaged over songs. 'smoothed' = gauss_smooth({SMOOTH_S} s) per song, as the app does.", ""]
-    for split in ("test", "full"):
+def write_report(res: dict, out: Path) -> None:
+    lines = ["# Temporal music emotion head (MERT-v1-95M, spec 14)", "",
+             f"Songs: {res['songs']}; trained on {'+'.join(res['train_on'])}; seeds: {res['seeds']}; "
+             f"annotation lag: {res['lag_s']} s. Mean +- std over seeds. Main metric: CCC within each song (per song), "
+             f"averaged over songs. 'smoothed' = gauss_smooth({SMOOTH_S} s) per song, as the app does.", ""]
+    for split in EVAL_SPLITS:
         if split not in res:
             continue
         lines += [f"## {split} set", "",
@@ -208,11 +227,11 @@ def write_report(res: dict) -> None:
         lines.append("")
     lines += [f"Deploy: {res['deploy']['decision']} ({res['deploy']['reason']}).", "",
               "Figures: `curves_<song>.png` (annotated vs window head vs temporal head).", ""]
-    (out_dir() / "report.md").write_text("\n".join(lines))
-    (out_dir() / "metrics.json").write_text(json.dumps(res, indent=1))
+    (out / "report.md").write_text("\n".join(lines))
+    (out / "metrics.json").write_text(json.dumps(res, indent=1))
 
 
-def plots(splits, preds: dict[str, dict[str, np.ndarray]], ids: dict[str, list[int]]) -> None:
+def plots(splits, preds: dict[str, dict[str, np.ndarray]], ids: dict[str, list[int]], out: Path) -> None:
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -232,7 +251,7 @@ def plots(splits, preds: dict[str, dict[str, np.ndarray]], ids: dict[str, list[i
             axes[0].set_title(f"DEAM {split} song {sid}", fontsize=13)
             axes[1].set_xlabel("seconds", fontsize=12)
             fig.tight_layout()
-            fig.savefig(out_dir() / f"curves_{sid}.png")
+            fig.savefig(out / f"curves_{sid}.png")
             plt.close(fig)
 
 
@@ -249,12 +268,17 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--lag", type=float, default=0.0,
                     help="pair each window with the annotation this many seconds later, so curves follow the music, "
                          "not the annotators' delayed reaction (14.3)")
+    ap.add_argument("--train-on", nargs="+", choices=["deam", "pmemo"], default=["deam"],
+                    help="datasets for train/val; every available test set is always reported")
+    ap.add_argument("--tag", default="", help="write the report to eval/emotion_temporal_<tag>/ instead")
     args = ap.parse_args(argv)
     paths.load_colab_env()
     cfg = get_config()
     arch = {"layers": 13, "dim": 768, **cfg.music.emotion.temporal.model_dump()}
     jobs.report(0.02, "loading MERT shards", force=True)
-    ids, splits = load_all(shard_dir(), seed=cfg.seed)
+    ids, splits = load_datasets(cfg.seed)
+    if "pmemo" in args.train_on:
+        splits["train"], splits["val"] = (cat(splits[k], splits[f"pmemo_{k}"]) for k in ("train", "val"))
     splits = {k: shift_split(v, round(args.lag / STEP_S)) for k, v in splits.items()}
     log.info("songs: %s", {k: len(v) for k, v in ids.items()})
     n = len(args.seeds)
@@ -273,11 +297,12 @@ def main(argv: list[str] | None = None) -> int:
     temporal = [(h.to(dev), hist) for h, hist in temporal]
     mean = splits["train"].y.mean(0)
     res: dict = {"songs": {k: len(v) for k, v in ids.items()}, "seeds": args.seeds, "arch": arch, "lag_s": args.lag,
+                 "train_on": args.train_on,
                  "history": [h for _, h in temporal]}
     per_seed = {}
-    for split in ("val", "test", "full"):
-        s = splits[split]
-        if not len(s.y):
+    for split in ("val", *EVAL_SPLITS):
+        s = splits.get(split)
+        if s is None or not len(s.y):
             continue
         rows: dict[str, list[dict]] = {"predict-mean": [], "window head": [], "window head (smoothed)": [],
                                        "temporal head": [], "temporal head (smoothed)": []}
@@ -302,7 +327,8 @@ def main(argv: list[str] | None = None) -> int:
     best_pred = {sp: {"window head (smoothed)": smooth_per_song(predict(window[bi], splits[sp].feats), splits[sp].song),
                       "temporal head": predict_seq(temporal[bi][0], splits[sp])}
                  for sp in ("test", "full") if len(splits[sp].y)}
-    plots(splits, best_pred, ids)
+    out = out_dir(args.tag)
+    plots(splits, best_pred, ids, out)
     if deploy:
         head = temporal[bi][0].cpu()
         _, commit = git_info()
@@ -311,16 +337,17 @@ def main(argv: list[str] | None = None) -> int:
                 "window_s": cfg.music.emotion.window_s, "align": "centered", "metrics": res["test"],
                 "feature_version": f"{cfg.music.emotion.model}@{cfg.music.emotion.revision}",
                 "created": datetime.now().isoformat(timespec="seconds"), "trained_by": paths.user(),
-                "git_commit": commit, "seed": args.seeds[bi], "lag_s": args.lag}
+                "git_commit": commit, "seed": args.seeds[bi], "lag_s": args.lag,
+                "train_on": args.train_on}
         buf = io.BytesIO()
         torch.save(ckpt, buf)
         paths.atomic_write(temporal_path(), buf.getvalue())
-    write_report(res)
+    write_report(res, out)
     t = res["test"]["temporal head (smoothed)"]
     w = res["test"]["window head (smoothed)"]
     print(f"{res['deploy']['decision']} ({reason}). Test arousal CCC per song: temporal "
           f"{t['arousal']['ccc_per_song'][0]:.3f} vs window {w['arousal']['ccc_per_song'][0]:.3f}. "
-          f"Report: {out_dir() / 'report.md'}", flush=True)
+          f"Report: {out / 'report.md'}", flush=True)
     return 0
 
 
