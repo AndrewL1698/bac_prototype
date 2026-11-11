@@ -63,6 +63,25 @@ Timing check (test songs, arousal; best offset of the per-song cross-correlation
 
 Takeaways: the curves now lead the annotations by about 2 s, which, given that annotators trail the music by about 2-3 s (the window head's best lag), puts them close to the music's own timing. That is what the planner needs when it places shots on musical moments. The scores against the shifted targets are close to the no-lag head's (they are measured against different targets, so not strictly comparable). On the full songs, within-song arousal is better than the no-lag head (0.144 vs 0.129) and valence is worse (0.068 vs 0.084). Whether the earlier curves actually improve the edits is for the eval grid (14.4).
 
+### Effect on the edits (phase 14.4)
+2026-11-11 by Andy (git phase-14-temporal-emotion@4610e85, T4; `python -m training.emotion.edit_compare`). Report: `montage_data/eval/emotion_edit/report.md` (+ rows and EDLs per head). Full editor on the phase 11 eval set (2 albums x 3 songs x 3 seeds = 18 EDLs per head), same cached plans, same code; only the emotion head differs (9B window head vs the deployed 2 s temporal head). The phase 11 grid files were not touched.
+
+| Metric | Window head (9B) | Temporal head |
+|---|---|---|
+| Mood coupling | +0.39 | +0.50 |
+| Pace coupling | +0.65 | +0.53 |
+| Brief adherence | +0.81 | +1.03 |
+| Quality lift | +0.010 | +0.011 |
+| Beat hit / section cuts | 100% / 100% | 100% / 100% |
+| Shots | 35.8 | 34.5 |
+| Arousal std inside the excerpt | 0.046 | 0.017 |
+
+Screen time showing a different shot: 94% (89-100% per EDL pair). Per album x song, mood coupling goes up on 3 of 6 pairs (by +0.33 to +0.39), down slightly on 2 (-0.07, -0.08) and down on 1 (+0.24 -> -0.07).
+
+Why the curves look flatter (whole eval songs, 1 s smoothed arousal): over a whole song both heads vary about as much (std 0.058-0.098 temporal vs 0.061-0.103 window), and running the temporal head in 30 s chunks changes little, so long songs are not the problem. Inside 30 s blocks the temporal head varies less (0.036-0.037 vs 0.049-0.066) and changes about half as much from step to step (0.003-0.005 vs 0.007-0.009): it follows slower trends and drops the window head's fast wiggles.
+
+Takeaways: the new head leaves the hard guarantees intact (every cut on a beat, every section boundary cut) and changes which shots appear almost everywhere. The proxy metrics are mixed (mood coupling and brief adherence up, pace coupling down), and both coupling metrics are measured against each run's own curves, so they cannot say which edit is better. The temporal head is smoother within an excerpt. That matches the DEAM annotations, which are smooth, but it gives the arousal term less to steer cut speed with inside one excerpt. The 9B baseline here matches the phase 11 numbers (mood +0.39 vs +0.37, pace +0.65 vs +0.66), so the setup is consistent. Verdict: no measurable gain in the edits yet. A human side-by-side (render both cuts of a few album x song pairs and watch) is the next check before making the temporal head the default on `main`.
+
 ## Importance ranker (phase 10A)
 Last updated 2026-10-27 by Keshav (git track-b@a288f7f). Full report: `montage_data/eval/importance/report.md` (+ `metrics.json`, `heldout_<video>.png`).
 
