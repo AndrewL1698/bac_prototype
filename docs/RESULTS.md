@@ -82,6 +82,22 @@ Why the curves look flatter (whole eval songs, 1 s smoothed arousal): over a who
 
 Takeaways: the new head leaves the hard guarantees intact (every cut on a beat, every section boundary cut) and changes which shots appear almost everywhere. The proxy metrics are mixed (mood coupling and brief adherence up, pace coupling down), and both coupling metrics are measured against each run's own curves, so they cannot say which edit is better. The temporal head is smoother within an excerpt. That matches the DEAM annotations, which are smooth, but it gives the arousal term less to steer cut speed with inside one excerpt. The 9B baseline here matches the phase 11 numbers (mood +0.39 vs +0.37, pace +0.65 vs +0.66), so the setup is consistent. Verdict: no measurable gain in the edits yet. A human side-by-side (render both cuts of a few album x song pairs and watch) is the next check before making the temporal head the default on `main`.
 
+### Adding PMEmo (phase 14.2)
+2026-11-11 by Andy (git phase-14-temporal-emotion@776d9bd, T4). Reports: `montage_data/eval/emotion_temporal_deam_only/` and `emotion_temporal_deam_pmemo/`. PMEmo 2019 from the Hugging Face mirror csdhbg/PMEmo2019: 735 pop choruses kept (767 annotated, 32 with under 5 s dropped), annotations mapped from [0, 1] to [-1, 1], same 2 Hz grid from 15.5 s, MERT features from the same code path as DEAM. Seeded song split 587 / 74 / 74. Both runs: 2 s lag, seeds 0/1/2, not deployed. Temporal head, smoothed:
+
+| Test set | Trained on | Arousal CCC per song | Valence CCC per song | Arousal CCC | Valence CCC |
+|---|---|---|---|---|---|
+| DEAM test | DEAM | 0.168 +- 0.010 | **0.115** +- 0.015 | 0.837 | 0.741 |
+| DEAM test | DEAM + PMEmo | **0.175** +- 0.005 | 0.107 +- 0.007 | 0.838 | **0.755** |
+| DEAM full songs | DEAM | 0.144 +- 0.010 | 0.068 +- 0.023 | 0.625 | 0.386 |
+| DEAM full songs | DEAM + PMEmo | **0.149** +- 0.017 | **0.077** +- 0.007 | **0.669** | **0.481** |
+| PMEmo test | DEAM | 0.088 +- 0.003 | **0.093** +- 0.006 | 0.513 | 0.380 |
+| PMEmo test | DEAM + PMEmo | **0.106** +- 0.007 | 0.082 +- 0.001 | **0.800** | **0.685** |
+
+For reference, the window head trained on DEAM + PMEmo gets PMEmo test 0.100 / 0.040 per song and 0.808 / 0.719 pooled.
+
+Takeaways: PMEmo mostly fixes each song's overall level on pop music. A DEAM-only model badly misjudges pop choruses overall (pooled arousal CCC 0.51); with PMEmo in training it reaches 0.80, and valence goes from 0.38 to 0.69. That matters for the app, because users mostly bring pop songs. Within-song tracking barely moves (changes of 0.01-0.02 either way, within the seed spread), and DEAM test results stay the same, so adding PMEmo costs nothing on DEAM. On PMEmo, the DEAM-only temporal head follows arousal changes worse than the window head (0.088 vs 0.107); with PMEmo it is slightly ahead (0.106 vs 0.100) and well ahead on valence (0.082 vs 0.040). PMEmo choruses are short (median 22 s), so they say little about how the curves behave over a whole song. The DEAM + PMEmo head passes the deploy gate (val score 0.444 vs window 0.399) but was not deployed in this run.
+
 ## Importance ranker (phase 10A)
 Last updated 2026-10-27 by Keshav (git track-b@a288f7f). Full report: `montage_data/eval/importance/report.md` (+ `metrics.json`, `heldout_<video>.png`).
 
