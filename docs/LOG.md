@@ -234,6 +234,12 @@ Format:
 - Blockers: Track 1 ownership not agreed yet. YouTube may block downloads from Colab IPs ("confirm you're not a bot"); upload is the fallback.
 - Heads-up (branch only): schemas `ListeningEvent` (+source, duration_ms), new `TopTrack`, `TrackCandidate` (+duration_ms, sources), `SongPick` (+sources). New config `songpick.w_sources`, `songpick.spotify.*`, `songpick.youtube.*`. New requirements `yt-dlp[default]>=2025.10.22`, `requests>=2.31`. New pytest marker `network`. The bootstrap passes the optional Colab Secret `SPOTIFY_CLIENT_ID`.
 
+## 2026-11-08 02:47 ET | Keshav | app UI redesign + exclude fix | branch claude/montage-ui-design-critique-1fa16d (PR #2)
+- Done: design critique of the Gradio app, then three commits. (1) Layout: preview is output-only, Generate under the brief, Upload/Demo toggles so a demo album can't silently override uploads, Recut/Export disabled until a cut exists. (2) Restyle: new `montage/app/theme.py` (warm graphite + soft apricot, dark in every OS mode, Geist / Geist Mono); editor workspace with Media / program monitor / Director panels, a timeline strip with mono timecodes and pinned/out marks, a readout strip (tempo, shots, length, director), a shot inspector that keeps the "why" after pinning, and Under the hood / Compare / Rate moved into a collapsed Lab drawer. Progress shows on the monitor only. `PRODUCT.md`, `DESIGN.md` and `.impeccable/` record the design. (3) Fix: excluding a shot now also drops overlapping windows of the same video and near-duplicate photos (`pipeline.expand_excluded`), so excluded footage no longer comes back on Recut.
+- Tests: local `pytest -q -m "not gpu and not media and not api"`: 82 passed, 1 skipped (incl. new `test_expand_excluded_covers_same_footage`). App run on Colab A100 from the branch code on the "Summer Trip (picked)" demo album. Full GPU/media suite (`tests/test_app.py` etc.) not yet run on these commits.
+- Next: teammate review of PR #2; full `pytest -q` on Colab before merging.
+- Blockers: none.
+- Heads-up: `/generate` and `/recut` keep their first 11 outputs (new outputs appended). `montage/app/gradio_app.py` is largely rewritten: Andrew's `phase-12-songpick` branch adds a panel there, so expect a merge conflict; the song-pick panel would fit in the Media panel. No schema or config changes.
 ## 2026-11-07 ET | Andrew | planning (2-week re-scope) | branch main
 - Done: re-scoped the extension to 4 people x 2 weeks and reframed the product as an **automatic montage maker** (one click; brief and notes optional; no timeline editor; a simple "My montages" gallery). ROADMAP.md rewritten; PLAN.md goal, tracks, phases, cut order and decisions updated; CLAUDE.md §1 and README intro updated.
   - Song pick has three modes: Connect Spotify (songs played in the past year, released near the photos' median date), best vibe fit, full export upload.
@@ -263,6 +269,12 @@ Format:
 - Blockers: none.
 - Heads-up: the YouTube audio cache is never an allowed Gradio path (CLAUDE.md §11).
 
+## 2026-11-10 01:49 ET | Keshav | app UI: Print Table look + Revise panel | branch claude/montage-ui-design-critique-1fa16d (PR #2)
+- Done: (1) Revise loop in one panel, in task order: print strip, Selected shot (with why), Note for the editor, Changes with Recut first. Pin/Exclude became Keep/Stop keeping and Remove/Put back; pending changes listed live with "Recut · N changes"; the note clears after a recut; "Put back removed shots" undoes removals after a recut. (2) Print Table look, picked in an Impeccable direction round: neutral black, white text, one signal red; Archivo with tabular figures; timeline shots are white instant prints with a state cell in the bottom margin. Themed error/empty states; Gradio footer hidden. (3) Merged main (phase 12) into the PR: the "Pick a song for me (Spotify)" accordion now sits in the Media panel; "Use this song" switches the song source to Upload so the picked song shows. (4) Planner error now ends "Put back at least one shot, then recut."
+- Tests: Colab A100 full `pytest -q` on the merged commit ee03dd5: 215 passed, 8 skipped (7 need ANTHROPIC_API_KEY, 1 timing test needs MONTAGE_TIMING=1), 0 failed. Local non-GPU suite: 154 passed, 2 skipped. Playwright replay of the Revise loop on a stub pipeline passes at 1440x900 and 390 wide.
+- Next: teammate review of PR #2.
+- Blockers: none.
+- Heads-up: montage/app/gradio_app.py layout changed again (Revise panel, Spotify accordion moved into the Media panel); /generate and /recut keep their first 11 outputs (new outputs appended). The app's look lives in montage/app/theme.py; DESIGN.md and .impeccable/design.json describe it. No schema or config changes.
 ## 2026-11-11 ET | Andy | CLAUDE.md rules | branch docs-claude-md-rules (PR)
 - Done: two new team rules in CLAUDE.md. (1) Coding: readable first, then as concise as possible, in one consistent style (section 8). (2) Never push to `main`: every change reaches `main` through a pull request (new golden rule 9; "Finishing a phase" now ends with opening a PR; later golden rules renumbered, no-AI-attribution is now 12).
 - Next: team review of the PR.
