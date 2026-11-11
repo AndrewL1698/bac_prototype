@@ -79,7 +79,7 @@ per window:  [projection, GRU state] -> Dropout -> Linear -> tanh -> (valence, a
 | 14.0 | Push the branch; rebase on `main`; resolve the `PLAN.md` conflict | Colab only pulls from GitHub; nothing is backed up yet | done 2026-11-10 |
 | 14.1 | Train on DEAM (Colab job), copy the table to `RESULTS.md` | The core result: does context improve within-song tracking? | done 2026-11-11: deployed; test arousal CCC per song 0.10 -> 0.18 (`RESULTS.md`) |
 | 14.2 | Add PMEmo (794 pop choruses, dynamic V/A at 2 Hz) | More and more varied training data; report per dataset | after 14.1 |
-| 14.3 | Annotator-lag study (shift targets 0-4 s, re-score the window head) | Shows how much of any gain is just learning the lag | after 14.1 |
+| 14.3 | Annotator-lag study (shift targets 0-4 s, re-score the window head) | Shows how much of any gain is just learning the lag | done 2026-11-11: lag explains about 40% of the arousal gain and none of the valence gain (`RESULTS.md`) |
 | 14.4 | Rerun the phase 11 eval grid with the temporal head | Shows the effect on the edit itself (mood and pace coupling) | after 14.1 deploys |
 | 14.5 | Architecture ablation: BiGRU vs small transformer vs dilated CNN | Is the GRU enough? | stretch |
 
@@ -103,6 +103,7 @@ Prerequisites: the branch is pushed; you can see `My Drive/montage_data` (shared
    !cd /content/bac_prototype && python scripts/run_job.py --name emo_temporal -- python -m training.emotion.temporal
    ```
    Options: `--seeds 0 1 2`, `--epochs 60`, `--no-deploy` (report only), `--force-deploy`.
+   Lag study (14.3, never deploys): `--name emo_lag -- python -m training.emotion.lag` (`--lags 0 0.5 ... 4`, `--seeds`). Report: `montage_data/eval/emotion_lag/report.md`.
 4. **Poll** every minute or so (keep the tab open and the laptop awake):
    ```
    !cd /content/bac_prototype && python scripts/job_status.py emo_temporal
