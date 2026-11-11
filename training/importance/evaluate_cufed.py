@@ -250,6 +250,9 @@ def run() -> dict:
                 pg = group_scores(blend(oof[name], H, G, ref_key[1]), y, G)
                 cands[ref_key], cand_pg[ref_key] = summarize(pg, D_of, sets), pg
             table["deployed_config_cv"] = cands[ref_key]
+    if dep is not None and ref_key is None:
+        log.warning("the live ranker's configuration (%s/%s) is not among the CV configurations: no SumMe guard",
+                    dep_meta.get("trained_on"), dep_meta.get("type"))
     ref_summe = cands[ref_key]["summe"]["tau"] if ref_key and "summe" in sets else None
     chosen = choose(cands, ref_summe, ec.clearly_worse)
     for a in ALPHAS:
