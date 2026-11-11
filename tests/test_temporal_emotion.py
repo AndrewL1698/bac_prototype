@@ -166,3 +166,15 @@ def test_model_id_changes_when_weights_change(fresh_root):
     _save(emotion.temporal_path(), {"state_dict": emotion.make_temporal_head(**ARCH).state_dict(), "arch": ARCH,
                                     "note": "retrained"})
     assert first.startswith("temporal:") and emotion.emotion_model_id() != first
+
+
+def test_lag_shift_pairs_window_with_later_annotation():
+    from training.emotion.dataset import Split
+    from training.emotion.lag import shift_split
+    t = np.r_[np.arange(5), np.arange(3)].astype(float)            # two songs: 5 and 3 windows
+    s = Split(t[:, None, None].repeat(13, 1).repeat(768, 2), np.c_[t, t + 10], np.r_[[1] * 5, [2] * 3], t)
+    out = shift_split(s, 2)
+    assert out.song.tolist() == [1, 1, 1, 2]                       # last 2 windows of each song dropped
+    assert out.feats[:, 0, 0].tolist() == [0, 1, 2, 0]
+    assert out.y[:, 0].tolist() == [2, 3, 4, 2]                    # paired with the annotation 2 steps later
+    assert shift_split(s, 0) is s
