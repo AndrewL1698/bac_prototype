@@ -262,3 +262,9 @@ Format:
 - Next: full `pytest -q` on Colab; merge. If #3 or #4 lands first, rebase and keep every PLAN.md row and decision from both sides.
 - Blockers: none.
 - Heads-up: the YouTube audio cache is never an allowed Gradio path (CLAUDE.md §11).
+
+## 2026-11-11 ET | Andy | CLAUDE.md rules | branch docs-claude-md-rules (PR)
+- Done: two new team rules in CLAUDE.md. (1) Coding: readable first, then as concise as possible, in one consistent style (section 8). (2) Never push to `main`: every change reaches `main` through a pull request (new golden rule 9; "Finishing a phase" now ends with opening a PR; later golden rules renumbered, no-AI-attribution is now 12).
+- Next: team review of the PR.
+- Blockers: none.
+- Heads-up: workflow change for everyone: open a PR instead of fast-forwarding `main`.
