@@ -18,6 +18,86 @@ MERT-v1-95M (frozen, revision 12af15f) features over 5 s centered windows, softm
 
 Takeaways: the head beats predict-mean by a wide margin and matches or beats the best single-layer probe on the test clips; on the full-song set the probe is slightly better. Agreement within a single song is low (arousal CCC about 0.1 per song): the model mostly gets each song's overall mood right rather than moment-to-moment changes. MERT normalizes each window's loudness, so pure volume changes do not move its arousal; the intensity curve keeps its loudness and onset terms for that. Valence, previously always 0, is now non-zero, so the planner's valence term is active.
 
+## Temporal music emotion head (phase 14)
+Last updated 2026-11-11 by Andy (git phase-14-temporal-emotion@7a07514, T4). Full report: `montage_data/eval/emotion_temporal/report.md` (+ `metrics.json`, `curves_<song>.png`).
+
+BiGRU over each song's MERT window sequence (spec 14), same MERT features, DEAM split and windows as 9B. Mean +- std over seeds 0/1/2. "Per song" = CCC inside each song, averaged over songs (follows the curve's shape); plain CCC is pooled over all songs (mostly the song's overall level). Both heads are shown with the app's 1 s smoothing.
+
+| Model | Split | Arousal CCC per song | Valence CCC per song | Arousal CCC | Valence CCC | Arousal RMSE | Valence RMSE |
+|---|---|---|---|---|---|---|---|
+| Window head (9B, smoothed) | test | 0.096 +- 0.004 | 0.046 +- 0.004 | 0.822 +- 0.003 | 0.723 +- 0.019 | 0.168 | 0.173 |
+| **Temporal head (deployed, smoothed)** | test | **0.177 +- 0.006** | **0.116 +- 0.008** | **0.838 +- 0.007** | **0.735 +- 0.011** | 0.163 | 0.174 |
+| Window head (9B, smoothed) | full songs | 0.154 +- 0.010 | 0.013 +- 0.009 | 0.541 +- 0.013 | 0.393 +- 0.008 | 0.223 | 0.224 |
+| Temporal head (smoothed) | full songs | 0.129 +- 0.025 | 0.084 +- 0.010 | 0.630 +- 0.014 | 0.404 +- 0.068 | 0.192 | 0.223 |
+
+Deploy gate: passed (val score: temporal 0.435, seed 2, vs window 0.389). `weights/emotion_temporal.pt` is written; `emotion_head.pt` stays as the fallback. Only code on the phase 14 branch loads the new file until that branch is merged.
+
+Takeaways: on the test clips, context almost doubles within-song tracking (arousal 0.10 -> 0.18, valence 0.05 -> 0.12), and the pooled numbers improve too, so it is not trading level for shape. The absolute within-song numbers are still low, so the curves are better, not good. On the 58 full songs, within-song valence and both pooled CCCs improve, but within-song arousal is slightly worse than the window head (0.13 vs 0.15, with a larger spread across seeds). The full songs only carry annotations from 15 to 45 s, so this is not yet a real test of length generalization. The annotator-lag study below separates lag from context.
+
+### Annotator-lag study (phase 14.3)
+2026-11-11 by Andy (git phase-14-temporal-emotion@c9f0051, T4). Report: `montage_data/eval/emotion_lag/report.md` (+ `metrics.json`). Each head is retrained with the annotation shifted `lag` seconds later than the audio (window at t paired with the annotation at t + lag), then scored on the shifted test targets. Seeds 0/1/2, smoothed as the app does.
+
+| Lag (s) | Window head: arousal per song | Temporal head: arousal per song | Window head: valence per song | Temporal head: valence per song |
+|---|---|---|---|---|
+| 0 | 0.096 | **0.177** | 0.046 | 0.116 |
+| 1 | 0.105 | 0.169 | 0.045 | 0.120 |
+| 2 | 0.123 | 0.168 | 0.043 | 0.115 |
+| 3 | **0.129** | 0.158 | 0.044 | 0.106 |
+| 4 | 0.124 | 0.140 | 0.037 | 0.104 |
+
+(Half-second steps and pooled CCC are in the report; pooled CCC stays 0.82-0.85 for both heads at every lag.)
+
+Takeaways: lag explains part of the arousal gain, not all of it. Giving the window head its best lag (3 s) recovers about 40% of the arousal gap (0.096 -> 0.129, vs 0.177 for the temporal head). Lag explains none of the valence gain: the window head stays at 0.03-0.05 at every lag, while the temporal head stays at 0.10-0.13. The temporal head is best at lag 0 and declines as the lag grows, which suggests it already learned the annotators' delay. That means its curves likely sit a couple of seconds behind the music. Training it at about a 2 s lag costs little (0.168 vs 0.177) and would line its curves up with the audio; see the next section.
+
+### Deployed: temporal head trained at a 2 s lag (phase 14.3 follow-up)
+2026-11-11 by Andy (git phase-14-temporal-emotion@80eab64, T4; `python -m training.emotion.temporal --lag 2`). Report: `montage_data/eval/emotion_temporal/report.md`. The no-lag report and checkpoint are kept in `montage_data/eval/emotion_temporal_lag0/` (restore by copying `emotion_temporal_lag0.pt` back to `weights/emotion_temporal.pt`).
+
+| Model (smoothed, 2 s lag) | Split | Arousal CCC per song | Valence CCC per song | Arousal CCC | Valence CCC |
+|---|---|---|---|---|---|
+| Window head | test | 0.123 +- 0.004 | 0.043 +- 0.007 | 0.834 | 0.732 |
+| **Temporal head (deployed)** | test | **0.168 +- 0.010** | **0.115 +- 0.015** | 0.837 | 0.741 |
+| Window head | full songs | 0.155 +- 0.009 | 0.012 +- 0.006 | 0.554 | 0.387 |
+| Temporal head | full songs | 0.144 +- 0.010 | 0.068 +- 0.023 | 0.625 | 0.386 |
+
+Timing check (test songs, arousal; best offset of the per-song cross-correlation, median; checked on a curve moved by a known 2 s first): the no-lag head's curves sit 0.5 s ahead of the annotations, the 2 s head's 2.0 s ahead, and in a direct comparison the 2 s head leads the no-lag head by 0.75 s.
+
+Takeaways: the curves now lead the annotations by about 2 s, which, given that annotators trail the music by about 2-3 s (the window head's best lag), puts them close to the music's own timing. That is what the planner needs when it places shots on musical moments. The scores against the shifted targets are close to the no-lag head's (they are measured against different targets, so not strictly comparable). On the full songs, within-song arousal is better than the no-lag head (0.144 vs 0.129) and valence is worse (0.068 vs 0.084). Whether the earlier curves actually improve the edits is for the eval grid (14.4).
+
+### Effect on the edits (phase 14.4)
+2026-11-11 by Andy (git phase-14-temporal-emotion@4610e85, T4; `python -m training.emotion.edit_compare`). Report: `montage_data/eval/emotion_edit/report.md` (+ rows and EDLs per head). Full editor on the phase 11 eval set (2 albums x 3 songs x 3 seeds = 18 EDLs per head), same cached plans, same code; only the emotion head differs (9B window head vs the deployed 2 s temporal head). The phase 11 grid files were not touched.
+
+| Metric | Window head (9B) | Temporal head |
+|---|---|---|
+| Mood coupling | +0.39 | +0.50 |
+| Pace coupling | +0.65 | +0.53 |
+| Brief adherence | +0.81 | +1.03 |
+| Quality lift | +0.010 | +0.011 |
+| Beat hit / section cuts | 100% / 100% | 100% / 100% |
+| Shots | 35.8 | 34.5 |
+| Arousal std inside the excerpt | 0.046 | 0.017 |
+
+Screen time showing a different shot: 94% (89-100% per EDL pair). Per album x song, mood coupling goes up on 3 of 6 pairs (by +0.33 to +0.39), down slightly on 2 (-0.07, -0.08) and down on 1 (+0.24 -> -0.07).
+
+Why the curves look flatter (whole eval songs, 1 s smoothed arousal): over a whole song both heads vary about as much (std 0.058-0.098 temporal vs 0.061-0.103 window), and running the temporal head in 30 s chunks changes little, so long songs are not the problem. Inside 30 s blocks the temporal head varies less (0.036-0.037 vs 0.049-0.066) and changes about half as much from step to step (0.003-0.005 vs 0.007-0.009): it follows slower trends and drops the window head's fast wiggles.
+
+Takeaways: the new head leaves the hard guarantees intact (every cut on a beat, every section boundary cut) and changes which shots appear almost everywhere. The proxy metrics are mixed (mood coupling and brief adherence up, pace coupling down), and both coupling metrics are measured against each run's own curves, so they cannot say which edit is better. The temporal head is smoother within an excerpt. That matches the DEAM annotations, which are smooth, but it gives the arousal term less to steer cut speed with inside one excerpt. The 9B baseline here matches the phase 11 numbers (mood +0.39 vs +0.37, pace +0.65 vs +0.66), so the setup is consistent. Verdict: no measurable gain in the edits yet. A human side-by-side (render both cuts of a few album x song pairs and watch) is the next check before making the temporal head the default on `main`.
+
+### Adding PMEmo (phase 14.2)
+2026-11-11 by Andy (git phase-14-temporal-emotion@776d9bd, T4). Reports: `montage_data/eval/emotion_temporal_deam_only/` and `emotion_temporal_deam_pmemo/`. PMEmo 2019 from the Hugging Face mirror csdhbg/PMEmo2019: 735 pop choruses kept (767 annotated, 32 with under 5 s dropped), annotations mapped from [0, 1] to [-1, 1], same 2 Hz grid from 15.5 s, MERT features from the same code path as DEAM. Seeded song split 587 / 74 / 74. Both runs: 2 s lag, seeds 0/1/2, not deployed. Temporal head, smoothed:
+
+| Test set | Trained on | Arousal CCC per song | Valence CCC per song | Arousal CCC | Valence CCC |
+|---|---|---|---|---|---|
+| DEAM test | DEAM | 0.168 +- 0.010 | **0.115** +- 0.015 | 0.837 | 0.741 |
+| DEAM test | DEAM + PMEmo | **0.175** +- 0.005 | 0.107 +- 0.007 | 0.838 | **0.755** |
+| DEAM full songs | DEAM | 0.144 +- 0.010 | 0.068 +- 0.023 | 0.625 | 0.386 |
+| DEAM full songs | DEAM + PMEmo | **0.149** +- 0.017 | **0.077** +- 0.007 | **0.669** | **0.481** |
+| PMEmo test | DEAM | 0.088 +- 0.003 | **0.093** +- 0.006 | 0.513 | 0.380 |
+| PMEmo test | DEAM + PMEmo | **0.106** +- 0.007 | 0.082 +- 0.001 | **0.800** | **0.685** |
+
+For reference, the window head trained on DEAM + PMEmo gets PMEmo test 0.100 / 0.040 per song and 0.808 / 0.719 pooled.
+
+Takeaways: PMEmo mostly fixes each song's overall level on pop music. A DEAM-only model badly misjudges pop choruses overall (pooled arousal CCC 0.51); with PMEmo in training it reaches 0.80, and valence goes from 0.38 to 0.69. That matters for the app, because users mostly bring pop songs. Within-song tracking barely moves (changes of 0.01-0.02 either way, within the seed spread), and DEAM test results stay the same, so adding PMEmo costs nothing on DEAM. On PMEmo, the DEAM-only temporal head follows arousal changes worse than the window head (0.088 vs 0.107); with PMEmo it is slightly ahead (0.106 vs 0.100) and well ahead on valence (0.082 vs 0.040). PMEmo choruses are short (median 22 s), so they say little about how the curves behave over a whole song. The DEAM + PMEmo head passes the deploy gate (val score 0.444 vs window 0.399) but was not deployed in this run.
+
 ## Importance ranker (phase 10A)
 Last updated 2026-10-27 by Keshav (git track-b@a288f7f). Full report: `montage_data/eval/importance/report.md` (+ `metrics.json`, `heldout_<video>.png`).
 

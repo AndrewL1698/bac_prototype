@@ -23,6 +23,7 @@ _Keep this list current. Update it when a phase merges to `main`._
 - **Phase 11 (demo parts):** `python -m montage.app.demo_mode --prepare` (as a job) warms caches, renders 1080p and naive-cut backups to `montage_data/demo/backups/`, pre-renders the vote pair, times a warm generate, and prints a readiness checklist; the app's Rate tab collects blind A/B votes (`python -m montage.eval.vote --analyze`); run-of-show in [`docs/DEMO.md`](docs/DEMO.md).
 - **Demo media tools:** `scripts/pick_subset.py --src BIG_ALBUM --dest demo/<album> --n 60` copies a demo-sized subset (longest clips up to 60 s + photos spread over time); demo prep builds cached SDR proxies for HDR phone videos so warm generates stay under 30 s (28 s on the 60-item demo album).
 - **Phase 9B (music emotion):** a MERT-based head trained on DEAM (`weights/emotion_head.pt`) gives per-moment valence and arousal; test CCC 0.74 valence / 0.82 arousal. The app's status line shows `Emotion: MERT`.
+- **Phase 14 (temporal music emotion, PR open, off by default):** a small BiGRU over each song's MERT windows (`weights/emotion_temporal.pt`, trained on DEAM with a 2 s annotation lag) follows changes inside a song better than the 9B head (DEAM test arousal CCC per song 0.17 vs 0.10). Turn it on with `music.emotion.use_temporal: true`; if its weights are missing or fail to load, the 9B head runs. PMEmo (pop choruses) can be added to training. Details and numbers: [`docs/MUSIC_EMOTION.md`](docs/MUSIC_EMOTION.md), [`docs/RESULTS.md`](docs/RESULTS.md).
 - **Phase 10A (importance ranker):** a RankNet ranker trained on SumMe/TVSum with features from our own pipeline (`weights/importance_ranker.pt`), blended 0.75 learned + 0.25 heuristic; in cross-validation it beats the heuristic (Kendall tau SumMe 0.17 vs 0.12, TVSum 0.41 vs -0.02). The status line shows `Importance: learned+heuristic`.
 - **Phase 12 (song pick, branch `phase-12-songpick`, not merged yet):**
   - In the app, open **Pick a song for me**: **Connect Spotify** (read-only: recent plays and top songs), choose **How to pick**, then **Suggest songs** (3-5 songs with a reason each):
@@ -78,6 +79,10 @@ _Available after phases 9-11._ All long jobs run in the background on Colab:
 python scripts/run_job.py --name deam_dl     -- python -m training.emotion.download_deam
 python scripts/run_job.py --name mert_feats  -- python -m training.emotion.extract_mert
 python scripts/run_job.py --name emo_train   -- python -m training.emotion.train
+python scripts/run_job.py --name emo_temporal -- python -m training.emotion.temporal --lag 2   # phase 14
+python scripts/run_job.py --name pmemo_dl    -- python -m training.emotion.download_pmemo
+python scripts/run_job.py --name pmemo_mert  -- python -m training.emotion.extract_mert --dataset pmemo
+python scripts/run_job.py --name emo_lag     -- python -m training.emotion.lag              # annotator-lag study
 python scripts/run_job.py --name vsum_dl     -- python -m training.importance.download
 python scripts/run_job.py --name vsum_feats  -- python -m training.importance.extract_clip
 python scripts/run_job.py --name rank_train  -- python -m training.importance.train
@@ -137,4 +142,4 @@ tests/        pytest suite (fixtures are generated, not committed)
 
 ## Licenses and data notes
 
-Prototype for non-commercial demo use. MERT-v1-95M is CC-BY-NC-4.0 and SumMe is non-commercial; both would need replacing before any commercial use. DEAM audio is Creative Commons. Datasets and weights are downloaded at runtime and never stored in this repo.
+Prototype for non-commercial demo use. MERT-v1-95M is CC-BY-NC-4.0, SumMe is non-commercial, and PMEmo is for research use; both would need replacing before any commercial use. DEAM audio is Creative Commons. Datasets and weights are downloaded at runtime and never stored in this repo.

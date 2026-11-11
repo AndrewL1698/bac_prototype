@@ -33,6 +33,7 @@ class FullAnalysis:
     emotion_source: str
     beat_source: str
     version: int = ANALYSIS_VERSION
+    emotion_model: str = ""              # emotion.emotion_model_id() of the head that ran ("" in older caches)
     arrays: dict[str, np.ndarray] = field(default_factory=dict, repr=False)
 
     def a(self, key: str) -> np.ndarray:
@@ -75,9 +76,9 @@ def analyze_song(path: str | Path) -> FullAnalysis:
     """Beats, curves, sections, emotion and intensity for the whole song. Cached by content hash."""
     cfg = get_config().music
     h = cache.file_hash(path)
-    want_emotion = "mert" if emotion.mert_available() else "heuristic"
+    want_emotion = emotion.emotion_model_id()
     fa = load_cached(h)
-    if fa is not None and fa.emotion_source == want_emotion:
+    if fa is not None and fa.emotion_model == want_emotion:
         if fa.duration < cfg.min_song_s:
             raise UserError(f"The song must be at least {cfg.min_song_s:.0f} seconds long.")
         return fa
@@ -93,12 +94,13 @@ def analyze_song(path: str | Path) -> FullAnalysis:
     with stage("music_structure"):
         bounds, nov = analyze_structure(y, sr, b["beats"], b["downbeats"], grid, audio.duration)
     with stage("music_emotion"):
-        y24 = load_audio(path, cfg.mert_sr, h) if want_emotion == "mert" else None
-        arousal, valence, src = emotion.predict_emotion(y24, grid, curves)
+        y24 = load_audio(path, cfg.mert_sr, h) if want_emotion != "heuristic" else None
+        arousal, valence, src, model_id = emotion.predict_emotion_detail(y24, grid, curves)
     intensity = compute_intensity(arousal, curves)
     fa = FullAnalysis(
         song_hash=h, duration=round(audio.duration, 4), tempo=b["tempo"], beat_mode=b["beat_mode"],
         beats=b["beats"], downbeats=b["downbeats"], boundaries=bounds, emotion_source=src, beat_source=b["beat_source"],
+        emotion_model=model_id,
         arrays={"grid": grid.astype(np.float32), "intensity": intensity,
                 "arousal": gauss_smooth(arousal, 1.0), "valence": gauss_smooth(valence, 1.0),
                 "novelty": nov, "rms_db": curves["rms_db"], "onset_density": curves["onset_density"],

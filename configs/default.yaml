@@ -87,6 +87,12 @@ music:
     align: "centered"
     batch: 64
     head_weights: "emotion_head.pt"
+    use_temporal: false                      # true = phase 14 sequence head (off until the side-by-side check)
+    temporal_weights: "emotion_temporal.pt"  # phase 14 sequence head, in DATA_ROOT/weights
+    temporal:                                # architecture for new training runs (checkpoints carry their own)
+      proj_dim: 128
+      hidden: 64
+      dropout: 0.2
   intensity:
     w_arousal: 0.5
     w_rms: 0.3

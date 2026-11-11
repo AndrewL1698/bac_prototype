@@ -268,3 +268,59 @@ Format:
 - Next: team review of the PR.
 - Blockers: none.
 - Heads-up: workflow change for everyone: open a PR instead of fast-forwarding `main`.
+## 2026-11-04 ET | Andy | phase 14 | branch phase-14-temporal-emotion (local, not pushed)
+- Done: claimed phase 14 (temporal emotion, Track 2), provisional until track owners are agreed. Wrote `docs/spec/14_temporal_emotion.md`. On the branch:
+  - `montage.music.emotion.make_temporal_head`: BiGRU over the song's MERT window sequence (shared by training and inference);
+  - inference fallback chain: temporal head -> 9B window head -> heuristic (`predict_emotion_detail`; `predict_emotion` unchanged);
+  - `training/emotion/temporal.py`: training on the 9B DEAM shards and split, window-head baselines retrained on the same seeds, per-song CCC report, deploy gate;
+  - cached song analyses now keyed on the emotion model id + weights hash.
+- Tests: `tests/test_temporal_emotion.py` (7 tests, CPU only, synthetic data) pass locally, plus the existing suite (except the known macOS `test_job_stop`).
+- Next: run `python scripts/run_job.py --name emo_temporal -- python -m training.emotion.temporal` on Colab (needs the DEAM MERT shards on Drive), copy the table to RESULTS.md; then 14.2 PMEmo.
+- Blockers: `montage_data` access for Andy (shards, weights).
+- Heads-up: new config keys `music.emotion.use_temporal`, `music.emotion.temporal_weights`, `music.emotion.temporal.*` (with defaults). New internal field `FullAnalysis.emotion_model`: existing cached song analyses are recomputed once. No `types.py` / `schemas.md` change.
+- Heads-up: EmoMusic is a subset of DEAM, so it is dropped from the ROADMAP item 1 data plan (see PLAN Decisions).
+
+## 2026-11-10 ET | Andy | phase 14 | branch phase-14-temporal-emotion (pushed, not merged)
+- Done: rebased the phase 14 branch onto main (after the 2-week re-scope and PR #5). PLAN.md conflict resolved: main's re-scoped phase list kept, with a note that Andy continues 14 on this branch; Current work and Decisions keep both sides. Added `docs/MUSIC_EMOTION.md` (track overview and Colab run book). Branch pushed so Colab can pull it.
+- Tests: local `pytest -q` 150 passed, 78 skipped (torch/GPU/media tests skip on the laptop; `test_job_stop` deselected, known macOS issue).
+- Next: 14.1 on Colab: bootstrap with `--branch phase-14-temporal-emotion`, run `tests/test_temporal_emotion.py`, then the `emo_temporal` training job (MUSIC_EMOTION.md section 5).
+- Blockers: `montage_data` access for Andy (DEAM MERT shards); phase 14 is outside the 2-week re-scope until the team agrees.
+
+## 2026-11-11 ET | Andy | phase 14 | branch phase-14-temporal-emotion (pushed, not merged)
+- Done: 14.1. Colab set up for Andy (T4, montage_data shortcut). `tests/test_temporal_emotion.py` 7 passed on the GPU runtime. `emo_temporal` job trained on the 9B DEAM shards (8 min, most of it loading shards from Drive) and passed the deploy gate: `weights/emotion_temporal.pt` written (9B `emotion_head.pt` untouched). Bootstrap fix: no crash on a runtime without `nvidia-smi`.
+- Next: 14.3 annotator-lag study; 14.2 PMEmo; 14.4 eval grid with the temporal head; then the phase 14 PR.
+- Blockers: none. Phase 14 is still outside the 2-week re-scope until the team agrees.
+- Heads-up: `weights/emotion_temporal.pt` is on the shared Drive, but only code on this branch loads it; main is unaffected until merge (then each cached song analysis is recomputed once).
+- Results: test arousal CCC per song 0.096 -> 0.177, valence 0.046 -> 0.116; pooled arousal CCC 0.822 -> 0.838. Full songs: within-song arousal 0.154 -> 0.129 (slightly worse), valence and pooled better. See RESULTS.md.
+
+## 2026-11-11 ET | Andy | phase 14 | branch phase-14-temporal-emotion (pushed, not merged)
+- Done: 14.3 annotator-lag study (`training/emotion/lag.py`, job `emo_lag`, 15 min on a T4; test for the target shift added; phase 14 tests 8 passed on Colab). Nothing deployed.
+- Next: decide whether to retrain the deployed temporal head at about a 2 s lag so its curves line up with the music; then 14.2 PMEmo and 14.4 eval grid.
+- Blockers: none.
+- Results: best window head (3 s lag) arousal CCC per song 0.129 vs temporal head 0.177 at 0 s; about 40% of the arousal gain is lag, none of the valence gain (window head 0.03-0.05 at every lag, temporal 0.10-0.13). The temporal head is best at 0 s and declines with lag, so it already absorbs the delay. See RESULTS.md.
+
+## 2026-11-11 ET | Andy | phase 14 | branch phase-14-temporal-emotion (pushed, not merged)
+- Done: `--lag` option for `training.emotion.temporal`; retrained and deployed the temporal head at a 2 s lag (job `emo_temporal_lag2`). The no-lag report and checkpoint are backed up in `eval/emotion_temporal_lag0/`. `docs/MUSIC_EMOTION.md` section 0 now records this session in plain language.
+- Next: 14.4 eval grid with the deployed head; 14.2 PMEmo; then the phase 14 PR (after the team agrees on the re-scope).
+- Blockers: none.
+- Heads-up: `weights/emotion_temporal.pt` was replaced (2 s lag). Only code on this branch loads it.
+- Results: test arousal CCC per song 0.168, valence 0.115 (against 2 s-shifted targets); curves lead the annotations by 2.0 s (no-lag head: 0.5 s). See RESULTS.md.
+
+## 2026-11-11 ET | Andy | phase 14 | branch phase-14-temporal-emotion (pushed, not merged)
+- Done: 14.4 edit comparison (`training/emotion/edit_compare.py`, job `emo_edit`, 8 min): full editor on the phase 11 eval set with the 9B head vs the deployed temporal head, same plans and code; output in `eval/emotion_edit/` (phase 11 grid files untouched). Diagnosed why the temporal curves look flat in the excerpt (smoother within 30 s, not a song-length problem).
+- Next: human side-by-side of a few renders (window vs temporal); then 14.2 PMEmo; phase 14 PR after the team agrees on the re-scope.
+- Blockers: none.
+- Results: beat hit and section cuts 100% for both; 94% of screen time shows different shots; mood coupling +0.39 -> +0.50, pace coupling +0.65 -> +0.53, brief adherence +0.81 -> +1.03 (couplings measured against each run's own curves). Arousal std in the excerpt 0.046 -> 0.017. No measurable gain in the edits yet; see RESULTS.md.
+
+## 2026-11-11 ET | Andy | phase 14 | branch phase-14-temporal-emotion (pushed, not merged)
+- Done: 14.2 PMEmo. `training/emotion/download_pmemo.py` (Hugging Face mirror csdhbg/PMEmo2019, checked against the official layout; 735 songs kept), `extract_mert --dataset pmemo` (9 min on a T4, shards in `datasets/pmemo_mert/`), `temporal.py --train-on deam pmemo --tag <name>` (reports DEAM test, DEAM full and PMEmo test separately). Trained DEAM-only and DEAM + PMEmo at a 2 s lag, not deployed.
+- Next: decide whether to deploy the DEAM + PMEmo head; human side-by-side of window vs temporal montages; phase 14 PR after the team agrees on the re-scope.
+- Blockers: none.
+- Heads-up: new datasets on the shared Drive: `datasets/pmemo/` (audio + annotations) and `datasets/pmemo_mert/`. `extract_mert.shard_dir()` now takes a dataset name (default "deam", so existing callers are unchanged).
+- Results: PMEmo test pooled arousal CCC 0.51 (DEAM-only) -> 0.80 (DEAM + PMEmo), valence 0.38 -> 0.69; within-song CCC and DEAM test unchanged within the seed spread. See RESULTS.md.
+
+## 2026-11-11 ET | Andy | phase 14 | branch phase-14-temporal-emotion-pr (PR open)
+- Done: rebased onto main (PR #7 merged, so its commits dropped out) on a fresh branch; `music.emotion.use_temporal` now defaults to false; a failed temporal-head load is remembered so cached analyses stay valid; PLAN (current work, 5 decisions), README (phase 14, commands), guide updated; PR opened.
+- Next: run `tests/test_temporal_emotion.py` and `tests/test_music.py` on Colab against this branch (torch tests skip locally); human side-by-side of montages, then decide whether to switch the temporal head on; decide whether to deploy the DEAM + PMEmo head.
+- Blockers: none. Phase 14 is still outside the 2-week re-scope until the team agrees.
+- Heads-up: merging adds config keys `music.emotion.use_temporal` (default false), `temporal_weights`, `temporal.*`, and the cached-analysis field `emotion_model`: each song's cached analysis is recomputed once after merge (MERT runs again for that song). New datasets on the Drive: `datasets/pmemo/`, `datasets/pmemo_mert/`.

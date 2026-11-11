@@ -207,8 +207,8 @@ def write_env(user: str, api_key: str | None, app_password: str | None = None,
 
 
 def gpu_info() -> tuple[str, bool]:
-    r = sh(["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader"])
-    name = r.stdout.strip().replace("\n", "; ") if r.returncode == 0 else "none"
+    r = shutil.which("nvidia-smi") and sh(["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader"])
+    name = r.stdout.strip().replace("\n", "; ") if r and r.returncode == 0 else "none"
     cuda = sh([sys.executable, "-c", "import torch; print(torch.cuda.is_available())"]).stdout.strip() == "True"
     return name, cuda
 
