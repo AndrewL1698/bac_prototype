@@ -20,23 +20,11 @@ from montage import jobs, paths
 from montage.config import get_config
 from montage.log import get_logger
 from training.emotion import evaluate
-from training.emotion.dataset import Split, load_all
+from training.emotion.dataset import load_all
 from training.emotion.extract_mert import shard_dir
-from training.emotion.temporal import predict_seq, smooth_per_song, song_runs, train_temporal
+from training.emotion.temporal import STEP_S, predict_seq, shift_split, smooth_per_song, train_temporal
 
 log = get_logger("emo_lag")
-STEP_S = 0.5            # DEAM annotations and our windows are on a 2 Hz grid
-
-
-def shift_split(s: Split, k: int) -> Split:
-    """Pair each song's window i with its annotation i + k (k grid steps later); drops the last k windows per song."""
-    if k == 0:
-        return s
-    _, starts, lengths = song_runs(s)
-    x = np.concatenate([np.arange(st, st + n - k) for st, n in zip(starts, lengths) if n > k]).astype(int)
-    return Split(s.feats[x], s.y[x + k], s.song[x], s.times[x])
-
-
 def main(argv: list[str] | None = None) -> int:
     from training.emotion.train import predict, train
     ap = argparse.ArgumentParser()
