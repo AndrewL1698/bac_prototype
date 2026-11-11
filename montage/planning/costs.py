@@ -84,6 +84,14 @@ def build_costs(pool: np.ndarray, slots: list[Slot], cands: list[Candidate], arr
     if is_video.any():
         U = U + np.where(~is_video[:, None], c.w_photo_hi * irank[None, :], 0.0)
     U = U - c.w_must * must[pool][:, None]
+    ts = np.array([t.timestamp() if t else np.nan for t in (taken[i] for i in pool)])
+    dated = ~np.isnan(ts)
+    if chronological and dated.sum() > 1:
+        # Story pacing: slot j draws from the same fraction of the album (capture-time rank). The pairwise term
+        # alone only prices stepping back, so the beam raced ahead early and had to jump back later.
+        r = np.zeros(M)
+        r[dated] = rank01(ts[dated])
+        U = U + c.w_timeline * dated[:, None] * np.abs(r[:, None] - (np.arange(K)[None, :] + 0.5) / K)
     finite = U[U < INF / 2]
     if c.variety > 0 and finite.size > 1:
         rng = np.random.default_rng(seed)
@@ -94,8 +102,7 @@ def build_costs(pool: np.ndarray, slots: list[Slot], cands: list[Candidate], arr
     assets = np.array([cands[i].asset_id for i in pool])
     P = c.w_rep * np.maximum(cos - c.rep_tau, 0) + c.w_src * (assets[:, None] == assets[None, :])
     if chronological:
-        ts = np.array([t.timestamp() if t else np.nan for t in (taken[i] for i in pool)])
-        later_first = (ts[None, :] < ts[:, None] - c.chrono_tol_s) & ~np.isnan(ts[:, None]) & ~np.isnan(ts[None, :])
+        later_first = (ts[None, :] < ts[:, None] - c.chrono_tol_s) & dated[:, None] & dated[None, :]
         P = P + c.w_chrono * later_first
     hists = np.stack([thumb_hist(cands[i].thumb_path) for i in pool]) if M else np.zeros((0, 512))
     vj = visual_jump(hists, arr["brightness"][pool])

@@ -248,6 +248,14 @@ Format:
 - Blockers: track owners not agreed.
 - Heads-up: scope change. Phases 14 (temporal emotion), 16 (people-aware), 19 (learned preferences), 20 (9:16/variable length), 21 (FastAPI + timeline editor) are dropped. New phases 22 (contrastive model) and 23 (gallery). No code, schema or config changes.
 
+## 2026-11-08 01:45 ET | Keshav | phase 17 (story order) | branch phase-17-story-order (PR)
+- Done: story order is the default. Rules director: chronological unless the brief asks for another order (shuffle, mix it up, random order, ...). Claude prompt says the same, and adds segments only when the brief names a part of the song. New planner term `planner.w_timeline` 4.0 (slot j draws from the same fraction of the album by capture-time rank): the old pairwise term alone left cuts out of order. Event coverage term dropped (not needed, see PLAN Decisions). Specs 05 and 06, PLAN, README, RESULTS updated.
+- Tests: local 82 passed, 1 skipped (no GPU/media/API marks). Colab A100 full `pytest -q` with the API key: 148 passed, 1 skipped (timing opt-in), 1 failed: `test_9a.py::test_note_faster_adds_shots` (18 -> 18 shots after "faster"). It fails the same way on main; it was skipped in earlier runs that had no API key. Not fixed here.
+- Results: story order (Kendall tau vs capture time) -0.07 on main today -> 0.66-0.72 (Claude plans) / 0.90 (rules plans); mood coupling 0.49 -> about 0.39. Recut timing on the real demo album (phase 13 follow-up): cold render 22.7 s, recut with one shot excluded 11.2 s (21 of 47 shots reused). Both in RESULTS.md.
+- Next: teammate review of the PR. Fix or rewrite test_note_faster_adds_shots (pre-existing). Open the PR for `phase-13-beat-this-mirror` (pushed 2026-11-05, no PR): main still uses librosa beats for songs cached during the Beat This! outage (the demo album run reported `beats:librosa`), and that branch fixes it.
+- Blockers: none.
+- Heads-up: new config key `planner.w_timeline` (required in `PlannerCfg`). Default plans are now chronological; the unpushed branch `claude/alternative-ai-models-6ab256` has a `director_compare` check ("defaults" case) expecting not chronological: flip it before merging. No schema changes.
+
 ## 2026-11-08 18:20 ET | Andrew | phase 12 | branch phase-12-songpick (PR)
 - Done: fixes from the first Colab test, and the three song-pick modes from the Nov 7 roadmap.
   - **Modes** (`pick.suggest(mode=...)`, app radio **How to pick**): "Songs from back then" (default: past-year songs whose album release date is in an age-scaled window around the photos' median date, or that were played during the album; remaster/compilation dates skipped), "Best vibe fit" (dates ignored; a placeholder ranked by listening until the vibe match lands), "My full Spotify history" (the export inside an age-scaled listening window). Before this, every pick was the top 5 of the year, because the 1-year list overlapped any photo date.

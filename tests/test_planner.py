@@ -175,6 +175,16 @@ def test_pins():
     assert "a005" in [s.candidate_id for s in plan_edit(inp, "r", seed=0).shots]
 
 
+def test_story_order_runs_through_the_album():
+    """A chronological cut walks through the album once, in capture order (no racing ahead, then jumping back)."""
+    inp = make_inputs(n_photo=40, n_video=0, p=plan(chronological=True))
+    for k, a in enumerate(inp.assets):
+        a.taken_at = datetime(2026, 7, 1) + timedelta(hours=k)
+    order = [int(s.asset_id[1:]) for s in plan_edit(inp, "r", seed=0).shots]
+    assert spearmanr(range(len(order)), order).statistic > 0.9, order
+    assert order[0] < 10 and order[-1] >= 30, order
+
+
 def test_beam_determinism():
     inp = make_inputs()
     a = plan_edit(inp, "r", seed=1)

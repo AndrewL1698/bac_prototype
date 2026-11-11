@@ -33,8 +33,11 @@ U(i,j) = - w_imp * imp_i
          + w_photo_short   if photo and duration_j < photo_min_s
          + w_photo_hi * irank_j  if photo and videos exist               # irank_j: slot intensity rank
          - w_must          if i is must-include or pinned
+         + w_timeline * |r_i - (j + 0.5) / K|   # only if plan.chronological; r_i = capture-time rank in the pool (0..1), 0 if undated
 ```
-Defaults: w_imp 1.0, w_mood 0.8, w_val 0.3, w_dir 0.6, photo_min_s 0.6, w_photo_short 0.5, w_photo_hi 0.3, w_must 5.0.
+Defaults: w_imp 1.0, w_mood 0.8, w_val 0.3, w_dir 0.6, photo_min_s 0.6, w_photo_short 0.5, w_photo_hi 0.3, w_must 5.0, w_timeline 4.0.
+
+**Story order (phase 17):** the timeline term makes slot j draw from the same fraction of the album, so a chronological cut walks through the album once. The pairwise `w_chrono` term alone only priced stepping back in time: the beam raced ahead to strong late shots, ran out, and jumped back (on 7 real album x song pairs the cut's Kendall tau against capture time stayed near 0 even at w_chrono 30). With w_timeline 4: tau 0.90, about 2 backward jumps, mood coupling 0.38 (0.50 without story order); see `docs/RESULTS.md`.
 
 **Variety noise:** `U += planner.variety * std(U_finite) * Gumbel(seed)` (default variety 0.15). Same seed gives the same edit.
 
