@@ -77,7 +77,9 @@ def analyze_song(path: str | Path) -> FullAnalysis:
     h = cache.file_hash(path)
     want_emotion = "mert" if emotion.mert_available() else "heuristic"
     fa = load_cached(h)
-    if fa is not None and fa.emotion_source == want_emotion:
+    # an analysis cached while Beat This! was unavailable is redone once it loads (like emotion above)
+    if (fa is not None and fa.emotion_source == want_emotion
+            and not (fa.beat_source == "librosa" and beats_mod.beat_this_ready())):
         if fa.duration < cfg.min_song_s:
             raise UserError(f"The song must be at least {cfg.min_song_s:.0f} seconds long.")
         return fa

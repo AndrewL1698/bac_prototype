@@ -97,12 +97,35 @@ def beat_this():
     fx = REPO / "tests" / "fixtures"
     truth = json.loads((fx / "truth.json").read_text())["click_120.wav"]
     import torch
-    f2b = File2Beats(checkpoint_path="final0", device="cuda" if torch.cuda.is_available() else "cpu", dbn=False)
+
+    from montage.music.beats import ensure_checkpoint
+    ckpt, source = ensure_checkpoint()   # sha256-verified Drive copy (fetched from mirror/upstream if missing)
+    f2b = File2Beats(checkpoint_path=str(ckpt), device="cuda" if torch.cuda.is_available() else "cpu", dbn=False)
     beats, downbeats = f2b(str(fx / "click_120.wav"))
     tb = np.array(truth["beats"])
     hit = np.mean([np.min(np.abs(tb - b)) < 0.03 for b in beats]) if len(beats) else 0
     assert hit >= 0.95 and len(downbeats) > 0, f"hit {hit:.2f}, {len(downbeats)} downbeats"
-    return f"{len(beats)} beats, {hit:.0%} within 30 ms, {len(downbeats)} downbeats"
+    return f"{len(beats)} beats, {hit:.0%} within 30 ms, {len(downbeats)} downbeats; checkpoint from {source}"
+
+
+@check("beat_this_sources")
+def beat_this_sources():
+    """Every configured download source still serves the checkpoint (first 1 KB), so a dead mirror
+    or host is noticed before a fresh Drive needs it."""
+    import urllib.request
+    cfg = get_config().music.beat_this
+    bad, ok = [], []
+    for s in cfg.sources:
+        url = s.format(name=cfg.checkpoint)
+        try:
+            req = urllib.request.Request(url, headers={"Range": "bytes=0-1023"})
+            with urllib.request.urlopen(req, timeout=30) as r:
+                assert len(r.read(1024)) == 1024
+            ok.append(url.split("/")[2])
+        except Exception as e:  # noqa: BLE001
+            bad.append(f"{url.split('/')[2]}: {e}")
+    assert not bad, "; ".join(bad)
+    return f"{len(ok)} sources ok ({', '.join(ok)})"
 
 
 @check("yunet")
@@ -155,7 +178,7 @@ def ffmpeg():
     return f"30 frames ok; zscale {'yes' if zs else 'no'}, tonemap {'yes' if tm else 'no'}"
 
 
-CHECKS = [clip, aesthetic, mert, beat_this, yunet, claude, ffmpeg]
+CHECKS = [clip, aesthetic, mert, beat_this, beat_this_sources, yunet, claude, ffmpeg]
 
 
 def main(argv: list[str] | None = None) -> int:
