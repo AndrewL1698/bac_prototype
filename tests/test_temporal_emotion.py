@@ -10,6 +10,15 @@ import pytest
 ARCH = {"layers": 13, "dim": 768, "proj_dim": 32, "hidden": 16, "dropout": 0.0}
 
 
+@pytest.fixture(autouse=True)
+def temporal_on():
+    """The temporal head is off by default (music.emotion.use_temporal) until the side-by-side check; these tests
+    exercise it, so they switch it on."""
+    from montage import config
+    with config.override({"music.emotion.use_temporal": True}):
+        yield
+
+
 def _split(n_songs: int, steps: int, rng, lag: int = 4):
     """Synthetic DEAM-like split. Each window's features carry a white-noise signal s_t along one direction; the
     target is a function of the PREVIOUS `lag` signals (like an annotator reacting late). A per-window head sees
@@ -126,6 +135,7 @@ def test_inference_prefers_temporal_then_window_then_heuristic(fresh_root, monke
     emotion.temporal_path().write_bytes(b"not a checkpoint")
     a, v, src, mid = emotion.predict_emotion_detail(y24, grid, curves)
     assert src == "mert" and mid.startswith("window:")
+    assert mid == emotion.emotion_model_id()                 # so the cached analysis is reused, not redone every call
 
     from montage import config
     with config.override({"music.emotion.use_temporal": False}):

@@ -125,7 +125,7 @@ class EmotionCfg(_B):
     align: str
     batch: int
     head_weights: str
-    use_temporal: bool = True
+    use_temporal: bool = False
     temporal_weights: str = "emotion_temporal.pt"
     temporal: TemporalEmotionCfg = TemporalEmotionCfg()
 

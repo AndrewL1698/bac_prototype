@@ -4,7 +4,8 @@ MERT path: frozen MERT-v1-95M features over 5 s windows CENTERED on each grid ti
 - temporal head (phase 14, DATA_ROOT/weights/emotion_temporal.pt): a BiGRU over the whole song's window
   sequence, so each prediction sees its neighbours;
 - window head (phase 9B, DATA_ROOT/weights/emotion_head.pt): each window on its own.
-The temporal head is used when present; if it is missing or fails, the window head; then the heuristic.
+The temporal head is used when enabled (music.emotion.use_temporal) and present; if it is missing or fails to load,
+the window head; then the heuristic.
 `make_windows`, `mert_window_features`, `make_head` and `make_temporal_head` are shared with training
 (training/emotion/) so the two cannot drift.
 Heuristic path (fallback): arousal from loudness/onsets/brightness, valence 0.
@@ -25,7 +26,7 @@ log = get_logger("emotion")
 _lock = threading.Lock()
 _mert = None
 _head = None
-_temporal = None
+_temporal = None   # the loaded head, or False once loading failed (window head for the rest of the process)
 
 
 def make_windows(y24: np.ndarray, times: np.ndarray, sr: int | None = None, window_s: float | None = None) -> np.ndarray:
@@ -102,7 +103,7 @@ def temporal_path():
 
 def temporal_available() -> bool:
     cfg = get_config().music.emotion
-    return bool(cfg.use_mert and cfg.use_temporal) and temporal_path().exists()
+    return bool(cfg.use_mert and cfg.use_temporal) and _temporal is not False and temporal_path().exists()
 
 
 def mert_available() -> bool:
@@ -177,9 +178,13 @@ def _load_temporal():
     with _lock:
         if _temporal is None:
             import torch
-            ckpt = torch.load(temporal_path(), map_location="cpu", weights_only=False)
-            head = make_temporal_head(**ckpt["arch"])
-            head.load_state_dict(ckpt["state_dict"])
+            try:
+                ckpt = torch.load(temporal_path(), map_location="cpu", weights_only=False)
+                head = make_temporal_head(**ckpt["arch"])
+                head.load_state_dict(ckpt["state_dict"])
+            except Exception:
+                _temporal = False   # emotion_model_id() then names the window head, so the cache stays valid
+                raise
             _temporal = head.eval()
         return _temporal
 
