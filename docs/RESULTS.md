@@ -32,7 +32,22 @@ BiGRU over each song's MERT window sequence (spec 14), same MERT features, DEAM 
 
 Deploy gate: passed (val score: temporal 0.435, seed 2, vs window 0.389). `weights/emotion_temporal.pt` is written; `emotion_head.pt` stays as the fallback. Only code on the phase 14 branch loads the new file until that branch is merged.
 
-Takeaways: on the test clips, context almost doubles within-song tracking (arousal 0.10 -> 0.18, valence 0.05 -> 0.12), and the pooled numbers improve too, so it is not trading level for shape. The absolute within-song numbers are still low, so the curves are better, not good. On the 58 full songs, within-song valence and both pooled CCCs improve, but within-song arousal is slightly worse than the window head (0.13 vs 0.15, with a larger spread across seeds). The full songs only carry annotations from 15 to 45 s, so this is not yet a real test of length generalization. The annotator-lag study (14.3) is needed to tell how much of the gain is just learning the lag.
+Takeaways: on the test clips, context almost doubles within-song tracking (arousal 0.10 -> 0.18, valence 0.05 -> 0.12), and the pooled numbers improve too, so it is not trading level for shape. The absolute within-song numbers are still low, so the curves are better, not good. On the 58 full songs, within-song valence and both pooled CCCs improve, but within-song arousal is slightly worse than the window head (0.13 vs 0.15, with a larger spread across seeds). The full songs only carry annotations from 15 to 45 s, so this is not yet a real test of length generalization. The annotator-lag study below separates lag from context.
+
+### Annotator-lag study (phase 14.3)
+2026-11-11 by Andy (git phase-14-temporal-emotion@c9f0051, T4). Report: `montage_data/eval/emotion_lag/report.md` (+ `metrics.json`). Each head is retrained with the annotation shifted `lag` seconds later than the audio (window at t paired with the annotation at t + lag), then scored on the shifted test targets. Seeds 0/1/2, smoothed as the app does.
+
+| Lag (s) | Window head: arousal per song | Temporal head: arousal per song | Window head: valence per song | Temporal head: valence per song |
+|---|---|---|---|---|
+| 0 | 0.096 | **0.177** | 0.046 | 0.116 |
+| 1 | 0.105 | 0.169 | 0.045 | 0.120 |
+| 2 | 0.123 | 0.168 | 0.043 | 0.115 |
+| 3 | **0.129** | 0.158 | 0.044 | 0.106 |
+| 4 | 0.124 | 0.140 | 0.037 | 0.104 |
+
+(Half-second steps and pooled CCC are in the report; pooled CCC stays 0.82-0.85 for both heads at every lag.)
+
+Takeaways: lag explains part of the arousal gain, not all of it. Giving the window head its best lag (3 s) recovers about 40% of the arousal gap (0.096 -> 0.129, vs 0.177 for the temporal head). Lag explains none of the valence gain: the window head stays at 0.03-0.05 at every lag, while the temporal head stays at 0.10-0.13. The temporal head is best at lag 0 and declines as the lag grows, which suggests it already learned the annotators' delay. That means its curves likely sit a couple of seconds behind the music. Training it at about a 2 s lag costs little (0.168 vs 0.177) and would line its curves up with the audio; this is a candidate follow-up, not yet deployed.
 
 ## Importance ranker (phase 10A)
 Last updated 2026-10-27 by Keshav (git track-b@a288f7f). Full report: `montage_data/eval/importance/report.md` (+ `metrics.json`, `heldout_<video>.png`).

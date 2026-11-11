@@ -286,3 +286,9 @@ Format:
 - Blockers: none. Phase 14 is still outside the 2-week re-scope until the team agrees.
 - Heads-up: `weights/emotion_temporal.pt` is on the shared Drive, but only code on this branch loads it; main is unaffected until merge (then each cached song analysis is recomputed once).
 - Results: test arousal CCC per song 0.096 -> 0.177, valence 0.046 -> 0.116; pooled arousal CCC 0.822 -> 0.838. Full songs: within-song arousal 0.154 -> 0.129 (slightly worse), valence and pooled better. See RESULTS.md.
+
+## 2026-11-11 ET | Andy | phase 14 | branch phase-14-temporal-emotion (pushed, not merged)
+- Done: 14.3 annotator-lag study (`training/emotion/lag.py`, job `emo_lag`, 15 min on a T4; test for the target shift added; phase 14 tests 8 passed on Colab). Nothing deployed.
+- Next: decide whether to retrain the deployed temporal head at about a 2 s lag so its curves line up with the music; then 14.2 PMEmo and 14.4 eval grid.
+- Blockers: none.
+- Results: best window head (3 s lag) arousal CCC per song 0.129 vs temporal head 0.177 at 0 s; about 40% of the arousal gain is lag, none of the valence gain (window head 0.03-0.05 at every lag, temporal 0.10-0.13). The temporal head is best at 0 s and declines with lag, so it already absorbs the delay. See RESULTS.md.
