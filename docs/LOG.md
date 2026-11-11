@@ -275,3 +275,8 @@ Format:
 - Next: teammate review of PR #2.
 - Blockers: none.
 - Heads-up: montage/app/gradio_app.py layout changed again (Revise panel, Spotify accordion moved into the Media panel); /generate and /recut keep their first 11 outputs (new outputs appended). The app's look lives in montage/app/theme.py; DESIGN.md and .impeccable/design.json describe it. No schema or config changes.
+## 2026-11-11 ET | Andy | CLAUDE.md rules | branch docs-claude-md-rules (PR)
+- Done: two new team rules in CLAUDE.md. (1) Coding: readable first, then as concise as possible, in one consistent style (section 8). (2) Never push to `main`: every change reaches `main` through a pull request (new golden rule 9; "Finishing a phase" now ends with opening a PR; later golden rules renumbered, no-AI-attribution is now 12).
+- Next: team review of the PR.
+- Blockers: none.
+- Heads-up: workflow change for everyone: open a PR instead of fast-forwarding `main`.
