@@ -178,3 +178,13 @@ def test_lag_shift_pairs_window_with_later_annotation():
     assert out.feats[:, 0, 0].tolist() == [0, 1, 2, 0]
     assert out.y[:, 0].tolist() == [2, 3, 4, 2]                    # paired with the annotation 2 steps later
     assert shift_split(s, 0) is s
+
+
+def test_edit_compare_changed_shots(tmp_path):
+    import json
+    from training.emotion.edit_compare import changed_shots
+    shots = lambda ids: {"shots": [{"start": i * 2.0, "end": i * 2.0 + 2, "candidate_id": c} for i, c in enumerate(ids)]}
+    (tmp_path / "a.json").write_text(json.dumps(shots(["x", "y", "z", "w"])))
+    (tmp_path / "b.json").write_text(json.dumps(shots(["x", "q", "z", "w"])))
+    assert changed_shots(tmp_path / "a.json", tmp_path / "b.json") == pytest.approx(0.25, abs=0.02)
+    assert changed_shots(tmp_path / "a.json", tmp_path / "a.json") == 0
