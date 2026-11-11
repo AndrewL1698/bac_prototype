@@ -311,3 +311,10 @@ Format:
 - Next: human side-by-side of a few renders (window vs temporal); then 14.2 PMEmo; phase 14 PR after the team agrees on the re-scope.
 - Blockers: none.
 - Results: beat hit and section cuts 100% for both; 94% of screen time shows different shots; mood coupling +0.39 -> +0.50, pace coupling +0.65 -> +0.53, brief adherence +0.81 -> +1.03 (couplings measured against each run's own curves). Arousal std in the excerpt 0.046 -> 0.017. No measurable gain in the edits yet; see RESULTS.md.
+
+## 2026-11-11 ET | Andy | phase 14 | branch phase-14-temporal-emotion (pushed, not merged)
+- Done: 14.2 PMEmo. `training/emotion/download_pmemo.py` (Hugging Face mirror csdhbg/PMEmo2019, checked against the official layout; 735 songs kept), `extract_mert --dataset pmemo` (9 min on a T4, shards in `datasets/pmemo_mert/`), `temporal.py --train-on deam pmemo --tag <name>` (reports DEAM test, DEAM full and PMEmo test separately). Trained DEAM-only and DEAM + PMEmo at a 2 s lag, not deployed.
+- Next: decide whether to deploy the DEAM + PMEmo head; human side-by-side of window vs temporal montages; phase 14 PR after the team agrees on the re-scope.
+- Blockers: none.
+- Heads-up: new datasets on the shared Drive: `datasets/pmemo/` (audio + annotations) and `datasets/pmemo_mert/`. `extract_mert.shard_dir()` now takes a dataset name (default "deam", so existing callers are unchanged).
+- Results: PMEmo test pooled arousal CCC 0.51 (DEAM-only) -> 0.80 (DEAM + PMEmo), valence 0.38 -> 0.69; within-song CCC and DEAM test unchanged within the seed spread. See RESULTS.md.
