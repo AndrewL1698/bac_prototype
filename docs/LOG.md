@@ -311,3 +311,9 @@ Format:
 - Next: on Colab, pull the branch and run the full `pytest -q` (incl. `test_cufed_parity`); `pytest -q tests/test_cufed.py` on Windows; post the counts and the pytest summary in PR #6.
 - Blockers: none.
 - Heads-up: `importance.cufed.flickr` is gone from the config (nothing else used it).
+
+## 2026-11-13 21:00 ET | Shiven | phase 15 | branch phase-15-cufed-eval
+- Done: days 4-7 code, on its own branch on top of PR #6. `training/importance/evaluate_cufed.py` (new; `evaluate.py` unchanged): CV by group with CUFED next to SumMe/TVSum (video folds identical to 10A), 5 training sets x {linear, mlp}, blends with the heuristic, comparison with the live ranker, deploy decision with a bootstrap CI, report + candidate checkpoint; `--deploy` is a separate step. Config `importance.cufed.eval`. `tests/test_cufed_eval.py` (6 tests, synthetic data, real trainer). `cufed_dl` now reports download progress to the job status.
+- Next: on Colab, the `cufed_eval` job (about 30-40 min on the free T4 runtime's 2 CPU cores; resumable per configuration), then read `montage_data/eval/importance_cufed/report.md`; `--deploy` only if it says deploy; RESULTS.md CUFED column either way.
+- Blockers: none.
+- Heads-up: new config section `importance.cufed.eval`. No live weights change until someone runs `--deploy`.
