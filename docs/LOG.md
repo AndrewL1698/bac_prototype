@@ -292,3 +292,10 @@ Format:
 - Next: decide whether to retrain the deployed temporal head at about a 2 s lag so its curves line up with the music; then 14.2 PMEmo and 14.4 eval grid.
 - Blockers: none.
 - Results: best window head (3 s lag) arousal CCC per song 0.129 vs temporal head 0.177 at 0 s; about 40% of the arousal gain is lag, none of the valence gain (window head 0.03-0.05 at every lag, temporal 0.10-0.13). The temporal head is best at 0 s and declines with lag, so it already absorbs the delay. See RESULTS.md.
+
+## 2026-11-11 ET | Andy | phase 14 | branch phase-14-temporal-emotion (pushed, not merged)
+- Done: `--lag` option for `training.emotion.temporal`; retrained and deployed the temporal head at a 2 s lag (job `emo_temporal_lag2`). The no-lag report and checkpoint are backed up in `eval/emotion_temporal_lag0/`. `docs/MUSIC_EMOTION.md` section 0 now records this session in plain language.
+- Next: 14.4 eval grid with the deployed head; 14.2 PMEmo; then the phase 14 PR (after the team agrees on the re-scope).
+- Blockers: none.
+- Heads-up: `weights/emotion_temporal.pt` was replaced (2 s lag). Only code on this branch loads it.
+- Results: test arousal CCC per song 0.168, valence 0.115 (against 2 s-shifted targets); curves lead the annotations by 2.0 s (no-lag head: 0.5 s). See RESULTS.md.

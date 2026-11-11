@@ -47,7 +47,21 @@ Takeaways: on the test clips, context almost doubles within-song tracking (arous
 
 (Half-second steps and pooled CCC are in the report; pooled CCC stays 0.82-0.85 for both heads at every lag.)
 
-Takeaways: lag explains part of the arousal gain, not all of it. Giving the window head its best lag (3 s) recovers about 40% of the arousal gap (0.096 -> 0.129, vs 0.177 for the temporal head). Lag explains none of the valence gain: the window head stays at 0.03-0.05 at every lag, while the temporal head stays at 0.10-0.13. The temporal head is best at lag 0 and declines as the lag grows, which suggests it already learned the annotators' delay. That means its curves likely sit a couple of seconds behind the music. Training it at about a 2 s lag costs little (0.168 vs 0.177) and would line its curves up with the audio; this is a candidate follow-up, not yet deployed.
+Takeaways: lag explains part of the arousal gain, not all of it. Giving the window head its best lag (3 s) recovers about 40% of the arousal gap (0.096 -> 0.129, vs 0.177 for the temporal head). Lag explains none of the valence gain: the window head stays at 0.03-0.05 at every lag, while the temporal head stays at 0.10-0.13. The temporal head is best at lag 0 and declines as the lag grows, which suggests it already learned the annotators' delay. That means its curves likely sit a couple of seconds behind the music. Training it at about a 2 s lag costs little (0.168 vs 0.177) and would line its curves up with the audio; see the next section.
+
+### Deployed: temporal head trained at a 2 s lag (phase 14.3 follow-up)
+2026-11-11 by Andy (git phase-14-temporal-emotion@80eab64, T4; `python -m training.emotion.temporal --lag 2`). Report: `montage_data/eval/emotion_temporal/report.md`. The no-lag report and checkpoint are kept in `montage_data/eval/emotion_temporal_lag0/` (restore by copying `emotion_temporal_lag0.pt` back to `weights/emotion_temporal.pt`).
+
+| Model (smoothed, 2 s lag) | Split | Arousal CCC per song | Valence CCC per song | Arousal CCC | Valence CCC |
+|---|---|---|---|---|---|
+| Window head | test | 0.123 +- 0.004 | 0.043 +- 0.007 | 0.834 | 0.732 |
+| **Temporal head (deployed)** | test | **0.168 +- 0.010** | **0.115 +- 0.015** | 0.837 | 0.741 |
+| Window head | full songs | 0.155 +- 0.009 | 0.012 +- 0.006 | 0.554 | 0.387 |
+| Temporal head | full songs | 0.144 +- 0.010 | 0.068 +- 0.023 | 0.625 | 0.386 |
+
+Timing check (test songs, arousal; best offset of the per-song cross-correlation, median; checked on a curve moved by a known 2 s first): the no-lag head's curves sit 0.5 s ahead of the annotations, the 2 s head's 2.0 s ahead, and in a direct comparison the 2 s head leads the no-lag head by 0.75 s.
+
+Takeaways: the curves now lead the annotations by about 2 s, which, given that annotators trail the music by about 2-3 s (the window head's best lag), puts them close to the music's own timing. That is what the planner needs when it places shots on musical moments. The scores against the shifted targets are close to the no-lag head's (they are measured against different targets, so not strictly comparable). On the full songs, within-song arousal is better than the no-lag head (0.144 vs 0.129) and valence is worse (0.068 vs 0.084). Whether the earlier curves actually improve the edits is for the eval grid (14.4).
 
 ## Importance ranker (phase 10A)
 Last updated 2026-10-27 by Keshav (git track-b@a288f7f). Full report: `montage_data/eval/importance/report.md` (+ `metrics.json`, `heldout_<video>.png`).

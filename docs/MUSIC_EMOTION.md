@@ -4,6 +4,19 @@ Owner: Andy. Branch: `phase-14-temporal-emotion`. Spec: [`spec/14_temporal_emoti
 
 > **Status (2026-11-10).** This is Track 2 of the 8-week plan (2026-11-04). The 2-week re-scope of 2026-11-07 (`ROADMAP.md`, `PLAN.md`) dropped phase 14 and reused "Track 2" for CUFED photo importance. Andy is continuing this track and is raising the re-scope with the team; until that is settled, `PLAN.md` on `main` does not list this work. Phase 14 code and tests are done; the DEAM training run (14.1) finished on 2026-11-11 and the temporal head is deployed (`RESULTS.md`).
 
+## 0. What we did (session of 2026-11-10 and 11)
+
+A plain-language record, newest last. Numbers are DEAM test songs, "CCC per song" (how well the curve follows changes inside a song; 1 is perfect, 0 is none). Details: `RESULTS.md`.
+
+1. **Caught the branch up with `main`.** Rebased phase 14 onto the 15 new commits (2-week re-scope, song pick PR #5). The only conflict was `PLAN.md`; kept `main`'s phase list plus a note that Andy continues phase 14. Pushed the branch so Colab can pull it.
+2. **Team rules in `CLAUDE.md`** (separate branch `docs-claude-md-rules`, PR #7): code should be readable first, then as short as possible, in one consistent style; nobody pushes to `main`, every change goes through a PR.
+3. **Colab set up for Andy.** Installed `uv` (needed by the Colab connection), shared Drive shortcut, free T4 GPU (an A100 is not needed: training uses saved MERT features, so the GPU only runs a small model). Fixed a bootstrap crash on runtimes without a GPU.
+4. **Trained the temporal head (14.1).** 8 minutes on the T4. It beat the old 9B head and was deployed to `weights/emotion_temporal.pt` (the 9B head stays as the fallback). Within-song arousal 0.10 -> 0.18, valence 0.05 -> 0.12; overall accuracy also slightly up.
+5. **Lag study (14.3).** Annotators react a few seconds late, so we checked whether the new model only wins by learning that delay. Retrained both heads with the annotation shifted 0-4 s. The old head at its best shift (3 s) gets to 0.13 arousal, so the delay explains about 40% of the arousal gain and none of the valence gain; the rest is real context. Side finding: the new head is best with no shift, so it has learned the delay and its curves probably trail the music by a couple of seconds.
+6. **Retrained the deployed head with a 2 s shift** so its curves line up with the music, not the annotators' reaction (`--lag 2`, 2.5 minutes). It passed the deploy check and is now the deployed head. Scores stay close to the no-shift head (test arousal 0.17, valence 0.12). A timing check confirmed the point of it: its curves now run about 2 s ahead of the annotations, which puts them close to the music. (The first version of that check was wrong, because a raw dot product always favours zero offset; it was fixed and verified on a curve moved by a known 2 s.) The no-shift head and its report are kept in `montage_data/eval/emotion_temporal_lag0/`.
+
+**Where this leaves the track.** The temporal head is trained, explained (context, not just delay) and deployed with music-aligned timing, all on this branch; `main` is unaffected until the branch is merged. Open: does it make better edits (14.4, eval grid)? More data (14.2, PMEmo). Then a PR for phase 14, once the team agrees to keep the track in the 2-week plan.
+
 ## 1. Why this track exists
 
 The montage is cut to the music: the song's **emotion curves** (valence = how positive, arousal = how energetic, both on a 2 Hz grid in [-1, 1]) decide a lot of the edit:
@@ -79,8 +92,8 @@ per window:  [projection, GRU state] -> Dropout -> Linear -> tanh -> (valence, a
 | 14.0 | Push the branch; rebase on `main`; resolve the `PLAN.md` conflict | Colab only pulls from GitHub; nothing is backed up yet | done 2026-11-10 |
 | 14.1 | Train on DEAM (Colab job), copy the table to `RESULTS.md` | The core result: does context improve within-song tracking? | done 2026-11-11: deployed; test arousal CCC per song 0.10 -> 0.18 (`RESULTS.md`) |
 | 14.2 | Add PMEmo (794 pop choruses, dynamic V/A at 2 Hz) | More and more varied training data; report per dataset | after 14.1 |
-| 14.3 | Annotator-lag study (shift targets 0-4 s, re-score the window head) | Shows how much of any gain is just learning the lag | done 2026-11-11: lag explains about 40% of the arousal gain and none of the valence gain (`RESULTS.md`) |
-| 14.4 | Rerun the phase 11 eval grid with the temporal head | Shows the effect on the edit itself (mood and pace coupling) | after 14.1 deploys |
+| 14.3 | Annotator-lag study (shift targets 0-4 s, re-score the window head) | Shows how much of any gain is just learning the lag | done 2026-11-11: lag explains about 40% of the arousal gain and none of the valence gain; deployed head retrained at a 2 s lag (`RESULTS.md`) |
+| 14.4 | Rerun the phase 11 eval grid with the temporal head | Shows the effect on the edit itself (mood and pace coupling) | next (the 2 s head is deployed) |
 | 14.5 | Architecture ablation: BiGRU vs small transformer vs dilated CNN | Is the GRU enough? | stretch |
 
 EmoMusic is deliberately **not** used: it is the 2013 part of DEAM, so it would duplicate songs and could leak DEAM test songs into training.
@@ -102,7 +115,7 @@ Prerequisites: the branch is pushed; you can see `My Drive/montage_data` (shared
    ```
    !cd /content/bac_prototype && python scripts/run_job.py --name emo_temporal -- python -m training.emotion.temporal
    ```
-   Options: `--seeds 0 1 2`, `--epochs 60`, `--no-deploy` (report only), `--force-deploy`.
+   Options: `--seeds 0 1 2`, `--epochs 60`, `--no-deploy` (report only), `--force-deploy`, `--lag 2` (pair each window with the annotation 2 s later; see section 0).
    Lag study (14.3, never deploys): `--name emo_lag -- python -m training.emotion.lag` (`--lags 0 0.5 ... 4`, `--seeds`). Report: `montage_data/eval/emotion_lag/report.md`.
 4. **Poll** every minute or so (keep the tab open and the laptop awake):
    ```
