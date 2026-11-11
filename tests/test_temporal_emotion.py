@@ -170,7 +170,7 @@ def test_model_id_changes_when_weights_change(fresh_root):
 
 def test_lag_shift_pairs_window_with_later_annotation():
     from training.emotion.dataset import Split
-    from training.emotion.lag import shift_split
+    from training.emotion.temporal import shift_split
     t = np.r_[np.arange(5), np.arange(3)].astype(float)            # two songs: 5 and 3 windows
     s = Split(t[:, None, None].repeat(13, 1).repeat(768, 2), np.c_[t, t + 10], np.r_[[1] * 5, [2] * 3], t)
     out = shift_split(s, 2)

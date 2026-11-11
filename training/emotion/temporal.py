@@ -33,6 +33,7 @@ from training.emotion.extract_mert import shard_dir
 log = get_logger("emo_temporal")
 DIMS = evaluate.DIMS
 SMOOTH_S = 1.0          # the app smooths arousal/valence with gauss_smooth(x, 1.0) (montage.music.profile)
+STEP_S = 0.5            # DEAM annotations and our windows are on a 2 Hz grid
 
 
 def out_dir() -> Path:
@@ -50,6 +51,15 @@ def song_runs(s: Split) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     starts = np.flatnonzero(np.r_[True, s.song[1:] != s.song[:-1]])
     lengths = np.diff(np.r_[starts, len(s.song)])
     return s.song[starts], starts, lengths
+
+
+def shift_split(s: Split, k: int) -> Split:
+    """Pair each song's window i with its annotation i + k (k grid steps later); drops the last k windows per song."""
+    if k == 0:
+        return s
+    _, starts, lengths = song_runs(s)
+    x = np.concatenate([np.arange(st, st + n - k) for st, n in zip(starts, lengths) if n > k]).astype(int)
+    return Split(s.feats[x], s.y[x + k], s.song[x], s.times[x])
 
 
 def crop_index(starts: np.ndarray, lengths: np.ndarray, rng: np.random.Generator,
@@ -180,8 +190,8 @@ def _mean_std(ms: list[dict]) -> dict:
 
 def write_report(res: dict) -> None:
     lines = ["# Temporal music emotion head (MERT-v1-95M + DEAM, spec 14)", "",
-             f"Songs: {res['songs']}; seeds: {res['seeds']}. Mean +- std over seeds. Main metric: CCC within each song "
-             f"(per song), averaged over songs. 'smoothed' = gauss_smooth({SMOOTH_S} s) per song, as the app does.", ""]
+             f"Songs: {res['songs']}; seeds: {res['seeds']}; annotation lag: {res['lag_s']} s. Mean +- std over seeds. "
+             f"Main metric: CCC within each song (per song), averaged over songs. 'smoothed' = gauss_smooth({SMOOTH_S} s) per song, as the app does.", ""]
     for split in ("test", "full"):
         if split not in res:
             continue
@@ -236,12 +246,16 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--epochs", type=int, default=60)
     ap.add_argument("--force-deploy", action="store_true", help="deploy even if it does not beat the window head")
     ap.add_argument("--no-deploy", action="store_true")
+    ap.add_argument("--lag", type=float, default=0.0,
+                    help="pair each window with the annotation this many seconds later, so curves follow the music, "
+                         "not the annotators' delayed reaction (14.3)")
     args = ap.parse_args(argv)
     paths.load_colab_env()
     cfg = get_config()
     arch = {"layers": 13, "dim": 768, **cfg.music.emotion.temporal.model_dump()}
     jobs.report(0.02, "loading MERT shards", force=True)
     ids, splits = load_all(shard_dir(), seed=cfg.seed)
+    splits = {k: shift_split(v, round(args.lag / STEP_S)) for k, v in splits.items()}
     log.info("songs: %s", {k: len(v) for k, v in ids.items()})
     n = len(args.seeds)
     window, temporal = [], []
@@ -258,7 +272,7 @@ def main(argv: list[str] | None = None) -> int:
     window = [h.to(dev) for h in window]
     temporal = [(h.to(dev), hist) for h, hist in temporal]
     mean = splits["train"].y.mean(0)
-    res: dict = {"songs": {k: len(v) for k, v in ids.items()}, "seeds": args.seeds, "arch": arch,
+    res: dict = {"songs": {k: len(v) for k, v in ids.items()}, "seeds": args.seeds, "arch": arch, "lag_s": args.lag,
                  "history": [h for _, h in temporal]}
     per_seed = {}
     for split in ("val", "test", "full"):
@@ -297,7 +311,7 @@ def main(argv: list[str] | None = None) -> int:
                 "window_s": cfg.music.emotion.window_s, "align": "centered", "metrics": res["test"],
                 "feature_version": f"{cfg.music.emotion.model}@{cfg.music.emotion.revision}",
                 "created": datetime.now().isoformat(timespec="seconds"), "trained_by": paths.user(),
-                "git_commit": commit, "seed": args.seeds[bi]}
+                "git_commit": commit, "seed": args.seeds[bi], "lag_s": args.lag}
         buf = io.BytesIO()
         torch.save(ckpt, buf)
         paths.atomic_write(temporal_path(), buf.getvalue())
