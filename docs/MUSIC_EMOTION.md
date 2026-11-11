@@ -1,8 +1,8 @@
 # Music + emotion track: guide
 
-Owner: Andy. Branch: `phase-14-temporal-emotion`. Spec: [`spec/14_temporal_emotion.md`](spec/14_temporal_emotion.md) (binding for the details; this file is the overview and run book).
+Owner: Andy. Branch: `phase-14-temporal-emotion-pr` (PR open; `phase-14-temporal-emotion` was the working branch). Spec: [`spec/14_temporal_emotion.md`](spec/14_temporal_emotion.md) (binding for the details; this file is the overview and run book).
 
-> **Status (2026-11-10).** This is Track 2 of the 8-week plan (2026-11-04). The 2-week re-scope of 2026-11-07 (`ROADMAP.md`, `PLAN.md`) dropped phase 14 and reused "Track 2" for CUFED photo importance. Andy is continuing this track and is raising the re-scope with the team; until that is settled, `PLAN.md` on `main` does not list this work. Phase 14 code and tests are done; the DEAM training run (14.1) finished on 2026-11-11 and the temporal head is deployed (`RESULTS.md`).
+> **Status (2026-11-10).** This is Track 2 of the 8-week plan (2026-11-04). The 2-week re-scope of 2026-11-07 (`ROADMAP.md`, `PLAN.md`) dropped phase 14 and reused "Track 2" for CUFED photo importance. Andy is continuing this track and is raising the re-scope with the team; until that is settled, `PLAN.md` on `main` does not list this work. Status 2026-11-11: 14.1-14.4 done and a PR is open. The temporal head's weights are on the shared Drive, but `music.emotion.use_temporal` is **false** by default, so merging keeps the 9B head until a human side-by-side of montages says otherwise.
 
 ## 0. What we did (session of 2026-11-10 and 11)
 
@@ -21,6 +21,8 @@ A plain-language record, newest last. Numbers are DEAM test songs, "CCC per song
 9. **Added the PMEmo dataset (14.2).** The official links are Google Drive/Baidu, so it comes from a public Hugging Face copy of the full 2019 release, checked against the official layout first. It has 767 pop choruses with the same 2 Hz annotation grid as DEAM (starting at 15.5 s), on a 0-1 scale that we map to -1...1. We keep 735; the other 32 have under 5 s of annotation. MERT features come from exactly the same code as DEAM's (`extract_mert --dataset pmemo`). The training job can now train on both (`--train-on deam pmemo`) and always reports DEAM and PMEmo test results separately.
 
 10. **Trained with and without PMEmo** (both with the 2 s shift, neither deployed). Adding PMEmo mainly teaches the model the overall mood of pop songs: on PMEmo's test choruses, the DEAM-only model got each song's overall energy badly wrong (score 0.51), and with PMEmo in training it gets 0.80 (valence 0.38 -> 0.69). That matters because users mostly bring pop songs. Following changes inside a song barely moved, and DEAM results did not get worse. The combined model passes the deploy check but is not deployed yet: that is a decision for Andy (it would replace the current head).
+
+11. **Prepared the phase 14 PR.** Rebased onto `main` on a fresh branch (`phase-14-temporal-emotion-pr`). Two last changes, both to make merging safe: the temporal head is now **off by default** (`music.emotion.use_temporal: false`), so merging changes nobody's app until the side-by-side check; and a temporal head that fails to load is remembered, so songs are not re-analyzed on every call (the same kind of bug found in the review of PR #4). Local tests pass; the GPU tests on this branch still need a Colab run.
 
 **Where this leaves the track.** The temporal head is trained, explained (context, not just delay) and deployed with music-aligned timing, all on this branch; `main` is unaffected until the branch is merged. It tracks human annotations better (DEAM), and adding PMEmo makes its overall mood much better on pop songs, but it has not yet been shown to make better montages. Open: deploy the DEAM + PMEmo head (decision pending); watch montages made with each head side by side (a human check, since the metrics can't decide); then the phase 14 PR, once the team agrees to keep the track in the 2-week plan.
 
@@ -62,7 +64,7 @@ Two things to know:
 
 ## 3. Phase 14: what is built
 
-All on `phase-14-temporal-emotion` (2 commits, rebased onto `main` on 2026-11-10 and pushed).
+All on `phase-14-temporal-emotion-pr` (rebased onto `main` on 2026-11-11; PR open).
 
 **Model** (`montage.music.emotion.make_temporal_head`, shared by training and inference):
 ```
@@ -84,7 +86,7 @@ per window:  [projection, GRU state] -> Dropout -> Linear -> tanh -> (valence, a
 
 **Deploy gate:** writes `DATA_ROOT/weights/emotion_temporal.pt` only if the best temporal seed beats the best smoothed window head on validation. The 9B `emotion_head.pt` stays in place as the fallback.
 
-**Inference fallback chain** (`predict_emotion_detail`): temporal head -> 9B window head -> heuristic. A missing or broken checkpoint falls through with a warning. `music.emotion.use_temporal: false` turns it off.
+**Inference fallback chain** (`predict_emotion_detail`): temporal head (only when `music.emotion.use_temporal: true`, default false) -> 9B window head -> heuristic. A missing or broken checkpoint falls through with a warning; a failed load is remembered for the process, so the cached analysis (window) stays valid instead of being redone on every call.
 
 **Cache keying:** song analyses now store which model and weights produced them (`temporal:<hash>`, `window:<hash>`, or `heuristic`) and are recomputed when that changes. Before, deploying a retrained head silently kept old curves.
 

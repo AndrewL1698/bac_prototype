@@ -318,3 +318,9 @@ Format:
 - Blockers: none.
 - Heads-up: new datasets on the shared Drive: `datasets/pmemo/` (audio + annotations) and `datasets/pmemo_mert/`. `extract_mert.shard_dir()` now takes a dataset name (default "deam", so existing callers are unchanged).
 - Results: PMEmo test pooled arousal CCC 0.51 (DEAM-only) -> 0.80 (DEAM + PMEmo), valence 0.38 -> 0.69; within-song CCC and DEAM test unchanged within the seed spread. See RESULTS.md.
+
+## 2026-11-11 ET | Andy | phase 14 | branch phase-14-temporal-emotion-pr (PR open)
+- Done: rebased onto main (PR #7 merged, so its commits dropped out) on a fresh branch; `music.emotion.use_temporal` now defaults to false; a failed temporal-head load is remembered so cached analyses stay valid; PLAN (current work, 5 decisions), README (phase 14, commands), guide updated; PR opened.
+- Next: run `tests/test_temporal_emotion.py` and `tests/test_music.py` on Colab against this branch (torch tests skip locally); human side-by-side of montages, then decide whether to switch the temporal head on; decide whether to deploy the DEAM + PMEmo head.
+- Blockers: none. Phase 14 is still outside the 2-week re-scope until the team agrees.
+- Heads-up: merging adds config keys `music.emotion.use_temporal` (default false), `temporal_weights`, `temporal.*`, and the cached-analysis field `emotion_model`: each song's cached analysis is recomputed once after merge (MERT runs again for that song). New datasets on the Drive: `datasets/pmemo/`, `datasets/pmemo_mert/`.

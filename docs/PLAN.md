@@ -101,7 +101,7 @@ Extension (2 weeks, see ROADMAP.md)
 |---|---|---|---|---|
 | 13. Per-shot render cache (render half; spec 13_render_cache.md) | Keshav | phase-13-render-cache | 2026-11-05 | Track 4; PR for review |
 | 12. Song pick (12.1-12.7b: export, Connect Spotify, three modes, YouTube) | Andrew | phase-12-songpick | 2026-11-04 | PR open for review (2026-11-08); Track 1 owner still to confirm |
-| 14. Temporal emotion model (outside the 2-week re-scope; see note above) | Andy | phase-14-temporal-emotion | 2026-11-04 | code + tests done; rebased on main 2026-11-10; DEAM training run on Colab next |
+| 14. Temporal emotion model (outside the 2-week re-scope; see note above) | Andy | phase-14-temporal-emotion-pr | 2026-11-04 | PR open for review (2026-11-11); 14.1-14.4 done; GPU tests on the PR branch still to run; temporal head off by default |
 
 ## Decisions
 
@@ -198,3 +198,8 @@ New dev 2 (name TBD)
 - 2026-11-08 | Andrew | YouTube on Colab: optional Colab Secret `YOUTUBE_COOKIES` from a spare Google account (raw or base64 cookies.txt), written to local VM disk (`/content/.yt_cookies.txt`, mode 600), never Drive or the repo (hygiene blocks `*cookies*.txt`); `deno` pinned for yt-dlp's YouTube challenges; when still blocked the app links to a YouTube search and asks for an upload | YouTube blocks cloud IPs; the cookies are a full Google login, so never a personal account
 - 2026-11-08 | Andrew | Export mode uses the age-scaled listening window (`window_by_age_days`, widened up to `max_window_days` 365) instead of a fixed 7-day pad (`max_pad_days` removed) | the roadmap's "a month for last year, a season for 5 years ago"
 - 2026-11-08 | Andrew | `start_app.py` switches to `--branch` first and then loads that branch's own bootstrap (re-running itself once if it changed) | a fresh runtime started on main ran main's bootstrap, which silently ignored new secrets such as SPOTIFY_CLIENT_ID
+- 2026-11-11 | Andy | Temporal emotion head trained with a 2 s annotation lag (`--lag 2`) and deployed to `weights/emotion_temporal.pt`; the no-lag head is kept in `eval/emotion_temporal_lag0/` | lag study: the no-lag head reproduces the annotators' delay, so its curves trailed the music; at 2 s they lead the annotations by 2 s at little cost (DEAM arousal CCC per song 0.168 vs 0.177)
+- 2026-11-11 | Andy | `music.emotion.use_temporal` defaults to false: merging phase 14 keeps the 9B head; switch on after a human side-by-side of montages | the edit comparison (14.4) showed no measurable gain and its metrics cannot decide; the temporal head changes 94% of shots
+- 2026-11-11 | Andy | A temporal head that fails to load is remembered for the process; `emotion_model_id()` then names the window head | otherwise the cached analysis (window) never matches the wanted id (temporal) and the song is re-analyzed on every call
+- 2026-11-11 | Andy | PMEmo 2019 comes from the Hugging Face mirror csdhbg/PMEmo2019 (checked against the official layout); songs with under 5 s of dynamic annotation are dropped (735 of 767 kept); PMEmo song ids are offset by 100,000 when combined with DEAM | official links are Google Drive/Baidu; very short curves give meaningless within-song CCC; both datasets number songs from 1
+- 2026-11-11 | Andy | Phase 14 evaluation jobs write to their own folders (`eval/emotion_temporal_<tag>/`, `eval/emotion_lag/`, `eval/emotion_edit/`), never to the phase 11 grid files | keeps Keshav's phase 11 results intact
