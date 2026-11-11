@@ -18,6 +18,8 @@ A plain-language record, newest last. Numbers are DEAM test songs, "CCC per song
 7. **Checked the effect on the actual edits (14.4).** Made the montages for the phase 11 eval set (2 albums x 3 songs x 3 seeds) twice, once with each head, same plans and code. Nothing broke: every cut is still on a beat. But 94% of screen time shows different shots, and the editing metrics are mixed: mood coupling and brief adherence went up, pace coupling went down. Those metrics only compare the edit with its own curves, so they can't say which edit is better.
 8. **Found out why the new curves look flat in the edits.** First guess was that whole songs (several minutes) are longer than anything the model trained on; a quick test ruled that out. The real reason: the new head is smoother. Over a whole song it varies as much as the old one, but inside a 30 s stretch it varies about 30% less and changes half as fast from step to step. It follows slow trends (verse to chorus) and drops fast wiggles. That is closer to how humans annotated DEAM, but it gives the editor less to work with inside one 45-60 s excerpt.
 
+9. **Added the PMEmo dataset (14.2).** The official links are Google Drive/Baidu, so it comes from a public Hugging Face copy of the full 2019 release, checked against the official layout first. It has 767 pop choruses with the same 2 Hz annotation grid as DEAM (starting at 15.5 s), on a 0-1 scale that we map to -1...1. We keep 735; the other 32 have under 5 s of annotation. MERT features come from exactly the same code as DEAM's (`extract_mert --dataset pmemo`). The training job can now train on both (`--train-on deam pmemo`) and always reports DEAM and PMEmo test results separately.
+
 **Where this leaves the track.** The temporal head is trained, explained (context, not just delay) and deployed with music-aligned timing, all on this branch; `main` is unaffected until the branch is merged. It tracks human annotations better (DEAM), but it has not yet been shown to make better montages. Next: watch a few montages made with each head side by side (a human check, since the metrics can't decide), then PMEmo (14.2), then the phase 14 PR, once the team agrees to keep the track in the 2-week plan.
 
 ## 1. Why this track exists
@@ -94,7 +96,7 @@ per window:  [projection, GRU state] -> Dropout -> Linear -> tanh -> (valence, a
 |---|---|---|---|
 | 14.0 | Push the branch; rebase on `main`; resolve the `PLAN.md` conflict | Colab only pulls from GitHub; nothing is backed up yet | done 2026-11-10 |
 | 14.1 | Train on DEAM (Colab job), copy the table to `RESULTS.md` | The core result: does context improve within-song tracking? | done 2026-11-11: deployed; test arousal CCC per song 0.10 -> 0.18 (`RESULTS.md`) |
-| 14.2 | Add PMEmo (794 pop choruses, dynamic V/A at 2 Hz) | More and more varied training data; report per dataset | after 14.1 |
+| 14.2 | Add PMEmo (794 pop choruses, dynamic V/A at 2 Hz) | More and more varied training data; report per dataset | in progress 2026-11-11: downloaded (735 songs), features extracting |
 | 14.3 | Annotator-lag study (shift targets 0-4 s, re-score the window head) | Shows how much of any gain is just learning the lag | done 2026-11-11: lag explains about 40% of the arousal gain and none of the valence gain; deployed head retrained at a 2 s lag (`RESULTS.md`) |
 | 14.4 | Rerun the phase 11 eval grid with the temporal head | Shows the effect on the edit itself (mood and pace coupling) | done 2026-11-11: no measurable gain; edits change a lot, metrics mixed, curves smoother (`RESULTS.md`). Next: human side-by-side |
 | 14.5 | Architecture ablation: BiGRU vs small transformer vs dilated CNN | Is the GRU enough? | stretch |
@@ -119,6 +121,7 @@ Prerequisites: the branch is pushed; you can see `My Drive/montage_data` (shared
    !cd /content/bac_prototype && python scripts/run_job.py --name emo_temporal -- python -m training.emotion.temporal
    ```
    Options: `--seeds 0 1 2`, `--epochs 60`, `--no-deploy` (report only), `--force-deploy`, `--lag 2` (pair each window with the annotation 2 s later; see section 0).
+   PMEmo (14.2): `--name pmemo_dl -- python -m training.emotion.download_pmemo`, then `--name pmemo_mert -- python -m training.emotion.extract_mert --dataset pmemo`, then train with `--train-on deam pmemo` (add `--tag <name>` to write the report to `eval/emotion_temporal_<name>/` instead of overwriting the deployed head's report).
    Edit comparison (14.4): `--name emo_edit -- bash -c "python -m training.emotion.edit_compare --emotion window && python -m training.emotion.edit_compare --emotion temporal && python -m training.emotion.edit_compare --compare"`. Report: `montage_data/eval/emotion_edit/report.md`.
    Lag study (14.3, never deploys): `--name emo_lag -- python -m training.emotion.lag` (`--lags 0 0.5 ... 4`, `--seeds`). Report: `montage_data/eval/emotion_lag/report.md`.
 4. **Poll** every minute or so (keep the tab open and the laptop awake):
