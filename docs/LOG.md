@@ -272,3 +272,10 @@ Format:
 - Next: Colab (Andrew): add the `LASTFM_API_KEY` secret, start the app from `phase-12-vibe`, calibrate `songpick.vibe.album_mood_scale` on the demo + eval albums (currently a guess, 2.0), run the gpu/network tests and full `pytest -q`, try a party vs a calm album in all three modes; RESULTS.md table; PR. Then 12.9 (MERT sentiment on fetched audio).
 - Blockers: none.
 - Heads-up: schemas: `TrackCandidate` gains `vibe_clip`, `vibe_mood`, `valence`, `arousal`, `tags`; `SongPick` gains `album_valence`, `album_arousal` (all optional). Config: new `songpick.vibe.*`; `songpick.alpha` removed (now `songpick.vibe.alpha_by_mode`). New file `configs/tag_mood.tsv`. Bootstrap passes the optional Colab Secret `LASTFM_API_KEY`.
+
+## 2026-11-11 ET | Andrew | phase 12.8 | branch phase-12-vibe
+- Done: calibrated the album mood on Colab (demo Summer Trip + eval sedona_1/2). Raw arousal is negative on all three, so the album mood now subtracts a center before the scale: new config key `songpick.vibe.album_mood_center {valence 0.28, arousal -1.53}`, `album_mood_scale {valence 1.0, arousal 0.6}`. Summer Trip reads energetic, sedona_1 warm and calm, sedona_2 melancholic.
+- Next: gpu/network song-pick tests and full `pytest -q` on Colab, the app check in all three modes, PR.
+- Blockers: none.
+- Heads-up: new config key `songpick.vibe.album_mood_center`.
+- Results: calibration table in RESULTS.md (phase 12.8 section).

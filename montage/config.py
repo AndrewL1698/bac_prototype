@@ -348,6 +348,7 @@ class VibeCfg(_B):
     reason_tags: int
     artist_tag_weight: float
     junk_tags: list[str]
+    album_mood_center: dict[str, float]
     album_mood_scale: dict[str, float]
     mood_word_min: float
     lastfm: LastfmCfg

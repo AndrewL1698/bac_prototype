@@ -4,7 +4,7 @@ Two terms, each in [0, 1], combined as a weighted mean of the ones available (`s
 - vibe_clip: CLIP text embedding of the song's tags (prompt ensemble `vibe.templates`, weighted by tag weight)
   vs the album's pooled CLIP image embedding; min-max normalized over the scored songs.
 - vibe_mood: 1 - distance between the song's valence/arousal (tag lexicon `configs/tag_mood.tsv`) and the photos'
-  absolute mood (mean raw CLIP mood-pole scores, `features/mood.py`), scaled to [0, 1].
+  absolute mood (mean raw CLIP mood-pole scores, `features/mood.py`, centered and squashed), scaled to [0, 1].
 Songs without tags get the median vibe of the scored songs, so a missing tag neither helps nor hurts.
 
 The album side reuses the editor's own feature path (`candidates.build_media` + `features.extract`, cached by
@@ -74,8 +74,9 @@ def album_from_features(emb: np.ndarray, asset_ids: Sequence[str], arousal_raw: 
     pooled = (pooled / max(float(np.linalg.norm(pooled)), 1e-8)).astype(np.float32)
     a_raw = float(np.mean([np.asarray(arousal_raw)[idx[a]].mean() for a in order]))
     v_raw = float(np.mean([np.asarray(valence_raw)[idx[a]].mean() for a in order]))
-    s = cfg.album_mood_scale
-    return AlbumVibe(emb=pooled, valence=math.tanh(v_raw / s["valence"]), arousal=math.tanh(a_raw / s["arousal"]),
+    c, s = cfg.album_mood_center, cfg.album_mood_scale
+    return AlbumVibe(emb=pooled, valence=math.tanh((v_raw - c["valence"]) / s["valence"]),
+                     arousal=math.tanh((a_raw - c["arousal"]) / s["arousal"]),
                      n_assets=len(order), taken_at=list(taken_at or []))
 
 

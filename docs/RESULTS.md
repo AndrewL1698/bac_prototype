@@ -72,6 +72,19 @@ Takeaways:
 - Honest limits: greedy importance-only picks score highest on quality lift (+0.087) but ignore the music and the brief; the full cut is slightly less varied than random picks (mean pairwise similarity 0.61 vs 0.59), because the brief and mood favor related shots; forced section cuts cost a little adherence and pace coupling. The evidence is two photo-heavy albums, one generic brief, and proxy metrics; the live vote is the human check.
 - The grid found a planner bug: the first run planned 47 cuts for an album with only 44 distinct shots (burst photos), and reuse mode then filled the extra cuts with near-identical photos (up to 69 duplicate pairs in one cut). Scarcity now counts distinct shots and reuse mode spreads repeats; there are no near-duplicate pairs left.
 
+## Song vibe match, stage A (phase 12.8)
+Album mood calibration (2026-11-11, A100): mean raw CLIP mood-pole score per album, `raw = 100 * (cos(high) - cos(low))`, pooled per asset. Mood = `tanh((raw - center) / scale)` with center = the mean of these albums and the scale set so they span about +/-0.6.
+
+| Album | Assets | Raw valence | Raw arousal | Valence | Arousal | Mood word |
+|---|---|---|---|---|---|---|
+| Summer Trip (demo) | 60 | +0.452 | -1.149 | +0.17 | +0.56 | energetic |
+| sedona_1 (eval) | 80 | +0.823 | -1.675 | +0.50 | -0.24 | warm and calm |
+| sedona_2 (eval) | 78 | -0.440 | -1.772 | -0.62 | -0.38 | melancholic |
+
+Config: `album_mood_center {valence 0.28, arousal -1.53}`, `album_mood_scale {valence 1.0, arousal 0.6}`.
+- Raw arousal is below 0 on every album: the "calm, serene landscape" poles fit ordinary travel photos better than the "party, action" poles. A scale alone would call every album calm, hence the center.
+- Limits: three albums, all travel. The center is "an average travel album", so a party album saturates near +1 arousal (fine) and the mood words are relative to travel photos. Recalibrate when albums of other kinds exist. 12.9 (MERT on the song's audio) replaces the song side of this comparison, not the album side.
+
 ## Live vote (phase 11)
 _Runs live at the workshop (Rate tab); `python -m montage.eval.vote --analyze` summarizes the votes._
 

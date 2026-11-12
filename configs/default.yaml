@@ -218,8 +218,11 @@ songpick:                         # phase 12: pick a song from the user's listen
     junk_tags: ["seen live", "favorites", "favourites", "favorite", "favourite", "favorite songs", "my favorite",
                 "love", "loved", "awesome", "beautiful", "amazing", "good", "best", "cool", "spotify", "albums i own",
                 "under 2000 listeners", "check out", "all", "music", "song", "songs", "playlist", "my music"]
-    # album mood = tanh(mean raw CLIP mood pole score / scale); raw = 100 * (cos(high) - cos(low)), see features/mood.py
-    album_mood_scale: {valence: 2.0, arousal: 2.0}
+    # album mood = tanh((mean raw CLIP mood pole score - center) / scale); raw = 100 * (cos(high) - cos(low)),
+    # see features/mood.py. Raw arousal sits below 0 for ordinary photos, hence the center. Calibrated 2026-11-11 on
+    # the demo + eval albums (RESULTS.md): center = their mean, scale so they span about +/-0.6.
+    album_mood_center: {valence: 0.28, arousal: -1.53}
+    album_mood_scale: {valence: 1.0, arousal: 0.6}
     mood_word_min: 0.2            # |valence| or |arousal| below this counts as neutral in the reason line
     lastfm:
       api_key_env: "LASTFM_API_KEY"

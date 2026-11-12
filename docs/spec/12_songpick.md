@@ -176,7 +176,7 @@ Goal: rank the user's songs by how well they fit the photos, before any audio ex
 
 - **Album side** (`songpick/vibe.py::album_vibe`): **Suggest songs** runs the editor's own ingest + feature path (`candidates.build_media` + `features.extract`, cached by content hash), so Generate is warm afterwards.
   - Pooled embedding: candidate CLIP embeddings averaged per asset first (a long video counts once), then over assets, L2-normalized.
-  - Album mood: the mean **raw** CLIP mood-pole scores (`features/mood.py::mood_raw`), `tanh(mean / vibe.album_mood_scale)`. Not the batch z-scored `visual_valence`/`visual_arousal`, whose album mean is always about 0.
+  - Album mood: the mean **raw** CLIP mood-pole scores (`features/mood.py::mood_raw`), `tanh((mean - vibe.album_mood_center) / vibe.album_mood_scale)`. Not the batch z-scored `visual_valence`/`visual_arousal`, whose album mean is always about 0.
   - If this fails (no GPU, bad file), the pick falls back to listening affinity with a note; a bad upload still raises its friendly `UserError`.
 - **Song tags** (`songpick/tags.py::lookup`), best effort, for the best `vibe.max_tracks` (40) songs by affinity:
   - **Last.fm** `track.getTopTags` (autocorrect); a song with fewer than `lastfm.min_tags` tags also gets its artist's tags (`artist.getTopTags`) at `artist_tag_weight`. Needs the Colab Secret `LASTFM_API_KEY`; parallel (`lastfm.workers`).
@@ -191,7 +191,7 @@ Goal: rank the user's songs by how well they fit the photos, before any audio ex
 - **Ranking hook:** `pick.suggest(..., vibe_scorer=vibe.Scorer(album, tags.lookup))`. `pick.py` stays network-free. The scorer runs on the best `max_tracks` songs by affinity (release mode: on the eligible songs, so eligibility and widening are unchanged), then `score = alpha * affinity + (1 - alpha) * vibe` with `alpha_by_mode` (release 0.3, vibe 0.15, export 0.5).
   - Some song had tags: `vibe_source = "tags"`. No tags at all: affinity ranking + the note "Found no genre or mood tags...". No scorer in mode `vibe`: the note "Couldn't compare songs with your photos' mood...".
   - `SongPick.album_valence` / `album_arousal` carry the album mood for the UI and later evaluation.
-- **Calibration** (on Colab, demo + eval albums): `album_mood_scale` is set so real albums span about +/-0.6 (RESULTS.md).
+- **Calibration** (on Colab, demo + eval albums): `album_mood_center` is their mean raw score (raw arousal sits below 0 for ordinary photos) and `album_mood_scale` is set so they span about +/-0.6 (RESULTS.md).
 
 ### Later
 - **12.9 Sentiment match with audio (ROADMAP F1 piece 5):** with the YouTube opt-in, fetch the top few songs and get their valence/arousal from the MERT head (`montage.music.emotion`, the editor's code path); re-rank by the distance to the album mood (+ curve shape).
@@ -216,7 +216,7 @@ Goal: rank the user's songs by how well they fit the photos, before any audio ex
 
 `songpick.spotify`: `client_id_env`, `redirect_uri`, `scopes`, `return_hosts`, `auth_ttl_s 600`, `timeout_s 10`, `top_limit 50`, `range_days {28, 182, 365}`, `range_weight {1.0, 0.7, 0.5}`.
 
-`songpick.vibe` (12.8; replaces `songpick.alpha`): `enabled true`, `max_tracks 40`, `alpha_by_mode {release 0.3, vibe 0.15, export 0.5}`, `w_clip 0.5`, `w_mood 0.5`, `templates`, `tag_mood_file configs/tag_mood.tsv`, `top_tags 8`, `min_tag_weight 10`, `reason_tags 3`, `artist_tag_weight 0.5`, `junk_tags`, `album_mood_scale {valence, arousal}`, `mood_word_min 0.2`, `lastfm {api_key_env LASTFM_API_KEY, url, timeout_s 5, workers 4, min_tags 3}`, `musicbrainz {url, user_agent, interval_s 1.1, max_lookups 10, min_score 90, timeout_s 5}`.
+`songpick.vibe` (12.8; replaces `songpick.alpha`): `enabled true`, `max_tracks 40`, `alpha_by_mode {release 0.3, vibe 0.15, export 0.5}`, `w_clip 0.5`, `w_mood 0.5`, `templates`, `tag_mood_file configs/tag_mood.tsv`, `top_tags 8`, `min_tag_weight 10`, `reason_tags 3`, `artist_tag_weight 0.5`, `junk_tags`, `album_mood_center {valence 0.28, arousal -1.53}`, `album_mood_scale {valence 1.0, arousal 0.6}`, `mood_word_min 0.2`, `lastfm {api_key_env LASTFM_API_KEY, url, timeout_s 5, workers 4, min_tags 3}`, `musicbrainz {url, user_agent, interval_s 1.1, max_lookups 10, min_score 90, timeout_s 5}`.
 
 `songpick.youtube`: `enabled false`, `max_results 6`, `duration_tol_s 10`, `min_song_s 60`, `max_song_s 900`, `min_match 0.55`, `topic_bonus 0.25`, `bad_words`, `bad_penalty 0.4`, `duration_penalty 0.4`, `cookies_file`, `cookies_env MONTAGE_YT_COOKIES`.
 
