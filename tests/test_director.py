@@ -64,6 +64,14 @@ def test_rules_more():
     assert plan_from_rules("").vibe_queries == []
 
 
+def test_rules_story_order_default():
+    assert plan_from_rules("").chronological is True
+    assert plan_from_rules("A fun recap of these moments, matched to the music.").chronological is True
+    assert plan_from_rules("Mix it up, random order").chronological is False
+    assert plan_from_rules("not in order, please").chronological is False
+    assert plan_from_rules("Shuffled, not chronological").chronological is False
+
+
 def test_anchor_mapping():
     pr = profile4()
     assert map_anchor("intro", -1, pr) == [0]

@@ -32,6 +32,7 @@ _Keep this list current. Update it when a phase merges to `main`._
   - Opt-in: tick **Fetch the song's audio from YouTube** and press **Use this song** to fill the Song box. On Colab this needs the `YOUTUBE_COOKIES` secret (below); otherwise the app links to a YouTube search and you upload the file.
   - CLI for the export: `python -m montage.songpick --history DIR --start YYYY-MM-DD --end YYYY-MM-DD [--mode vibe]`.
 - **Phase 11 (evaluation):** `scripts/make_eval_set.py` builds held-out eval albums and songs; `python -m montage.eval.run_grid` (as a job) plans every album x song with the full editor, three baselines and five ablations (3 seeds each) and writes metrics, slide figures, and `montage_data/eval/report.md`; `python -m montage.eval.render_check` renders the full cuts and checks with scene detection that every cut lands on its planned frame. Headline numbers in [`docs/RESULTS.md`](docs/RESULTS.md).
+- **Phase 17 (story order):** every montage follows capture time by default, also with no brief; a brief that asks for another order ("shuffle", "mix it up", "random order") turns it off.
 
 ## How it works (one paragraph)
 

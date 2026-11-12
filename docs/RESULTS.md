@@ -72,6 +72,31 @@ Takeaways:
 - Honest limits: greedy importance-only picks score highest on quality lift (+0.087) but ignore the music and the brief; the full cut is slightly less varied than random picks (mean pairwise similarity 0.61 vs 0.59), because the brief and mood favor related shots; forced section cuts cost a little adherence and pace coupling. The evidence is two photo-heavy albums, one generic brief, and proxy metrics; the live vote is the human check.
 - The grid found a planner bug: the first run planned 47 cuts for an album with only 44 distinct shots (burst photos), and reuse mode then filled the extra cuts with near-identical photos (up to 69 duplicate pairs in one cut). Scarcity now counts distinct shots and reuse mode spreads repeats; there are no near-duplicate pairs left.
 
+## Story order (phase 17)
+Last updated 2026-11-08 by Keshav (git phase-17-story-order@29f57f4). Plans only (no renders), seed 0, means over 7 album x song pairs: the demo album "Summer Trip (picked)" with its song, and the held-out eval albums sedona_1 and sedona_2 x the 3 eval songs. No brief unless noted. Story order = Kendall tau between shot position and capture time (1 = perfect order). Back jumps = shots taken more than 60 s before the previous shot. Parts covered = share of the album's parts (split at gaps over 1 hour) with at least one shot. Mood coupling and quality lift as in phase 11.
+
+| Setup | Story order | Back jumps | Parts covered | Mood coupling | Quality lift |
+|---|---|---|---|---|---|
+| main today: Claude plan, order off | -0.07 | 18.6 | 73% | 0.49 | +0.012 |
+| Order on, pairwise term only (w_chrono 1) | -0.03 | 6.0 | 72% | 0.34 | +0.001 |
+| Order on, pairwise term only (w_chrono 30) | -0.12 | 3.4 | 70% | 0.24 | -0.001 |
+| **Timeline term 4, Claude plan (new prompt)** | **0.66** | 4.0 | 69% | 0.39 | +0.019 |
+| **Timeline term 4, Claude plan, generic brief** | **0.72** | 4.7 | 67% | 0.39 | +0.013 |
+| **Timeline term 4, rules plan** | **0.90** | 2.3 | 70% | 0.38 | +0.050 |
+
+Takeaways: the pairwise term alone never gave story order: the beam raced ahead to strong late shots and then had to jump back, and a heavier penalty only made fewer, bigger jumps. The timeline term (slot j draws from the same fraction of the album) fixes it. The price is mood coupling (about 0.39, the level of the phase 11 full system). Claude used to invent a per-section storyboard with no brief; with it, story order reached only 0.45, so the prompt now adds segments only when the brief names a part of the song. Coverage needs no extra term: about 70% of an album's parts get a shot and under one part of 3+ photos per album is missed.
+
+## Render cache (phase 13)
+Last updated 2026-11-08 by Keshav (git phase-17-story-order@d1813e9; render code as merged in PR #1). Colab A100, fresh runtime (empty shot cache), demo album "Summer Trip (picked)" (60 items), one-click generate (no brief, Claude director), 47 shots, 720p preview. Timings from the pipeline's stage timer.
+
+| Run | Shots encoded | Render | Plan |
+|---|---|---|---|
+| Generate (empty shot cache) | 47 of 47 | 22.7 s | 21.6 s (about 20 s of it loads CLIP once per process) |
+| Recut, one shot excluded | 26 of 47 (21 reused) | 11.2 s | 0.6 s |
+| Fixtures (LOG 2026-11-05): 40-shot cut, recut changing 3 shots | 3 of 40 | 11.9 s cold, 1.5 s recut | |
+
+Takeaways: on a real album a recut renders in about half the time of a cold render. The gain is smaller than on the fixtures because excluding one shot re-solves the whole cut: 36 of the 47 shots stay in it, but 15 of those move to a slot with a different length, so their cache key (in-point and length) changes and they are encoded again.
+
 ## Song vibe match, stage A (phase 12.8)
 Album mood calibration (2026-11-11, A100): mean raw CLIP mood-pole score per album, `raw = 100 * (cos(high) - cos(low))`, pooled per asset. Mood = `tanh((raw - center) / scale)` with center = the mean of these albums and the scale set so they span about +/-0.6.
 

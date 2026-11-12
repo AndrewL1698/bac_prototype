@@ -89,7 +89,7 @@ Extension (2 weeks, see ROADMAP.md)
   - [x] per-shot render cache (Keshav; `spec/13_render_cache.md`; merged 2026-11-05, PR #1)
   - [ ] Beat This! mirror (whoever finishes first; spec TBD)
 - [ ] **15. Photo-album importance (CUFED)** (Track 2; ROADMAP item 2; spec TBD)
-- [ ] **17. Story/event ordering: event segmentation + coverage term** (Track 4; ROADMAP item 4; spec TBD)
+- [x] **17. Story/event ordering** (Track 4; ROADMAP item 4; done on `phase-17-story-order`, PR): story order by default (spec 05) and a timeline term in the planner (spec 06); the event coverage term was not needed (see Decisions)
 - [ ] **18. Eval v2 (slim): more albums, with/without brief, song-pick mini study** (Track 4; ROADMAP item 8; spec TBD)
 - [ ] **22. Image-set <-> music contrastive model** (Track 3; ROADMAP F1 stage B; go/no-go on day 3; spec TBD)
 - [ ] **23. "My montages" gallery** (Track 4; ROADMAP F5; spec TBD)
@@ -99,7 +99,7 @@ Extension (2 weeks, see ROADMAP.md)
 
 | Phase | Person | Branch | Started (ET) | Notes |
 |---|---|---|---|---|
-| 13. Per-shot render cache (render half; spec 13_render_cache.md) | Keshav | phase-13-render-cache | 2026-11-05 | Track 4; PR for review |
+| 17. Story order (default on, timeline term; no coverage term) | Keshav | phase-17-story-order | 2026-11-08 | Track 4 (provisional, owners TBD); PR for review |
 | 12.8 Song vibe match, stage A (tags -> CLIP + mood vs the photos) | Andrew | phase-12-vibe | 2026-11-10 | Track 1; 12.1-12.7b merged (PR #5) |
 
 ## Decisions
@@ -194,6 +194,10 @@ New dev 2 (name TBD)
 - 2026-11-08 | Andrew | YouTube on Colab: optional Colab Secret `YOUTUBE_COOKIES` from a spare Google account (raw or base64 cookies.txt), written to local VM disk (`/content/.yt_cookies.txt`, mode 600), never Drive or the repo (hygiene blocks `*cookies*.txt`); `deno` pinned for yt-dlp's YouTube challenges; when still blocked the app links to a YouTube search and asks for an upload | YouTube blocks cloud IPs; the cookies are a full Google login, so never a personal account
 - 2026-11-08 | Andrew | Export mode uses the age-scaled listening window (`window_by_age_days`, widened up to `max_window_days` 365) instead of a fixed 7-day pad (`max_pad_days` removed) | the roadmap's "a month for last year, a season for 5 years ago"
 - 2026-11-08 | Andrew | `start_app.py` switches to `--branch` first and then loads that branch's own bootstrap (re-running itself once if it changed) | a fresh runtime started on main ran main's bootstrap, which silently ignored new secrets such as SPOTIFY_CLIENT_ID
+- 2026-11-08 | Keshav | Story order is the default: `plan.chronological` is true unless the brief asks for another order (rules: shuffle/mix it up/random order/...; the LLM prompt says the same) | the product promises a story-ordered montage in one click, and before this an empty brief gave no ordering at all
+- 2026-11-08 | Keshav | Story order adds a timeline unary term (`planner.w_timeline` 4.0): slot j draws from the same fraction of the album by capture-time rank, on top of the pairwise `w_chrono` | the pairwise term alone only priced stepping back in time, so the beam raced ahead to strong late shots and jumped back: on 7 real album x song pairs the cut's Kendall tau against capture time stayed near 0 even at w_chrono 30; with w_timeline 4 it is 0.90 (rules plans) and 0.66-0.72 (Claude plans), mood coupling about 0.39 (0.71-0.77 with no story order, phase 11 full system 0.37)
+- 2026-11-08 | Keshav | The LLM director adds segments only when the brief names a part of the song (intro, build-up, drop/peak, ending, a section) | with no brief or a generic one, Claude invented a per-section storyboard that pulled shots out of story order (Kendall tau 0.45 instead of 0.66 at w_timeline 4)
+- 2026-11-08 | Keshav | No event coverage term (phase 17's second half is dropped) | with story order on, about 70% of an album's parts (split at gaps over 1 hour) get a shot and fewer than one part of 3 or more photos per album is missed; the misses are 1-2 photo moments
 - 2026-11-10 | Andrew | 12.8 vibe match (stage A): song tags come from Last.fm (Colab Secret `LASTFM_API_KEY`; track tags, artist tags when a track has few) with MusicBrainz artist tags for the gaps (no key, 1 request/s, capped at 10 per Suggest); tags are cached in process memory only, never on disk | Last.fm has the richest mood tags; MusicBrainz keeps it working without a key; a tag list hints at what the user listens to
 - 2026-11-10 | Andrew | Song valence/arousal from tags uses a hand-set lexicon (`configs/tag_mood.tsv`, about 100 mood + genre tags, Russell's circumplex), not a learned model or a third-party norms list | no labelled tag data; simple, inspectable, and the MERT head replaces it once audio exists (12.9)
 - 2026-11-10 | Andrew | Album mood for song matching = tanh((mean raw CLIP mood-pole score - `album_mood_center`) / `album_mood_scale`), pooled per asset; the editor's batch z-scored visual mood is not used | the z-scored album mean is always about 0, so it cannot tell a party album from a calm one

@@ -93,7 +93,7 @@ def plan_edit(inp: PlanInputs, run_id: str, seed: int = 0, system: str = "full",
         K = len(slots)
     notes += slot_notes
     if usable.sum() == 0:
-        raise UserError("No usable photos or videos left after exclusions.")
+        raise UserError("No usable photos or videos left after exclusions. Put back at least one shot, then recut.")
 
     if system == "naive":
         return baselines.naive(inp, run_id, seed, usable, preview)
