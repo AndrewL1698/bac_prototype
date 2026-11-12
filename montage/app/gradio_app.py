@@ -286,9 +286,10 @@ def build_app():
 
     @friendly
     def on_sp_suggest(files, album, hist_files, sp, mode, progress=gr.Progress()):
-        progress(0.2, desc="reading capture dates")
+        progress(0.02, desc="reading your photos")
         hist = [f if isinstance(f, str) else f.name for f in (hist_files or [])]
-        choices, pick, md = songpick_ui.suggest(media_list(files, album), hist or None, sp, mode)
+        choices, pick, md = songpick_ui.suggest(media_list(files, album), hist or None, sp, mode,
+                                                progress=lambda f, m: progress(f, desc=m))
         return gr.Radio(choices=choices, value=choices[0][1] if choices else None), pick, md
 
     @friendly

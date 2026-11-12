@@ -319,6 +319,43 @@ class ReleaseCfg(_B):
     unreliable_words: list[str]
 
 
+class LastfmCfg(_B):
+    api_key_env: str
+    url: str
+    timeout_s: float
+    workers: int
+    min_tags: int
+
+
+class MusicbrainzCfg(_B):
+    url: str
+    user_agent: str
+    interval_s: float
+    max_lookups: int
+    min_score: float
+    timeout_s: float
+
+
+class VibeCfg(_B):
+    enabled: bool
+    max_tracks: int
+    alpha_by_mode: dict[str, float]
+    w_clip: float
+    w_mood: float
+    templates: list[str]
+    tag_mood_file: str
+    top_tags: int
+    min_tag_weight: float
+    reason_tags: int
+    artist_tag_weight: float
+    junk_tags: list[str]
+    album_mood_center: dict[str, float]
+    album_mood_scale: dict[str, float]
+    mood_word_min: float
+    lastfm: LastfmCfg
+    musicbrainz: MusicbrainzCfg
+
+
 class SongpickCfg(_B):
     min_play_ms: int
     full_play_ms: int
@@ -333,12 +370,12 @@ class SongpickCfg(_B):
     sig_weight: float
     min_window_plays: int
     shortlist_size: int
-    alpha: float
     w_sources: dict[str, float]
     default_mode: Literal["release", "vibe", "export"]
     window_by_age_days: list[list[float]]
     max_window_days: float
     release: ReleaseCfg
+    vibe: VibeCfg
     spotify: SpotifyCfg
     youtube: YoutubeCfg
 

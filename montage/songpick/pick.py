@@ -10,20 +10,21 @@ Modes (`songpick.default_mode`, chosen in the app):
   an age-scaled window around the photos' median date (`period.release_window`), plus songs actually played
   during the album (recent plays, or the 4-week list for photos that recent). The window widens by
   `widen_factor` until `release.min_candidates` songs qualify; if none ever do, it falls back to "vibe".
-  Compilation/remaster dates are skipped (`release.reliable`). Ranked by listening affinity; ties by how
-  close the release is to the photos.
-- vibe ("best vibe fit"): dates ignored; for now ranked by listening affinity (a vibe stage plugs in via
-  `TrackCandidate.vibe` and `alpha`).
+  Compilation/remaster dates are skipped (`release.reliable`). Ties go to the release closest to the photos.
+- vibe ("best vibe fit"): dates ignored; the whole pool ranked mostly by vibe.
 - export ("played back then"): the data export inside an age-scaled listening window
   (`period.listening_window`), widened up to `max_window_days`, else the whole history with a recency decay.
-No network, no weights: the caller fetches the data (montage.songpick.spotify).
+Ranking: score = alpha * affinity + (1 - alpha) * vibe (`vibe.alpha_by_mode`). The vibe comes from an optional
+`vibe_scorer` hook (montage.songpick.vibe.Scorer: song tags vs the photos), run on the best `vibe.max_tracks`
+songs by affinity; without it (or when no song has tags) the ranking is affinity alone.
+No network, no weights here: the caller fetches the data (montage.songpick.spotify) and builds the scorer.
 """
 
 from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Iterable
+from typing import Callable, Iterable
 
 from montage.config import get_config
 from montage.songpick import release as rel
@@ -37,8 +38,9 @@ log = logging.getLogger(__name__)
 MODES = ("release", "vibe", "export")
 RANGE_LABEL = {"short_term": "the last 4 weeks", "medium_term": "the last 6 months", "long_term": "the last year"}
 NO_DATES = "The photos have no capture dates, so songs are ranked by your overall listening."
-VIBE_SOON = ("Vibe matching (comparing songs with your photos' mood) is coming; for now these are the songs "
-             "you listen to most.")
+VIBE_OFF = "Couldn't compare songs with your photos' mood, so these are the songs you listen to most."
+NO_TAGS = "Found no genre or mood tags for these songs, so they are ranked by your listening."
+VibeScorer = Callable[[list[TrackCandidate]], bool]   # fills TrackCandidate.vibe in place; True if any song had tags
 
 
 def _now() -> datetime:
@@ -190,22 +192,35 @@ def _short_term_keys(top, album_period, now) -> set[str]:
 
 # ---------- ranking ----------
 
-def _blend(cands: list[TrackCandidate]) -> None:
-    """score = alpha * affinity + (1 - alpha) * vibe; no vibe stage yet, so vibe is None and score stays affinity."""
-    alpha = get_config().songpick.alpha
+def _blend(cands: list[TrackCandidate], mode: str) -> None:
+    """score = alpha * affinity + (1 - alpha) * vibe (`vibe.alpha_by_mode`); affinity alone when vibe is None."""
+    alpha = get_config().songpick.vibe.alpha_by_mode[mode]
     for c in cands:
-        if c.vibe is not None:
-            c.score = round(alpha * c.affinity + (1 - alpha) * c.vibe, 6)
+        c.score = c.affinity if c.vibe is None else round(alpha * c.affinity + (1 - alpha) * c.vibe, 6)
 
 
-def _rank(cands: list[TrackCandidate], k: int) -> list[TrackCandidate]:
-    _blend(cands)
-    cands.sort(key=lambda c: (-c.score, -c.n_plays_window, c.key))
-    return cands[:k]
+def _vibe_pool(cands: list[TrackCandidate], scorer: VibeScorer | None) -> tuple[list[TrackCandidate], bool]:
+    """Run the scorer on the best `vibe.max_tracks` songs by affinity; (pool to rank, vibe used)."""
+    if scorer is None:
+        return cands, False
+    pool = sorted(cands, key=lambda c: (-c.affinity, -c.n_plays_window, c.key))[:get_config().songpick.vibe.max_tracks]
+    if not scorer(pool):
+        for c in pool:
+            c.vibe = None
+        return cands, False
+    return pool, True
 
 
-def _release_pick(cands, taken_at, now, played_then, k):
-    """(shortlist, window, widened, notes); empty shortlist when nothing came out around the photos."""
+def _rank(cands: list[TrackCandidate], k: int, mode: str, scorer: VibeScorer | None = None
+          ) -> tuple[list[TrackCandidate], bool]:
+    pool, used = _vibe_pool(cands, scorer)
+    _blend(pool, mode)
+    pool.sort(key=lambda c: (-c.score, -c.n_plays_window, c.key))
+    return pool[:k], used
+
+
+def _release_pick(cands, taken_at, now, played_then, k, scorer=None):
+    """(shortlist, window, widened, notes, vibe used); empty shortlist when nothing came out around the photos."""
     cfg = get_config().songpick.release
     widen = get_config().songpick.widen_factor
     med = median_date(taken_at)
@@ -231,7 +246,7 @@ def _release_pick(cands, taken_at, now, played_then, k):
         notes.append(f"{n_unreliable} song{'s' if n_unreliable != 1 else ''} skipped: their Spotify date is a "
                      "remaster or compilation date, not when the song came out.")
     if not elig:
-        return [], win, scale > 1.0, notes
+        return [], win, scale > 1.0, notes, False
     if scale > 1.0:
         notes.append(f"Few of your songs came out right around the photos; widened the window to "
                      f"{win[0]:%b %Y} - {win[1]:%b %Y}.")
@@ -249,11 +264,12 @@ def _release_pick(cands, taken_at, now, played_then, k):
         a, b = rel.interval(c.release_date, c.release_precision)
         return 0.0 if a <= med <= b else min(abs((a - med).total_seconds()), abs((b - med).total_seconds()))
 
-    _blend(elig)
-    elig.sort(key=lambda c: (-c.score, dist(c), c.key))
+    pool, used = _vibe_pool(elig, scorer)
+    _blend(pool, "release")
+    pool.sort(key=lambda c: (-c.score, dist(c), c.key))
     if len(elig) < k:
         notes.append(f"Only {len(elig)} of your songs from the past year came out around then.")
-    return elig[:k], win, scale > 1.0, notes
+    return pool[:k], win, scale > 1.0, notes, used
 
 
 def _overlaps(a: tuple[datetime, datetime], b: tuple[datetime, datetime]) -> bool:
@@ -263,8 +279,9 @@ def _overlaps(a: tuple[datetime, datetime], b: tuple[datetime, datetime]) -> boo
 def suggest(taken_at: Iterable[datetime | None], *, mode: str | None = None,
             export: list[ListeningEvent] | None = None, recent: list[ListeningEvent] | None = None,
             top: dict[str, list[TopTrack]] | None = None, now: datetime | None = None,
-            k: int | None = None) -> SongPick:
-    """Best `k` (default `shortlist_size`) songs for an album in the given mode (default `default_mode`)."""
+            k: int | None = None, vibe_scorer: VibeScorer | None = None) -> SongPick:
+    """Best `k` (default `shortlist_size`) songs for an album in the given mode (default `default_mode`).
+    `vibe_scorer` (optional) fills the vibe of the songs in the ranking pool (see the module doc)."""
     cfg = get_config().songpick
     mode = mode or cfg.default_mode
     if mode not in MODES:
@@ -294,8 +311,9 @@ def suggest(taken_at: Iterable[datetime | None], *, mode: str | None = None,
         merged = merge_sources(groups)
         if not merged:
             raise UserError("No songs found in your listening data for these photos.")
-        out = _rank(merged, k)
-        return _done(out, mode, period, period_source, len(export) + len(recent or []), n_win, notes, sources)
+        out, used = _rank(merged, k, mode, vibe_scorer)
+        return _done(out, mode, period, period_source, len(export) + len(recent or []), n_win,
+                     notes + _vibe_notes(vibe_scorer, used, mode), sources, used)
 
     groups, sources, n_win, played_then = _signin_groups(recent, top, album_period)
     if export:  # the export enlarges the pool (whole history, recent plays count more)
@@ -314,25 +332,34 @@ def suggest(taken_at: Iterable[datetime | None], *, mode: str | None = None,
             notes.append(NO_DATES)
         else:
             played_then |= _short_term_keys(top, album_period, now)
-            out, win, widened, rnotes = _release_pick([c.model_copy(deep=True) for c in merged], taken_at, now,
-                                                      played_then, k)
+            out, win, widened, rnotes, used = _release_pick([c.model_copy(deep=True) for c in merged], taken_at,
+                                                            now, played_then, k, vibe_scorer)
             notes += rnotes
             if out:
                 return _done(out, "release", win, "release_widened" if widened else "release", n_events, n_win,
-                             notes, sources)
+                             notes + _vibe_notes(vibe_scorer, used, "release"), sources, used)
             med = median_date(taken_at)
             notes.append(f"None of the songs you played this year came out around {med:%b %Y}; showing your best "
                          "overall picks. Upload your full Spotify history for songs you actually played back then.")
-    notes.append(VIBE_SOON)
-    return _done(_rank(merged, k), "vibe", None, "history", n_events, n_win, notes, sources)
+    out, used = _rank(merged, k, "vibe", vibe_scorer)
+    return _done(out, "vibe", None, "history", n_events, n_win, notes + _vibe_notes(vibe_scorer, used, "vibe"),
+                 sources, used)
 
 
-def _done(out, mode, period, period_source, n_events, n_win, notes, sources) -> SongPick:
-    log.info("songpick: mode %s, sources %s, period %s, %d of %d plays inside, shortlist %d",
-             mode, sources, period_source, n_win, n_events, len(out))
+def _vibe_notes(scorer: VibeScorer | None, used: bool, mode: str) -> list[str]:
+    if used:
+        return []
+    if scorer is not None:
+        return [NO_TAGS]
+    return [VIBE_OFF] if mode == "vibe" else []
+
+
+def _done(out, mode, period, period_source, n_events, n_win, notes, sources, vibe_used=False) -> SongPick:
+    log.info("songpick: mode %s, sources %s, period %s, %d of %d plays inside, shortlist %d, vibe %s",
+             mode, sources, period_source, n_win, n_events, len(out), "tags" if vibe_used else "none")
     return SongPick(period_start=period[0] if period else None, period_end=period[1] if period else None,
                     period_source=period_source, n_events=n_events, n_events_window=n_win, candidates=out,
-                    vibe_source="none", notes=notes, sources=sources, mode=mode)
+                    vibe_source="tags" if vibe_used else "none", notes=notes, sources=sources, mode=mode)
 
 
 def shortlist(events: list[ListeningEvent], taken_at: Iterable[datetime | None],

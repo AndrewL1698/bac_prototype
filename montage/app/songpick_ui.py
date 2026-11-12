@@ -1,7 +1,7 @@
 """'Pick a song for me' handlers for the Gradio app (plain values in and out, so tests need no Gradio).
 
 Flow: Connect Spotify (redirect to Spotify, back through docs/spotify/callback.html) -> Suggest songs
-(capture dates of the chosen photos + listening data) -> Use this song (opt-in YouTube fetch) -> the
+(capture dates and mood of the chosen photos + listening data + song tags) -> Use this song (opt-in YouTube fetch) -> the
 song player is filled and the normal Generate flow runs unchanged.
 
 The per-user state `sp` (a gr.State dict) holds the Spotify token and the fetched listening data. It
@@ -11,11 +11,17 @@ lives only in the app process for that browser session: never written to disk, n
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Callable
 
+from montage.config import get_config
+from montage.log import get_logger
 from montage.songpick import pick as pick_mod
 from montage.songpick import spotify
 from montage.songpick.history import load_history
 from montage.types import SongPick, UserError
+
+log = get_logger("songpick.ui")
+NO_MOOD = "Couldn't read your photos' mood, so songs are ranked by your listening."
 
 
 def connect(page_url: str) -> tuple[str, str]:
@@ -66,12 +72,30 @@ def _album_dates(media: list[str]):
     return [a.taken_at for a in assets]
 
 
+def _album(media: list[str], progress: Callable[[float, str], None] | None = None):
+    """(capture dates, AlbumVibe or None, notes). The photos' mood uses the editor's cached feature path, so
+    Generate is warm afterwards; if it fails, songs are ranked by listening alone."""
+    if not media:
+        raise UserError("Add photos and videos (or pick a demo album) first, so the app knows when they were taken.")
+    if not get_config().songpick.vibe.enabled:
+        return _album_dates(media), None, []
+    from montage.songpick import vibe
+    try:
+        av = vibe.album_vibe(media, progress)
+        return av.taken_at, av, []
+    except UserError:
+        raise
+    except Exception as e:  # noqa: BLE001  optional component: fall back to listening affinity
+        log.warning("songpick: album mood failed (%s: %s); ranking by listening", type(e).__name__, e)
+        return _album_dates(media), None, [NO_MOOD]
+
+
 MODE_CHOICES = [("Songs from back then (release date)", "release"), ("Best vibe fit", "vibe"),
                 ("My full Spotify history (data export)", "export")]
 
 
-def suggest(media: list[str], history_files: list[str] | None, sp: dict | None, mode: str | None = None
-            ) -> tuple[list[tuple[str, str]], SongPick, str]:
+def suggest(media: list[str], history_files: list[str] | None, sp: dict | None, mode: str | None = None,
+            progress: Callable[[float, str], None] | None = None) -> tuple[list[tuple[str, str]], SongPick, str]:
     """(radio choices [(label, index)], the SongPick, markdown with the window and notes)."""
     sp = sp or {}
     if mode == "export" and not history_files:
@@ -79,12 +103,25 @@ def suggest(media: list[str], history_files: list[str] | None, sp: dict | None, 
     export = load_history(history_files) if history_files else None
     if not export and not sp.get("recent") and not any((sp.get("top") or {}).values()):
         raise UserError("Connect Spotify (or upload your Spotify history files) first.")
-    pick = pick_mod.suggest(_album_dates(media), mode=mode, export=export, recent=sp.get("recent"), top=sp.get("top"))
+    taken_at, album, notes = _album(media, progress)
+    scorer = None
+    if album is not None:
+        from montage.songpick import tags, vibe
+        scorer = vibe.Scorer(album, tags.lookup)
+        if progress:
+            progress(0.92, "looking up song tags")
+    pick = pick_mod.suggest(taken_at, mode=mode, export=export, recent=sp.get("recent"), top=sp.get("top"),
+                            vibe_scorer=scorer)
+    if album is not None:
+        pick.album_valence, pick.album_arousal = round(album.valence, 4), round(album.arousal, 4)
+    pick.notes = notes + pick.notes
     choices = [(f"{c.artist} - {c.track}: {c.reason}", str(i)) for i, c in enumerate(pick.candidates)]
     if pick.mode == "release" and pick.period_start and pick.period_end:
         head = f"Songs that came out around your photos ({pick.period_start:%b %Y} - {pick.period_end:%b %Y})."
     elif pick.mode == "export" and pick.period_start and pick.period_end:
         head = f"Songs you played around {pick.period_start:%b %d, %Y} - {pick.period_end:%b %d, %Y}."
+    elif pick.vibe_source != "none":
+        head = "Your songs that best fit the photos' vibe."
     else:
         head = "Your best picks overall."
     md = "\n".join([head] + [f"> {n}" for n in pick.notes])

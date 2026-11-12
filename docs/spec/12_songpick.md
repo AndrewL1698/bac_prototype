@@ -4,7 +4,7 @@ Goal: "Pick the song for me."
 1. The user presses **Connect Spotify**. This is read-only: recent plays and top songs, nothing else.
 2. The user adds photos, chooses how to pick (three modes, section 6), presses **Suggest songs**, and gets 3-5 songs from their own listening, each with a reason:
    - **Songs from back then** (default): songs they listened to in the past year that came out around when the photos were taken;
-   - **Best vibe fit**: dates ignored (ranked by listening until the vibe match exists);
+   - **Best vibe fit**: dates ignored, ranked by how well the songs' tags fit the photos (12.8);
    - **My full Spotify history**: songs they actually played back then, from the uploaded data export.
 3. The user clicks **Use this song**. With the YouTube opt-in ticked, the app fetches the audio automatically; otherwise, or when YouTube blocks the fetch, it links to a YouTube search so the user can upload the file.
 4. The existing pipeline runs unchanged: `pipeline.generate` gets a song path, as today.
@@ -16,7 +16,9 @@ Goal: "Pick the song for me."
 - 12.7: the app UI;
 - 12.7b (2026-11-08): the three modes, release-date windows, YouTube cookies + manual fallback.
 
-Still to do: the vibe/sentiment match (12.8, the next PR) and local library matching (optional).
+- 12.8 (branch `phase-12-vibe`): the stage A vibe match (section 6b) in all three modes.
+
+Still to do: sentiment match with audio (12.9, MERT head), Claude "why this song" (12.10), local library matching (optional).
 
 **Where the audio comes from:** Spotify cannot provide it. Its SDKs only play inside Spotify's DRM player, preview clips and audio features were removed for new apps in Nov 2024, and its developer terms forbid syncing its content with video. The app uses Spotify only for listening *data*.
 - **YouTube (opt-in):** the audio is fetched from YouTube with `yt-dlp`. That breaks YouTube's terms, and the songs are copyrighted. Andrew accepted that risk for the class demo (PLAN Decisions, 2026-11-05). It is off by default and runs only after the user ticks the opt-in box and clicks **Use this song**.
@@ -45,7 +47,7 @@ Sign-in exposes only the last 50 plays (with dates) and top tracks for about 4 w
   - the export path (sections 2-5) uses no network;
   - Spotify sign-in calls Spotify's API with the user's token;
   - the YouTube fetch sends only the search text "<artist> - <track>";
-  - a future tag-based vibe stage would send only track and artist names.
+  - the vibe match (12.8) sends only track and artist names to Last.fm and MusicBrainz.
   - No photos, audio or other listening data are sent anywhere.
 
 ## 2. Parsing (`montage/songpick/history.py`) — done
@@ -93,7 +95,7 @@ Sign-in exposes only the last 50 plays (with dates) and top tracks for about 4 w
 ## 5. Shortlist (`montage/songpick/pick.py`) — done
 
 - `shortlist(events, taken_at, k=None) -> SongPick`, with `k` defaulting to `shortlist_size` (5).
-- `score = alpha * affinity + (1 - alpha) * vibe` once a vibe stage fills `TrackCandidate.vibe`. Until then `vibe is None`, `score == affinity`, and `vibe_source == "none"`.
+- `score = alpha * affinity + (1 - alpha) * vibe`, with `alpha = vibe.alpha_by_mode[mode]`, once the vibe stage (section 6b) fills `TrackCandidate.vibe`. Without it (no scorer, or no song has tags) `vibe is None`, `score == affinity`, and `vibe_source == "none"`.
 - Sorted by `(-score, -n_plays_window, key)`, so the result is deterministic for a given history.
 - Usage from code:
   ```python
@@ -138,7 +140,7 @@ Sign-in exposes only the last 50 plays (with dates) and top tracks for about 4 w
   - **Widening:** `before` is multiplied by `widen_factor` until `release.min_candidates` (5) songs qualify (or all that can), up to `release.max_before_days` (1095). The source is `release_widened`, with a note.
   - **Ranking:** listening affinity re-normalized over the eligible songs; ties go to the release closest to the median. The reason starts "Came out <Mon YYYY>, near your photos (<Mon YYYY>)."
   - **Fallbacks:** no eligible song at all -> mode `vibe` with the note "None of the songs you played this year came out around <Mon YYYY>...". No capture dates -> `vibe` with a note.
-- **Mode `vibe`** ("Best vibe fit"): dates ignored; for now the merged pool ranked by listening affinity, with a note that vibe matching is coming. 12.8 plugs in through `TrackCandidate.vibe` and `alpha`.
+- **Mode `vibe`** ("Best vibe fit"): dates ignored; the merged pool ranked mostly by vibe (section 6b). Without a vibe the ranking is listening affinity, with a note.
 - **Mode `export`** ("My full Spotify history"): requires the export (else `UserError`). Export affinity inside the listening window (section 3), plus recent plays inside it; no top lists.
 - `SongPick.mode` reports the mode actually used (a release pick that fell back says `vibe`).
 
@@ -168,12 +170,33 @@ Sign-in exposes only the last 50 plays (with dates) and top tracks for about 4 w
   - a paste box for the callback page's fallback code.
 - **Serving:** the `cache/youtube_audio` folder is never served (it is in `blocked_paths`; anyone with the share link could fetch songs by video id). `use_song` returns a copy in the system temp dir (`youtube.serve_copy`), which Gradio moves into its own content-hashed cache.
 
+## 6b. Vibe match, stage A (12.8; ROADMAP F1 piece 4)
+
+Goal: rank the user's songs by how well they fit the photos, before any audio exists. Only track and artist names leave the machine.
+
+- **Album side** (`songpick/vibe.py::album_vibe`): **Suggest songs** runs the editor's own ingest + feature path (`candidates.build_media` + `features.extract`, cached by content hash), so Generate is warm afterwards.
+  - Pooled embedding: candidate CLIP embeddings averaged per asset first (a long video counts once), then over assets, L2-normalized.
+  - Album mood: the mean **raw** CLIP mood-pole scores (`features/mood.py::mood_raw`), `tanh((mean - vibe.album_mood_center) / vibe.album_mood_scale)`. Not the batch z-scored `visual_valence`/`visual_arousal`, whose album mean is always about 0.
+  - If this fails (no GPU, bad file), the pick falls back to listening affinity with a note; a bad upload still raises its friendly `UserError`.
+- **Song tags** (`songpick/tags.py::lookup`), best effort, for the best `vibe.max_tracks` (40) songs by affinity:
+  - **Last.fm** `track.getTopTags` (autocorrect); a song with fewer than `lastfm.min_tags` tags also gets its artist's tags (`artist.getTopTags`) at `artist_tag_weight`. Needs the Colab Secret `LASTFM_API_KEY`; parallel (`lastfm.workers`).
+  - **MusicBrainz** artist search (tags with vote counts; no key; one request per `interval_s` 1.1 s) for the songs Last.fm missed, at most `musicbrainz.max_lookups`, only when the match score is at least `min_score`. Multi-artist credits use the first artist.
+  - Cleaning: names lowercased, `-`/`_` as spaces; weights rescaled to 0-100 of the song's top tag; tags below `min_tag_weight`, `junk_tags` ("seen live", "favorites", ...) and the artist's own name dropped; best `top_tags` kept.
+  - Cache: process memory only (a tag list hints at what the user listens to); never on disk; failures are not cached. Logs carry counts only. Any failure gives no tags.
+- **Scoring** (`vibe.score`, pure; tests pass a fake text encoder):
+  - `vibe_clip`: the tags' CLIP text embedding (each tag through the `vibe.templates` prompt ensemble, weighted by tag weight) vs the pooled album embedding; min-max normalized over the scored songs (cross-modal cosines are small and close together).
+  - `vibe_mood = 1 - |song VA - album VA| / (2 * sqrt 2)`. The song's valence/arousal is the weighted mean over its tags found in the lexicon `configs/tag_mood.tsv` (about 100 hand-set mood and genre tags, Russell's circumplex); `None` when no tag is listed.
+  - `vibe` = weighted mean of the available terms (`w_clip`, `w_mood`). Songs without tags get the median vibe of the scored songs, so missing tags neither help nor hurt.
+  - Reason, prepended: "Upbeat, like your photos (tagged indie pop, summer, happy)." when the song's and the album's mood words agree (`mood_word`: upbeat, warm and calm, intense, melancholic, energetic, calm, bright, moody; `mood_word_min`), "Fits your photos (tagged ...)." for an above-median vibe, else "Tagged ...".
+- **Ranking hook:** `pick.suggest(..., vibe_scorer=vibe.Scorer(album, tags.lookup))`. `pick.py` stays network-free. The scorer runs on the best `max_tracks` songs by affinity (release mode: on the eligible songs, so eligibility and widening are unchanged), then `score = alpha * affinity + (1 - alpha) * vibe` with `alpha_by_mode` (release 0.3, vibe 0.15, export 0.5).
+  - Some song had tags: `vibe_source = "tags"`. No tags at all: affinity ranking + the note "Found no genre or mood tags...". No scorer in mode `vibe`: the note "Couldn't compare songs with your photos' mood...".
+  - `SongPick.album_valence` / `album_arousal` carry the album mood for the UI and later evaluation.
+- **Calibration** (on Colab, demo + eval albums): `album_mood_center` is their mean raw score (raw arousal sits below 0 for ordinary photos) and `album_mood_scale` is set so they span about +/-0.6 (RESULTS.md).
+
 ### Later
-- **12.8 Vibe/sentiment match (ROADMAP F1 pieces 4-5), the next PR:**
-  - stage A: tags -> CLIP text embedding vs the album's pooled CLIP embedding, plus album vs tag valence/arousal;
-  - ranking by sentiment match: album valence/arousal vs the song's valence/arousal from tags, or from the MERT head on the fetched audio.
+- **12.9 Sentiment match with audio (ROADMAP F1 piece 5):** with the YouTube opt-in, fetch the top few songs and get their valence/arousal from the MERT head (`montage.music.emotion`, the editor's code path); re-rank by the distance to the album mood (+ curve shape).
+- **12.10:** Claude "why this song" (text only) and the song-pick mini study.
 - **MusicBrainz first-release dates** instead of the remaster heuristic (optional; 1 request/s, names only).
-  - `vibe` carries it; affinity becomes eligibility and the tie-break.
 - **Optional:** local library matching (ID3 tags via `mutagen`, fuzzy names), for users who keep music files.
 - **Stage B** (contrastive image-set <-> music model) is its own phase.
 
@@ -187,11 +210,13 @@ Sign-in exposes only the last 50 plays (with dates) and top tracks for about 4 w
 
 ## 7. Config (`songpick` in `configs/default.yaml`)
 
-`min_play_ms 30000`, `full_play_ms 180000`, `skip_penalty 0.5`, `period_trim_frac 0.05`, `pad_days 7`, `min_window_days 3`, `min_window_events 20`, `widen_factor 2.0`, `recency_half_life_days 365`, `lift_prior 1.0`, `sig_weight 0.5`, `min_window_plays 2`, `shortlist_size 5`, `alpha 1.0`, `w_sources {export, recent, top: 1.0}`, `default_mode release`, `window_by_age_days [[0,21],[1,30],[5,90],[10,180]]`, `max_window_days 365` (replaces `max_pad_days`).
+`min_play_ms 30000`, `full_play_ms 180000`, `skip_penalty 0.5`, `period_trim_frac 0.05`, `pad_days 7`, `min_window_days 3`, `min_window_events 20`, `widen_factor 2.0`, `recency_half_life_days 365`, `lift_prior 1.0`, `sig_weight 0.5`, `min_window_plays 2`, `shortlist_size 5`, `w_sources {export, recent, top: 1.0}`, `default_mode release`, `window_by_age_days [[0,21],[1,30],[5,90],[10,180]]`, `max_window_days 365` (replaces `max_pad_days`).
 
 `songpick.release`: `before_days_by_age [[0,60],[1,90],[5,180],[10,365]]`, `after_frac 0.25`, `min_candidates 5`, `max_before_days 1095`, `unreliable_words`.
 
 `songpick.spotify`: `client_id_env`, `redirect_uri`, `scopes`, `return_hosts`, `auth_ttl_s 600`, `timeout_s 10`, `top_limit 50`, `range_days {28, 182, 365}`, `range_weight {1.0, 0.7, 0.5}`.
+
+`songpick.vibe` (12.8; replaces `songpick.alpha`): `enabled true`, `max_tracks 40`, `alpha_by_mode {release 0.3, vibe 0.15, export 0.5}`, `w_clip 0.5`, `w_mood 0.5`, `templates`, `tag_mood_file configs/tag_mood.tsv`, `top_tags 8`, `min_tag_weight 10`, `reason_tags 3`, `artist_tag_weight 0.5`, `junk_tags`, `album_mood_center {valence 0.28, arousal -1.53}`, `album_mood_scale {valence 1.0, arousal 0.6}`, `mood_word_min 0.2`, `lastfm {api_key_env LASTFM_API_KEY, url, timeout_s 5, workers 4, min_tags 3}`, `musicbrainz {url, user_agent, interval_s 1.1, max_lookups 10, min_score 90, timeout_s 5}`.
 
 `songpick.youtube`: `enabled false`, `max_results 6`, `duration_tol_s 10`, `min_song_s 60`, `max_song_s 900`, `min_match 0.55`, `topic_bonus 0.25`, `bad_words`, `bad_penalty 0.4`, `duration_penalty 0.4`, `cookies_file`, `cookies_env MONTAGE_YT_COOKIES`.
 
@@ -199,6 +224,7 @@ Sign-in exposes only the last 50 plays (with dates) and top tracks for about 4 w
 
 New models: `ListeningEvent` (with `source`, `duration_ms`), `TopTrack`, `TrackCandidate` (with `duration_ms`, `sources`), `SongPick` (with `sources`). See schemas.md, section "Song pick". No existing model changes.
 2026-11-08: `ListeningEvent`, `TopTrack`, `TrackCandidate` gain `release_date`, `release_precision`, `release_reliable`; `SongPick` gains `mode`, and `period_source` gains `release` / `release_widened`.
+2026-11-10 (12.8): `TrackCandidate` gains `vibe_clip`, `vibe_mood`, `valence`, `arousal`, `tags`; `SongPick` gains `album_valence`, `album_arousal`. All optional with defaults.
 
 ## 9. Acceptance tests (`tests/test_songpick.py`, no marks, run locally)
 
@@ -234,3 +260,10 @@ New models: `ListeningEvent` (with `source`, `duration_ms`), `TopTrack`, `TrackC
   - YouTube matching: Topic preferred; live/cover penalized; bad ids, lengths and weak matches rejected; the cache downloads once.
   - The app handlers.
 - **On Colab:** `@pytest.mark.network` live YouTube search, plus a manual end-to-end run (connect, suggest, use, Generate, export).
+- **`tests/test_songpick_vibe.py`** (12.8, no marks; fake CLIP text encoder, canned Last.fm/MusicBrainz JSON, made-up artists):
+  - lexicon parsing and tag valence/arousal; album pooling per asset and the absolute album mood; mood words;
+  - a party album ranks a "happy, dance" song above a "sad, ambient" one and a calm album the reverse; untagged songs get the median; reasons;
+  - `alpha_by_mode`, determinism, the scorer sees only the best `max_tracks`; no tags keeps the affinity order with a note;
+  - release eligibility unchanged by vibe; export mode uses the scorer; the app handler sets the album mood and falls back when the album mood fails;
+  - tag cleaning; Last.fm track tags filled with artist tags and cached; no key uses MusicBrainz (User-Agent, score threshold, rate limit); failures are not cached; MusicBrainz lookups capped;
+  - on Colab: `@pytest.mark.gpu` `album_vibe` on the fixtures, `@pytest.mark.network` a live tag lookup.
