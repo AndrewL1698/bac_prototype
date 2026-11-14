@@ -2,13 +2,11 @@
 
     python scripts/run_job.py --name cufed_dl -- python -m training.importance.cufed
     python -m training.importance.cufed --inspect          # report what is on disk; downloads nothing
-    python -m training.importance.cufed --set importance.cufed.flickr.enabled=true   # also fill from Flickr
 
 1. Find or fetch the dataset, trying the sources in `importance.cufed.sources` (manual -> official -> hf) on
    every run. Each remote source keeps its own folder (raw/official, raw/hf) and is reused once on disk; "manual"
    is any other copy under raw/. The dataset root is the folder that holds image_importance.json.
-2. Optionally fetch labeled photos missing on disk from their Flickr URLs (off by default).
-3. Write the label mapping DATA_ROOT/datasets/importance/cufed/mapping.json: one group per album, one item
+2. Write the label mapping DATA_ROOT/datasets/importance/cufed/mapping.json: one group per album, one item
    per labeled photo, y = min-max of the score within the album's photos on disk.
 
 Layout (spec 15 section 1): image_importance.json {album: [[flickr_url, "album/photo", score], ...]},
@@ -18,17 +16,13 @@ event_type.json {album: [event, ...]}, images/<album>/<photo>.jpg. Idempotent; d
 from __future__ import annotations
 
 import argparse
-import io
 import json
 import math
 import os
 import tarfile
-import time
 import urllib.parse
-import urllib.request
 import zipfile
 from collections import Counter
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -46,8 +40,6 @@ IMPORTANCE_FILE = "image_importance.json"
 EVENTS_FILE = "event_type.json"
 ARCHIVE_EXT = (".zip", ".tar", ".tgz", ".tar.gz")
 DOWNLOADED = "_downloaded.json"
-FLICKR_FAILED = "_flickr_failed.json"
-USER_AGENT = "bac_prototype-cufed/1.0 (research dataset fetch)"
 NOT_CUFED_HINT = ("no image_importance.json found. This is not the event-curation CUFED: the 'CUFED'/'CUFED5' "
                   "sets used by super-resolution papers (TTSR, SRNTT, C2-Matching) are image patches without "
                   "importance labels. See docs/spec/15_cufed.md section 1.")
@@ -368,72 +360,6 @@ def ensure_dataset(cfg: CufedCfg, inspect_only: bool = False) -> tuple[Path | No
     return None, {}
 
 
-# ---------- optional Flickr fill ----------
-
-def fetch_image(url: str, target: Path, timeout: float) -> str | None:
-    """Download one photo; None on success, else the reason. Only JPEGs that decode are kept: Flickr answers
-    deleted photos with a 'photo unavailable' placeholder image, which must not become a training photo."""
-    from PIL import Image
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-        with urllib.request.urlopen(req, timeout=timeout) as r:
-            final = r.geturl() or url
-            data = r.read()
-    except Exception as e:
-        return f"{type(e).__name__}: {e}"[:200]
-    if "unavailable" in final.lower():
-        return "flickr placeholder (photo unavailable)"
-    try:
-        with Image.open(io.BytesIO(data)) as im:
-            fmt = im.format
-            im.verify()
-    except Exception as e:
-        return f"not an image: {type(e).__name__}"
-    if fmt != "JPEG":
-        return f"not a JPEG ({fmt}); likely a placeholder"
-    paths.atomic_write(target, data)
-    return None
-
-
-def flickr_fill(root: Path, labels: dict[str, list[LabeledPhoto]], index: dict[str, Path], cfg: CufedCfg,
-                retry_failed: bool = False) -> dict:
-    """Fetch labeled photos that are missing on disk. Dead links go to raw/_flickr_failed.json and are skipped
-    on later runs unless retry_failed."""
-    fc = cfg.flickr
-    failed_p = raw_dir() / FLICKR_FAILED
-    failed: dict[str, str] = cache.read_json(failed_p) or {}
-    todo: list[tuple[LabeledPhoto, Path]] = []
-    for album, photos in sorted(labels.items()):
-        folder = index.get(album) or root / "images" / album
-        have = album_files(folder)
-        for p in photos:
-            key = f"{album}/{p.photo}"
-            if p.photo in have or not p.url or (key in failed and not retry_failed):
-                continue
-            todo.append((p, folder / f"{p.photo}.jpg"))
-    log.info("flickr: %d labeled photos to fetch (%d known dead links skipped)", len(todo),
-             0 if retry_failed else len(failed))
-
-    def one(item: tuple[LabeledPhoto, Path]) -> tuple[str, str | None]:
-        p, target = item
-        time.sleep(fc.delay_s)
-        return f"{p.album}/{p.photo}", fetch_image(p.url, target, fc.timeout_s)
-
-    ok = 0
-    with ThreadPoolExecutor(max_workers=max(1, fc.workers)) as ex:
-        for i, (key, err) in enumerate(ex.map(one, todo), 1):
-            if err is None:
-                ok += 1
-                failed.pop(key, None)
-            else:
-                failed[key] = err
-            if i % 100 == 0 or i == len(todo):
-                jobs.report(0.7 + 0.25 * i / max(len(todo), 1), f"flickr {i}/{len(todo)} ({ok} ok)")
-                cache.write_json(failed_p, failed)
-    cache.write_json(failed_p, failed)
-    return {"tried": len(todo), "fetched": ok, "failed": len(todo) - ok, "known_dead_total": len(failed)}
-
-
 # ---------- label mapping ----------
 
 def build_mapping(root: Path, labels: dict[str, list[LabeledPhoto]], events: dict[str, list[str]],
@@ -509,7 +435,6 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="CUFED download + label mapping (spec 15)")
     ap.add_argument("--set", action="append", default=[], metavar="KEY=VALUE", help="config override")
     ap.add_argument("--inspect", action="store_true", help="report what is on disk; download nothing")
-    ap.add_argument("--retry-failed", action="store_true", help="retry Flickr links that failed before")
     a = ap.parse_args(argv)
     paths.load_colab_env()
     if a.set:
@@ -524,10 +449,6 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     labels, events = read_labels(root), read_events(root)
     index = index_album_dirs(root, set(labels))
-    if cfg.flickr.enabled:
-        stats = flickr_fill(root, labels, index, cfg, retry_failed=a.retry_failed)
-        print("Flickr fill:", json.dumps(stats), flush=True)
-        index = index_album_dirs(root, set(labels))
     jobs.report(0.97, "label mapping")
     mapping = build_mapping(root, labels, events, index, cfg)
     print("CUFED mapping:", json.dumps(mapping["summary"]), flush=True)

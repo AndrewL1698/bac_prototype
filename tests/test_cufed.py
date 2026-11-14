@@ -1,4 +1,4 @@
-"""Phase 15 (spec 15): CUFED download/layout checks, label mapping, Flickr fill, album features.
+"""Phase 15 (spec 15): CUFED download/layout checks, label mapping, album features.
 
 Everything here runs without a GPU, network, or the real dataset: a tiny synthetic CUFED tree is written to a
 temp DATA_ROOT, the network is mocked, and the feature tests stub the pipeline. test_cufed_parity runs the real
@@ -59,9 +59,7 @@ def make_cufed(root: Path, albums: dict[str, tuple[list[float], set[int] | str]]
 
 def _cfg(**update):
     from montage.config import get_config
-    c = get_config().importance.cufed
-    flickr = update.pop("flickr", {})
-    return c.model_copy(update={**update, "flickr": c.flickr.model_copy(update=flickr)})
+    return get_config().importance.cufed.model_copy(update=update)
 
 
 SCORES12 = [-1.6, -0.8, 0.0, 0.4, 1.2, 2.0, -0.4, 0.8, 1.6, -2.0, 0.2, -1.2]
@@ -205,70 +203,6 @@ def test_mapping_finds_event_grouped_folders(fresh_root):
     assert index["0_a@N00"] == root / "images" / "Wedding" / "0_a@N00"
     m = build_mapping(root, labels, read_events(root), index, _cfg())
     assert len(m["albums"]["0_a@N00"]["photos"]) == 12
-
-
-# ---------- Flickr fill ----------
-
-class _Resp:
-    def __init__(self, data: bytes, url: str):
-        self.data, self.url = data, url
-
-    def read(self):
-        return self.data
-
-    def geturl(self):
-        return self.url
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *a):
-        return False
-
-
-def test_flickr_fill(fresh_root, monkeypatch):
-    import urllib.error
-    import urllib.request
-    from training.importance import cufed
-    root = make_cufed(fresh_root / "cufed", {"0_a@N00": (SCORES12, set(range(8)))})  # 4 photos missing
-    labels = cufed.read_labels(root)
-    missing = [p for p in labels["0_a@N00"][8:]]
-    png = io.BytesIO()
-    from PIL import Image
-    Image.new("RGB", (10, 10)).save(png, "PNG")
-    plan = {missing[0].url: ("ok", None), missing[1].url: ("dead", None),
-            missing[2].url: ("placeholder", None), missing[3].url: ("png", None)}
-    calls = []
-
-    def fake_urlopen(req, timeout=None):
-        url = req.full_url
-        calls.append(url)
-        kind = plan[url][0]
-        if kind == "dead":
-            raise urllib.error.HTTPError(url, 404, "gone", {}, None)
-        if kind == "placeholder":
-            return _Resp(_jpeg_bytes(), "https://s.yimg.com/pw/images/en-us/photo_unavailable.png")
-        if kind == "png":
-            return _Resp(png.getvalue(), url)
-        return _Resp(_jpeg_bytes(1), url)
-
-    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
-    cfg = _cfg(flickr={"enabled": True, "delay_s": 0.0, "workers": 2})
-    index = cufed.index_album_dirs(root, set(labels))
-    stats = cufed.flickr_fill(root, labels, index, cfg)
-    assert sorted(calls) == sorted(p.url for p in missing)  # only missing photos are requested
-    assert stats == {"tried": 4, "fetched": 1, "failed": 3, "known_dead_total": 3}
-    assert (index["0_a@N00"] / f"{missing[0].photo}.jpg").exists()
-    for p in missing[1:]:
-        assert not (index["0_a@N00"] / f"{p.photo}.jpg").exists()
-    failed = json.loads((cufed.raw_dir() / "_flickr_failed.json").read_text())
-    assert "placeholder" in failed[f"0_a@N00/{missing[2].photo}"] and "JPEG" in failed[f"0_a@N00/{missing[3].photo}"]
-
-    calls.clear()
-    assert cufed.flickr_fill(root, labels, index, cfg)["tried"] == 0 and not calls  # known dead links skipped
-    plan[missing[1].url] = ("ok", None)
-    stats = cufed.flickr_fill(root, labels, index, cfg, retry_failed=True)
-    assert stats["tried"] == 3 and stats["fetched"] == 1 and stats["known_dead_total"] == 2
 
 
 # ---------- entry point ----------
