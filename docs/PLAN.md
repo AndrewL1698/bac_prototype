@@ -101,7 +101,7 @@ Extension (2 weeks, see ROADMAP.md)
 |---|---|---|---|---|
 | 17. Story order (default on, timeline term; no coverage term) | Keshav | phase-17-story-order | 2026-11-08 | Track 4 (provisional, owners TBD); PR for review |
 | 12. Song pick (12.1-12.7b: export, Connect Spotify, three modes, YouTube) | Andrew | phase-12-songpick | 2026-11-04 | PR open for review (2026-11-08); Track 1 owner still to confirm |
-| 15. Photo-album importance (CUFED; spec 15_cufed.md) | Shiven | phase-15-cufed | 2026-11-10 | Track 2; days 1-3: download, label mapping, features |
+| 15. Photo-album importance (CUFED; spec 15_cufed.md) | Shiven | phase-15-cufed | 2026-11-10 | Track 2; days 1-3 done on real data (133 albums, 5,657 photos); PR #6 review fixes in |
 
 ## Decisions
 
