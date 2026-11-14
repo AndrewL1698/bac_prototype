@@ -36,7 +36,7 @@ Sources, tried in the order of `importance.cufed.sources` on every run; the firs
 
 Finding the root never walks `images/` folders (they hold the photos; on the Drive that would be slow). With several roots in one source, the one with the most album folders wins.
 
-Archive extraction refuses members that would land outside the target folder (absolute paths, `..`), skips links and `__MACOSX`/`._*` entries, and writes a `_extracted_<archive>.json` marker so reruns skip it.
+Archive extraction refuses members that would land outside the target folder (absolute paths on any OS: a leading `/` or `\` or a drive letter like `C:`; and `..`), skips links and `__MACOSX`/`._*` entries, and writes a `_extracted_<archive>.json` marker so reruns skip it.
 
 Provenance: each remote source writes `_source.json` in its folder (url, or repo + revision + resolved sha, and the download time) after extraction finishes; a remote folder without it (a download that died half-extracted) does not count as on disk and is fetched again. `cufed/raw/_downloaded.json` records which root the last mapping used: source, provenance, root path, and counts (labeled albums, labeled photos, album folders, photo files).
 

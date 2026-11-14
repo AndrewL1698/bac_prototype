@@ -196,6 +196,11 @@ def dataset_stats(root: Path) -> dict:
 
 # ---------- archives ----------
 
+def _is_absolute_name(name: str) -> bool:
+    """'/x', '\\x' and 'C:...' are absolute on every OS (Path.is_absolute differs between Windows and POSIX)."""
+    return name.startswith(("/", "\\")) or (len(name) >= 2 and name[1] == ":" and name[0].isalpha())
+
+
 def _archive_kind(path: Path) -> str | None:
     with open(path, "rb") as f:
         head = f.read(8)
@@ -219,10 +224,10 @@ def safe_extract(archive: Path, dest: Path) -> int:
     written = refused = 0
 
     def target(name: str) -> Path | None:
-        t = (dest / name.replace("\\", "/").lstrip("/")).resolve()
-        if Path(name.replace("\\", "/")).is_absolute() or (t != dest_r and dest_r not in t.parents):
+        if _is_absolute_name(name):
             return None
-        return t
+        t = (dest / name.replace("\\", "/")).resolve()
+        return t if t == dest_r or dest_r in t.parents else None
 
     def put(name: str, size: int, opener) -> None:
         nonlocal written, refused

@@ -123,13 +123,15 @@ def test_safe_extract_refuses_escapes(tmp_path):
         zf.writestr("images/a/1.jpg", b"ok")
         zf.writestr("../escape.txt", b"no")
         zf.writestr("/abs.txt", b"no")
+        zf.writestr("C:/drive.txt", b"no")  # absolute on Windows: refused on every OS
         zf.writestr("__MACOSX/images/._1.jpg", b"meta")
     dest = tmp_path / "out"
     assert safe_extract(arc, dest) == 1
     assert (dest / "images/a/1.jpg").read_bytes() == b"ok"
     assert not (tmp_path / "escape.txt").exists() and not Path("/abs.txt").exists()
     assert not (dest / "__MACOSX").exists()
-    assert json.loads((dest / "_extracted_evil.zip.json").read_text())["refused"] == 2
+    assert not list(dest.rglob("drive.txt"))
+    assert json.loads((dest / "_extracted_evil.zip.json").read_text())["refused"] == 3
     assert safe_extract(arc, dest) == 1  # marker: no second extraction
 
     tar = tmp_path / "links.tar"
@@ -427,7 +429,7 @@ def test_extract_albums_failures(fresh_root, monkeypatch):
     bad = {"1_x@N00"}
 
     def flaky(ps):
-        if any(f"/{a}/" in ps[0] for a in bad):
+        if Path(ps[0]).parent.name in bad:
             raise OSError("cannot identify image file")
         return fake_album_features(ps)
 
