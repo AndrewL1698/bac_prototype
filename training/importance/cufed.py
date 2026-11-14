@@ -343,7 +343,8 @@ def ensure_dataset(cfg: CufedCfg, inspect_only: bool = False) -> tuple[Path | No
             root, extra = (fetch_official(cfg.official_url) if src == "official"
                            else fetch_hf(cfg.hf_repo, cfg.hf_revision))
         if root is None:
-            has_files = any(p for p in raw_dir().iterdir() if not p.name.startswith("_"))
+            has_files = any(p for p in raw_dir().iterdir()
+                            if not p.name.startswith("_") and p.name not in SOURCE_DIRS.values())
             if src == "manual" and has_files:
                 log.warning("manual: files under %s but %s", raw_dir(), NOT_CUFED_HINT)
             else:

@@ -82,6 +82,7 @@ Learn from each user's pins and excludes (`Session.pins`, `Session.excluded`) to
 - Layout: a valid root is found under nested folders; a folder without `image_importance.json` (the super-resolution CUFED) is rejected with a clear message; archive extraction refuses paths outside the target.
 - Sources: an official HTML answer stops with instructions; the mirror is pinned to its resolved sha; a gated mirror falls through; a source on disk is reused without a download; a later official link or manual copy wins over an earlier mirror download; a dead official link falls through to the mirror.
 - Mapping: every labeled album appears exactly once (kept or dropped with the right reason), photos map one to one, `y` is min-max in [0, 1] over present photos only.
+- Reruns: with the mirror already in `raw/hf/`, the manual check does not report it as unknown files (no false super-resolution warning) and nothing is downloaded again.
 - Flickr fill: only missing photos are fetched, non-images are rejected, failures are recorded and skipped on the next run (network mocked).
 - Feature assembly: per-album rows, `y` re-normalized after ingest drops a duplicate, resume skips finished albums, consecutive failures stop the job (pipeline mocked).
 - `test_cufed_parity` (`gpu`, `media`): features for an album from `cufed_features` equal `build_media` + `extract` on the same photos (same cache entries).

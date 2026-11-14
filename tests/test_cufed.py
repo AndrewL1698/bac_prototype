@@ -101,6 +101,21 @@ def test_find_root_nested_and_rejects_superres(fresh_root, caplog, monkeypatch):
     assert info["photo_files"] == 12 and (raw_dir() / "_downloaded.json").exists()
 
 
+def test_no_superres_warning_with_mirror_on_disk(fresh_root, caplog, monkeypatch):
+    """Rerun with the mirror already in raw/hf: the manual check does not count hf/ as unknown files."""
+    import logging
+    from training.importance import cufed
+    monkeypatch.setattr(logging.getLogger("montage"), "propagate", True)
+    hf = cufed.raw_dir() / "hf"
+    make_cufed(hf / "CUFED", {"0_a@N00": (SCORES12, "all")})
+    (hf / cufed.SOURCE_INFO).write_text(json.dumps({"repo": "x/y", "sha": "abc"}))
+    monkeypatch.setattr(cufed, "fetch_hf", lambda *a: pytest.fail("a mirror on disk is not downloaded again"))
+    with caplog.at_level(logging.INFO, logger="montage"):
+        root, info = cufed.ensure_dataset(_cfg(sources=["manual", "hf"]))
+    assert root == hf / "CUFED" and info["source"] == "hf"
+    assert "manual: nothing found" in caplog.text and "super-resolution" not in caplog.text
+
+
 def test_safe_extract_refuses_escapes(tmp_path):
     from training.importance.cufed import safe_extract
     arc = tmp_path / "evil.zip"
