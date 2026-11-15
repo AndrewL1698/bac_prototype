@@ -324,3 +324,9 @@ Format:
 - Next: rerun `cufed_eval` on Colab (the CV is cached, so only the final retrain runs), read the report, then `--deploy` if it says so; RESULTS.md CUFED column.
 - Blockers: none.
 - Heads-up: new config key `importance.photo_ranker_weights`; `importance.cufed.eval.clearly_worse` is gone. Nothing changes for anyone until a photo ranker is deployed; the video ranker is never touched.
+
+## 2026-11-15 03:15 ET | Shiven | phase 15 | branch phase-15-cufed-eval
+- Done: `cufed_eval` rerun at bdb473e (CV from cache): photo ranker = learned on CUFED, linear, alpha 1: held-out CUFED tau 0.305 vs 0.079 for what photos used before (the video ranker as is), gain +0.226 (95% CI +0.189 to +0.262), 86% of albums better. Deployed with `--deploy` to `weights/importance_ranker_photo.pt`. RESULTS.md section "Importance ranker for photos (phase 15)", README.
+- Next: PR review for days 4-7; days 8-10 (personalization) only if time.
+- Blockers: none.
+- Heads-up: a photo ranker is live (`montage_data/weights/importance_ranker_photo.pt`): every app now ranks photos with it once it runs this branch's `importance/blend.py` (main ignores the file until the PR merges). Videos are unchanged. To undo: delete that file.
