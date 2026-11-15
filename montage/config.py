@@ -179,6 +179,12 @@ class ContactSheetCfg(_B):
     max_cells: int
 
 
+class PeopleFilterCfg(_B):
+    words: list[str]
+    prompts: list[str]
+    min_prob: float
+
+
 class DirectorCfg(_B):
     use_llm: bool
     model: str
@@ -191,6 +197,7 @@ class DirectorCfg(_B):
     weights: DirectorWeights
     mood_targets: dict[str, float]
     energy_bias_scale: float
+    people_filter: PeopleFilterCfg
     contact_sheet: ContactSheetCfg
 
 

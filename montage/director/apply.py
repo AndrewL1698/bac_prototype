@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -54,6 +55,16 @@ def map_anchor(anchor: str, section_index: int, profile: MusicProfile) -> list[i
     if anchor == "section":
         return [section_index] if 0 <= section_index < n else []
     return []
+
+
+def people_mask(plan: EditPlan, features) -> np.ndarray | None:
+    """(N,) bool: candidates showing people, or None when no avoid query names people."""
+    pf = get_config().director.people_filter
+    if not any(w in pf.words for q in plan.avoid_queries for w in re.findall(r"[a-z]+", q.lower())):
+        return None
+    logits = 100 * features.arrays["emb"] @ clip_encoder.encode_text(pf.prompts).T  # 100 = CLIP's logit scale
+    prob = 1 / (1 + np.exp(logits[:, 1] - logits[:, 0]))
+    return (np.asarray(features.arrays["face_count"]) > 0) | (prob > pf.min_prob)
 
 
 @dataclass
@@ -115,16 +126,25 @@ def compile_plan(plan: EditPlan, profile: MusicProfile, features, candidate_asse
     excl_ids = set(excluded or [])
     ex_mask = np.array([a in excl_assets or c in excl_ids for c, a in zip(ids, candidate_assets)])
     pin_ids = set(pins or [])
+    pinned = np.array([c in pin_ids for c in ids])
     known_assets = set(candidate_assets)
     notes = []
     must = [a for a in plan.must_include if a in known_assets and a not in excl_assets]
     for a in plan.must_include:
         if a not in known_assets:
             notes.append(f"must-include {a} is not in this upload")
+    people = people_mask(plan, features)
+    if people is not None:
+        drop = people & ~ex_mask & ~pinned & ~np.isin(candidate_assets, must)
+        if (~ex_mask & ~drop).any():
+            ex_mask |= drop
+            notes.append(f"Left out {int(drop.sum())} shots with people, as the brief asked.")
+        else:
+            notes.append("Every shot shows people, so the no-people request was not applied.")
     return Directives(
         plan=plan, n_sections=n_sec, section_pacing=pacing, section_mood=mood, seg_queries=seg_q,
         z_vibe=relevance(emb, plan.vibe_queries), z_avoid=relevance(emb, plan.avoid_queries),
         z_open=relevance(emb, [plan.opening_query]), z_close=relevance(emb, [plan.closing_query]),
         z_seg=[relevance(emb, q) for q in seg_q], excluded=ex_mask, must_assets=must,
-        pinned=np.array([c in pin_ids for c in ids]), chronological=plan.chronological, notes=notes,
+        pinned=pinned, chronological=plan.chronological, notes=notes,
     )
