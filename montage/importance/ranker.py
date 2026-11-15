@@ -1,6 +1,7 @@
 """Learned importance ranker (phase 10A): shared feature vector + inference loader.
 
-Checkpoint DATA_ROOT/weights/importance_ranker.pt (spec 10):
+Checkpoints in DATA_ROOT/weights: importance_ranker.pt scores videos (spec 10), importance_ranker_photo.pt scores
+photos when present (spec 15; without it photos use the video ranker). Both have the same format:
     {type: "linear"|"mlp", state_dict, feat_mean, feat_std, blend_alpha, metrics, feature_version, ...}
 """
 

@@ -124,6 +124,7 @@ class ImportanceCfg(_B):
     reject_exposure_clip: float
     blend_alpha: float
     ranker_weights: str
+    photo_ranker_weights: str
     cufed: CufedCfg
 
 
