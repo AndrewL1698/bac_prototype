@@ -127,7 +127,7 @@ def test_people_avoid_is_a_hard_filter(monkeypatch):
                      pins=[f.ids[1]])
     assert d.excluded.tolist() == [False, False, True, False, False, False, False, False]  # 1 pinned, 4 must-include
     assert any("people" in n for n in d.notes)
-    for soft in (["blurry photo"], ["selfie", "portrait", "group photo"]):  # not a "no people" request
+    for soft in (["blurry photo"], ["selfie", "portrait", "group photo"], ["fewer people"], ["blurry faces"]):
         assert compile_plan(plan(avoid_queries=soft), profile4(), f, assets).excluded.sum() == 0
     f.arrays["face_count"][:] = 1  # every shot has people: the filter steps aside instead of emptying the cut
     assert compile_plan(plan(avoid_queries=["people"]), profile4(), f, assets).excluded.sum() == 0

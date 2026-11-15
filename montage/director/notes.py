@@ -10,7 +10,7 @@ from montage.types import EDL, EditPlan
 FASTER = re.compile(r"\b(faster|quicker|more energy|speed (it )?up|too slow)\b", re.I)
 SLOWER = re.compile(r"\b(slower|calmer|slow (it )?down|too fast|less frantic)\b", re.I)
 MORE = re.compile(r"\bmore (?:of )?(?:the )?([^,.;:!?\n]+)", re.I)
-LESS = re.compile(r"\b(?:less|no|lose|drop|remove|without) (?:of )?(?:the )?([^,.;:!?\n]+)", re.I)
+LESS = re.compile(r"\b(less|fewer|no|lose|drop|remove|without) (?:of )?(?:the )?([^,.;:!?\n]+)", re.I)
 TIME = re.compile(r"\bat (\d{1,2}):(\d{2})\b")
 REMOVE = re.compile(r"\b(lose|drop|remove|cut|no|skip|without)\b", re.I)
 PARTS = {"beginning": "start", "start": "start", "intro": "start", "opening": "start", "middle": "middle",
@@ -85,7 +85,8 @@ def revise_rules(prev: EditPlan, edl: EDL | None, note: str) -> EditPlan:
             if q and q not in p.vibe_queries and not FASTER.search("more " + q):
                 p.vibe_queries = (p.vibe_queries + [q])[-cfg.max_queries:]
         for m in LESS.finditer(text):
-            q = " ".join(m.group(1).split()[: cfg.max_query_words])
+            fewer = "fewer " if m.group(1).lower() in ("less", "fewer") else ""  # "fewer X" stays a soft avoid
+            q = " ".join((fewer + m.group(2)).split()[: cfg.max_query_words])
             if q and q not in p.avoid_queries and not SLOWER.search(q):
                 p.avoid_queries = (p.avoid_queries + [q])[-cfg.max_queries:]
     p.rationale = f"Revised by rules for the note: {text[:120]}"

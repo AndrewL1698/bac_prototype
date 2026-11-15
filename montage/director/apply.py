@@ -60,7 +60,8 @@ def map_anchor(anchor: str, section_index: int, profile: MusicProfile) -> list[i
 def people_mask(plan: EditPlan, features) -> np.ndarray | None:
     """(N,) bool: candidates showing people, or None when no avoid query names people."""
     pf = get_config().director.people_filter
-    if not any(w in pf.words for q in plan.avoid_queries for w in re.findall(r"[a-z]+", q.lower())):
+    asks = [q.lower() for q in plan.avoid_queries if not q.lower().startswith("fewer")]  # "fewer X" is not "no X"
+    if not any(w in pf.words for q in asks for w in re.findall(r"[a-z]+", q)):
         return None
     logits = 100 * features.arrays["emb"] @ clip_encoder.encode_text(pf.prompts).T  # 100 = CLIP's logit scale
     prob = 1 / (1 + np.exp(logits[:, 1] - logits[:, 0]))

@@ -137,6 +137,7 @@ def test_notes_rules():
     p2 = revise_rules(edl.plan, edl, "slower at the start, more of the dog")
     assert any(s.anchor == "intro" and s.pacing < 0 for s in p2.segments)
     assert "dog" in p2.vibe_queries
+    assert "fewer people" in revise_rules(edl.plan, edl, "less people").avoid_queries
     p3 = revise_rules(edl.plan, edl, "no selfies")
     assert "selfies" in p3.avoid_queries
 

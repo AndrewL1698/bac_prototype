@@ -121,7 +121,7 @@ director:
   # shortcut: min_prob calibrated on one album (AUC 0.93 vs the face detector), retune on more albums.
   people_filter:
     # Only words for people in general: "no selfies" or a model's "group photo" avoid must not empty the cut.
-    words: [people, person, persons, human, humans, anyone, anybody, nobody, faces]
+    words: [people, person, persons, human, humans, anyone, anybody, nobody]
     prompts: ["a photo of people", "a photo"]
     min_prob: 0.5
   contact_sheet: {cell_px: 128, max_cells: 100}
