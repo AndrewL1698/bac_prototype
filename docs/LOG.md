@@ -317,3 +317,10 @@ Format:
 - Next: on Colab, the `cufed_eval` job (about 30-40 min on the free T4 runtime's 2 CPU cores; resumable per configuration), then read `montage_data/eval/importance_cufed/report.md`; `--deploy` only if it says deploy; RESULTS.md CUFED column either way.
 - Blockers: none.
 - Heads-up: new config section `importance.cufed.eval`. No live weights change until someone runs `--deploy`.
+
+## 2026-11-15 03:00 ET | Shiven | phase 15 | branch phase-15-cufed-eval
+- Done: first `cufed_eval` run on Colab (T4): 14,832 rows; SumMe 24, TVSum 50, CUFED 133 groups. On held-out CUFED albums: live ranker as is 0.079, heuristic 0.166, learned on CUFED 0.305 (linear) / 0.304 (mlp), learned on all three 0.283 (linear). The run chose the live configuration (both/mlp) at alpha 0.25 (CUFED 0.167, "deploy"), but that drops TVSum from 0.407 to 0.082: not deployed.
+- Done: photos get their own ranker (`importance_ranker_photo.pt`; `importance/blend.py` already ranks photos and videos separately). `evaluate_cufed` chooses it on CUFED alone and `--deploy` only writes the photo file; the SumMe guard is removed. Tests: blend (photos use the photo ranker, video scores unchanged, old formula without one) and the eval tests updated.
+- Next: rerun `cufed_eval` on Colab (the CV is cached, so only the final retrain runs), read the report, then `--deploy` if it says so; RESULTS.md CUFED column.
+- Blockers: none.
+- Heads-up: new config key `importance.photo_ranker_weights`; `importance.cufed.eval.clearly_worse` is gone. Nothing changes for anyone until a photo ranker is deployed; the video ranker is never touched.
