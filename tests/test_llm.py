@@ -12,7 +12,7 @@ import pytest
 from montage import director
 from montage.config import override
 from montage.director import llm
-from montage.director.notes import revise_rules
+from montage.director.notes import revise_plan, revise_rules
 from montage.director.rules import plan_from_rules
 from montage.types import EDL, Excerpt, Shot, ShotScores
 
@@ -215,10 +215,12 @@ def test_openai_compat_plan(server):
     assert payload["messages"][0]["role"] == "system" and isinstance(payload["messages"][1]["content"], str)
 
 
-def test_llm_plan_keeps_explicit_asks(server):
-    server(GOOD)  # the model returns no avoids and pacing 0
+def test_llm_plan_keeps_explicit_avoids(server):
+    server(GOOD)  # the model returns no avoids
     plan, _ = director.make_plan("Fast cuts, make sure it has no people", CTX)
-    assert plan.source == "llm" and "people" in plan.avoid_queries and plan.pacing > 0
+    assert plan.source == "llm" and "people" in plan.avoid_queries and plan.pacing == GOOD["pacing"]
+    revised, _ = revise_plan(plan.model_copy(update={"avoid_queries": []}), None, "no people please", CTX)
+    assert "people please" in revised.avoid_queries  # the rules parser's literal phrase; it names people
 
 
 def test_openai_compat_strips_think(server):

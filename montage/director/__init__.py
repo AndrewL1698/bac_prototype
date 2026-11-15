@@ -36,16 +36,14 @@ def make_plan(brief: str, ctx: dict | None = None) -> tuple[EditPlan, list[str]]
     if llm_enabled():
         try:
             from montage.director.llm import plan_from_llm
-            return keep_explicit_asks(plan_from_llm(brief, ctx or {}), plan_from_rules(brief)), []
+            return keep_explicit_avoids(plan_from_llm(brief, ctx or {}), plan_from_rules(brief)), []
         except Exception as e:  # noqa: BLE001  optional component
             log.warning("LLM director failed (%s); using rules", e)
     return plan_from_rules(brief), ["director:rules"]
 
 
-def keep_explicit_asks(plan: EditPlan, rules: EditPlan) -> EditPlan:
-    """The brief's literal "no X" and speed words always reach the plan: models sometimes drop them
-    (Qwen3-8B missed "no people" and "fast cuts" in the director comparison)."""
+def keep_explicit_avoids(plan: EditPlan, rules: EditPlan) -> EditPlan:
+    """The literal "no X" phrases the rules parser finds always reach the plan's avoid list: models sometimes
+    drop them (Qwen3-8B missed "no people" in the director comparison)."""
     plan.avoid_queries = list(dict.fromkeys(rules.avoid_queries + plan.avoid_queries))[: get_config().director.max_queries]
-    if rules.pacing and not plan.pacing:
-        plan.pacing = rules.pacing
     return plan
