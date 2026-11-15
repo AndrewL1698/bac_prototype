@@ -213,6 +213,12 @@ def test_openai_compat_plan(server):
     assert payload["messages"][0]["role"] == "system" and isinstance(payload["messages"][1]["content"], str)
 
 
+def test_llm_plan_keeps_explicit_asks(server):
+    server(GOOD)  # the model returns no avoids and pacing 0
+    plan, _ = director.make_plan("Fast cuts, make sure it has no people", CTX)
+    assert plan.source == "llm" and "people" in plan.avoid_queries and plan.pacing > 0
+
+
 def test_openai_compat_strips_think(server):
     server("<think>the brief says beach</think>\n" + json.dumps(GOOD))
     plan, fb = director.make_plan("beach", CTX)
