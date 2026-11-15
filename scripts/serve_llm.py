@@ -11,6 +11,7 @@ Weights download to scratch (local VM disk), never to Drive or the repo.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import subprocess
@@ -43,7 +44,7 @@ def main(argv: list[str] | None = None) -> int:
     oc = get_config().director.openai_compat
     url = urlparse(oc.base_url)
     env = {**os.environ, "OLLAMA_HOST": url.netloc, "OLLAMA_MODELS": str(paths.scratch() / "ollama"),
-           "OLLAMA_VERSION": oc.serve.ollama_version}
+           "OLLAMA_VERSION": oc.serve.ollama_version, "OLLAMA_KEEP_ALIVE": "-1"}  # never unload: a cold load beats the 30 s director timeout
     if not shutil.which("ollama"):
         jobs.report(0.05, f"installing ollama {oc.serve.ollama_version}", force=True)
         subprocess.run("apt-get -qq install -y zstd", shell=True, env=env)  # the installer unpacks a .tar.zst
@@ -57,6 +58,8 @@ def main(argv: list[str] | None = None) -> int:
         time.sleep(2)
     jobs.report(0.3, f"pulling {oc.model}", force=True)
     subprocess.check_call(["ollama", "pull", oc.model], env=env)
+    req = urllib.request.Request(f"{url.scheme}://{url.netloc}/api/generate", data=json.dumps({"model": oc.model}).encode())
+    urllib.request.urlopen(req, timeout=oc.serve.ready_timeout_s).read()  # an empty prompt loads the model into GPU memory
     jobs.report(1.0, f"ready: {oc.model} at {oc.base_url}", force=True)
     print(f"ready: {oc.model} at {oc.base_url}", flush=True)
     return proc.wait() if proc else 0
