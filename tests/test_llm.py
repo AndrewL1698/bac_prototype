@@ -221,6 +221,8 @@ def test_llm_plan_keeps_explicit_avoids(server):
     assert plan.source == "llm" and "people" in plan.avoid_queries and plan.pacing == GOOD["pacing"]
     revised, _ = revise_plan(plan.model_copy(update={"avoid_queries": []}), None, "no people please", CTX)
     assert "people please" in revised.avoid_queries  # the rules parser's literal phrase; it names people
+    undone, _ = revise_plan(revised, None, "people are fine again", CTX)  # the model drops every avoid
+    assert undone.avoid_queries == []
 
 
 def test_openai_compat_strips_think(server):
