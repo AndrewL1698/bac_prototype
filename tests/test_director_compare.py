@@ -14,7 +14,7 @@ def test_checks_never_raise():
     for case in dc.CASES:
         for fn in case.checks.values():
             assert isinstance(fn(plan), bool)
-    assert len(dc.BRIEFS) == 20 and len(dc.NOTES) == 5
+    assert len(dc.BRIEFS) == 21 and len(dc.NOTES) == 5
 
 
 def test_parse_systems():
@@ -36,7 +36,7 @@ def test_compare_end_to_end(monkeypatch, tmp_path):
     assert dc.main(["--systems", "open=openai_compat:tiny-model,rules", "--out", str(tmp_path)]) == 0
     res = json.loads((tmp_path / "results.json").read_text())
     by = {s["system"]: s for s in res["summary"]}
-    assert by["open"]["valid"] == 25 and by["rules"]["valid"] == 25 and set(calls) == {"tiny-model"}
+    assert by["open"]["valid"] == 26 and by["rules"]["valid"] == 26 and set(calls) == {"tiny-model"}
     assert 0 < by["open"]["checks_passed"] < by["open"]["checks_total"]
     md = (tmp_path / "report.md").read_text()
-    assert "| open | tiny-model | 25/25 |" in md and "### messy" in md
+    assert "| open | tiny-model | 26/26 |" in md and "### messy" in md

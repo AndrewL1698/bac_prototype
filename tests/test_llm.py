@@ -143,8 +143,7 @@ def test_notes_rules():
 
 
 @pytest.mark.api
-@pytest.mark.skipif(not os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_API_KEY", "").startswith("test"),
-                    reason="needs ANTHROPIC_API_KEY")
+@pytest.mark.skipif(not director.llm_enabled(), reason="needs ANTHROPIC_API_KEY or director.provider openai_compat")
 @pytest.mark.parametrize("brief", [
     "Warm, nostalgic summer recap. Open slow on the beach at sunrise, build through the road trip, save the party for "
     "the drop, end on the sunset. Skip anything blurry.",
@@ -203,12 +202,12 @@ def server(monkeypatch):
 
 def test_openai_compat_plan(server):
     srv = server(GOOD)
-    assert director.llm_enabled() and director.llm_label() == "Qwen/Qwen3-8B"
+    assert director.llm_enabled() and director.llm_label() == "qwen3:8b"
     plan, fb = director.make_plan("beach then party", CTX)
     assert plan.source == "llm" and fb == [] and plan.must_include == ["a001"]
     url, payload, _ = srv.calls[0]
-    assert url == "http://127.0.0.1:8000/v1/chat/completions"
-    assert payload["model"] == "Qwen/Qwen3-8B" and payload["chat_template_kwargs"] == {"enable_thinking": False}
+    assert url == "http://127.0.0.1:11434/v1/chat/completions"
+    assert payload["model"] == "qwen3:8b" and payload["reasoning_effort"] == "none"
     schema = payload["response_format"]["json_schema"]["schema"]
     assert payload["response_format"]["type"] == "json_schema" and "segments" in schema["properties"]
     assert payload["messages"][0]["role"] == "system" and isinstance(payload["messages"][1]["content"], str)

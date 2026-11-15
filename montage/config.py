@@ -186,9 +186,7 @@ class PeopleFilterCfg(_B):
 
 
 class LLMServeCfg(_B):
-    vllm_version: str
-    gpu_memory_utilization: float
-    max_model_len: int
+    ollama_version: str
     ready_timeout_s: float
 
 

@@ -58,12 +58,12 @@ The app **sees** your media (CLIP embeddings, an aesthetic score, mood, tags, sh
 
 Keep the Colab tab open while you use the app.
 
-**Open-weight director (no API key, optional).** Instead of Claude, the director can use an open-weight model (default Qwen3-8B) served on the same A100:
+**Open-weight director (no API key, optional).** Instead of Claude, the director can use a free open-weight model (Qwen3-8B via Ollama) served on the same A100:
 ```
-!python scripts/run_job.py --name llm -- python scripts/serve_llm.py     # first run installs vLLM in its own venv (a few minutes)
+!python scripts/run_job.py --name llm -- python scripts/serve_llm.py     # installs Ollama and pulls the model (about 2 minutes)
 !python scripts/job_status.py llm                                        # wait for "ready"
 ```
-Then set `director.provider: openai_compat` (CLI: `--set director.provider=openai_compat`; app: a `MONTAGE_CONFIG` overlay yaml). If the server is down the director falls back to rules, as with a missing key. To compare it with Claude on 20 briefs + 5 notes: `python -m montage.eval.director_compare --systems haiku=anthropic,open=openai_compat,rules`.
+Then set `director.provider: openai_compat` (CLI: `--set director.provider=openai_compat`; app: a `MONTAGE_CONFIG` overlay yaml). If the server is down the director falls back to rules, as with a missing key. To compare it with Claude on 21 briefs + 5 notes: `python -m montage.eval.director_compare --systems haiku=anthropic,open=openai_compat,rules`.
 
 ## Command line
 

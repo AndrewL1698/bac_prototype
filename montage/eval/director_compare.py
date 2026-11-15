@@ -3,7 +3,7 @@
     python -m montage.eval.director_compare --systems haiku=anthropic,qwen=openai_compat,rules
 
 Text only: a fixed synthetic song summary and media inventory, so no media, GPU, or features are needed (the
-open-weight model must already be served, see scripts/serve_llm.py). 20 briefs and 5 revision notes, each with
+open-weight model must already be served, see scripts/serve_llm.py). 21 briefs and 5 revision notes, each with
 objective checks taken from the director prompt's rules (e.g. "45 seconds" -> target_length_s 45). Reports, per
 system: valid plans (no fallback), checks passed, mean latency; plus each plan's queries and rationale for a
 side-by-side taste read. Writes DATA_ROOT/eval/director_compare/<user>_<stamp>/{results.json, report.md}.
@@ -89,7 +89,7 @@ BRIEFS = [
           "closing summit": lambda p: has([p.closing_query.lower()], "summit", "mountain", "view")}),
     Case("defaults", "Just make something fun.",
          {"pacing 0": lambda p: p.pacing == 0, "length auto": lambda p: p.target_length_s == 0,
-          "excerpt auto": lambda p: p.excerpt_hint == "auto", "not chronological": lambda p: not p.chronological,
+          "excerpt auto": lambda p: p.excerpt_hint == "auto", "chronological": lambda p: p.chronological,
           "no pins": lambda p: not p.must_include and not p.exclude}),
     Case("length_start", "Make it exactly 50 seconds and start the song from the very beginning.",
          {"50 s": lambda p: p.target_length_s == 50, "excerpt start": lambda p: p.excerpt_hint == "start"}),
@@ -117,6 +117,9 @@ BRIEFS = [
           or any(has([q.lower() for q in s.content_queries], "road", "car") for s in seg(p, "build"))}),
     Case("chrono", "In order of when things happened, please.",
          {"chronological": lambda p: p.chronological}),
+    Case("no_people", "Open road landscapes, make sure it has no people.",
+         {"people avoided": lambda p: has([q.lower() for q in p.avoid_queries], "people", "person", "friend", "couple", "selfie", "child", "famil", "crowd"),
+          "no people in vibe": lambda p: not has([q.lower() for q in p.vibe_queries], "people", "person")}),
     Case("avoids", "No selfies, no screenshots, nothing blurry.",
          {"avoid selfie": lambda p: has([q.lower() for q in p.avoid_queries], "selfie"),
           "avoid screenshot": lambda p: has([q.lower() for q in p.avoid_queries], "screenshot"),

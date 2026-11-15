@@ -106,19 +106,17 @@ music:
 
 director:
   use_llm: true
-  provider: "anthropic"   # anthropic (Claude API, needs ANTHROPIC_API_KEY) | openai_compat (an open-weight model behind vLLM / Ollama)
+  provider: "anthropic"   # anthropic (Claude API, needs ANTHROPIC_API_KEY) | openai_compat (free: an open-weight model behind Ollama)
   model: "claude-haiku-5-5"
   openai_compat:          # used when provider = openai_compat; serve the model with scripts/serve_llm.py
-    base_url: "http://127.0.0.1:8000/v1"
-    model: "Qwen/Qwen3-8B"
-    api_key_env: "MONTAGE_LLM_API_KEY"   # optional; vLLM and Ollama need no key
+    base_url: "http://127.0.0.1:11434/v1"   # Ollama's default port
+    model: "qwen3:8b"                       # about 10 GB of the A100
+    api_key_env: "MONTAGE_LLM_API_KEY"      # optional; Ollama needs no key
     temperature: 0.2
-    extra_body: {chat_template_kwargs: {enable_thinking: false}}   # Qwen3: skip thinking (slower, not needed)
-    serve:                # scripts/serve_llm.py (vLLM in its own venv, so Colab's torch is untouched)
-      vllm_version: "0.11.0"
-      gpu_memory_utilization: 0.5   # of the A100; leaves room for CLIP/MERT when the app runs alongside
-      max_model_len: 8192
-      ready_timeout_s: 900
+    extra_body: {reasoning_effort: "none"}  # Qwen3 thinking off: 5 s per plan instead of 20-100 s
+    serve:
+      ollama_version: "0.40.16"
+      ready_timeout_s: 120
   max_tokens: 2000
   timeout_s: 30
   max_queries: 6
