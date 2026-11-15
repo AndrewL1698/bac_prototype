@@ -309,4 +309,4 @@ Format:
 - Results: see RESULTS.md "Free director": qwen3:8b 49/56, qwen3:30b-a3b 50/56, rules 36/56.
 - Next: fix the planner so "faster" makes shorter shots (pacing -> slot length). Decide whether the team default flips to `openai_compat` (needs the Ollama job on every runtime).
 - Blockers: none.
-- Heads-up: `director.openai_compat` defaults changed (base_url port 11434, model `qwen3:8b`, `extra_body`, `serve.ollama_version`/`ready_timeout_s` replace the vLLM keys). Default provider is still `anthropic`.
+- Heads-up: **the default director is now the free Ollama model** (`director.provider: openai_compat`); `start_app.py` starts the `llm` job, and plans come from the rules until it answers. Claude only with `provider: anthropic`. `llm_enabled()` now pings the server. `director.openai_compat` keys: base_url port 11434, model `qwen3:8b`, `extra_body`, `serve.ollama_version`/`ready_timeout_s` (replace the vLLM keys). Review fixes: "less X" -> soft "fewer X" (never the people filter), a note can drop old avoids, "faces" no longer triggers the people filter, the checklist ticks the director only when it answers.

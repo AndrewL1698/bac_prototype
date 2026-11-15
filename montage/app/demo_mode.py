@@ -13,7 +13,6 @@ import json
 import os
 import shutil
 import time
-import urllib.request
 from pathlib import Path
 
 from montage import jobs, paths
@@ -138,16 +137,10 @@ def prepare() -> dict:
 
 def _director_line(cfg) -> str:
     from montage.director import llm_label
-    d = cfg.director
-    if d.provider == "openai_compat":
-        try:  # tick only when the server answers; otherwise every plan falls back to rules
-            with urllib.request.urlopen(d.openai_compat.base_url.rstrip("/") + "/models", timeout=2):
-                up = d.use_llm
-        except OSError:
-            up = False
-        return f"[{'x' if up else ' '}] open-weight director at {d.openai_compat.base_url} (director: {llm_label() if up else 'rules'})"
-    key = bool(os.environ.get("ANTHROPIC_API_KEY"))
-    return f"[{'x' if key else ' '}] Claude API key (director: {llm_label()})"
+    label = llm_label()
+    if cfg.director.provider == "openai_compat":
+        return f"[{'x' if label != 'rules' else ' '}] open-weight director at {cfg.director.openai_compat.base_url} (director: {label})"
+    return f"[{'x' if label != 'rules' else ' '}] Claude API key (director: {label})"
 
 
 def checklist(report: dict | None = None) -> list[str]:

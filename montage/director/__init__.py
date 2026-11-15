@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import urllib.request
 
 from montage.config import get_config
 from montage.director.rules import plan_from_rules
@@ -12,14 +13,22 @@ from montage.types import EditPlan
 log = get_logger("director")
 
 
+def server_up(base_url: str) -> bool:
+    try:
+        with urllib.request.urlopen(base_url.rstrip("/") + "/models", timeout=2):
+            return True
+    except OSError:
+        return False
+
+
 def llm_enabled() -> bool:
-    """Claude needs an API key; an open-weight model only needs a server URL (if it is down, calls fail
-    fast and the rules take over)."""
+    """The open-weight model needs its server to answer (start it with scripts/serve_llm.py); Claude needs an
+    API key. Otherwise the rules direct."""
     d = get_config().director
     if not d.use_llm:
         return False
     if d.provider == "openai_compat":
-        return bool(d.openai_compat.base_url)
+        return server_up(d.openai_compat.base_url)
     return bool(os.environ.get("ANTHROPIC_API_KEY"))
 
 

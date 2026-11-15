@@ -145,7 +145,7 @@ def test_notes_rules():
 
 
 @pytest.mark.api
-@pytest.mark.skipif(not director.llm_enabled(), reason="needs ANTHROPIC_API_KEY or director.provider openai_compat")
+@pytest.mark.skipif(not director.llm_enabled(), reason="needs the Ollama server (scripts/serve_llm.py) or, with provider anthropic, ANTHROPIC_API_KEY")
 @pytest.mark.parametrize("brief", [
     "Warm, nostalgic summer recap. Open slow on the beach at sunrise, build through the road trip, save the party for "
     "the drop, end on the sunset. Skip anything blurry.",
@@ -193,6 +193,7 @@ class FakeServer:
 def server(monkeypatch):
     from montage.config import override
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setattr(director, "server_up", lambda url: True)
 
     def use(behavior):
         srv = FakeServer(behavior)

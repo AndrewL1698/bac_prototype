@@ -106,7 +106,7 @@ music:
 
 director:
   use_llm: true
-  provider: "anthropic"   # anthropic (Claude API, needs ANTHROPIC_API_KEY) | openai_compat (free: an open-weight model behind Ollama)
+  provider: "openai_compat"   # openai_compat (free: qwen3:8b on Ollama, started by start_app.py) | anthropic (Claude API, paid, needs ANTHROPIC_API_KEY)
   model: "claude-haiku-5-5"
   openai_compat:          # used when provider = openai_compat; serve the model with scripts/serve_llm.py
     base_url: "http://127.0.0.1:11434/v1"   # Ollama's default port

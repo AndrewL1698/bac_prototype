@@ -1,5 +1,4 @@
-"""Phase 9A acceptance with the live LLM director (Colab, needs ANTHROPIC_API_KEY or an Ollama server with
-MONTAGE_CONFIG setting director.provider: openai_compat)."""
+"""Phase 9A acceptance with the live LLM director (Colab, needs the Ollama server from scripts/serve_llm.py)."""
 
 from __future__ import annotations
 
@@ -12,7 +11,7 @@ from conftest import gpu_available
 from montage.director import llm_enabled
 
 pytestmark = [pytest.mark.gpu, pytest.mark.media, pytest.mark.api,
-              pytest.mark.skipif(not llm_enabled(), reason="needs ANTHROPIC_API_KEY or director.provider openai_compat")]
+              pytest.mark.skipif(not llm_enabled(), reason="needs the Ollama server (scripts/serve_llm.py) or, with provider anthropic, ANTHROPIC_API_KEY")]
 
 
 @pytest.fixture(scope="module")
