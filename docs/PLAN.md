@@ -101,6 +101,7 @@ Extension (2 weeks, see ROADMAP.md)
 |---|---|---|---|---|
 | 17. Story order (default on, timeline term; no coverage term) | Keshav | phase-17-story-order | 2026-11-08 | Track 4 (provisional, owners TBD); PR for review |
 | Director: hard "no people" filter | Keshav | director-avoid-people | 2026-11-15 | PR for review |
+| Director: free Ollama model (qwen3:8b) | Keshav | claude/alternative-ai-models-6ab256 | 2026-11-15 | stacked on director-avoid-people; PR for review |
 | 12. Song pick (12.1-12.7b: export, Connect Spotify, three modes, YouTube) | Andrew | phase-12-songpick | 2026-11-04 | PR open for review (2026-11-08); Track 1 owner still to confirm |
 
 ## Decisions
