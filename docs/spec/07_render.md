@@ -16,6 +16,8 @@ Crop placement: center on the face union center (`face_cx`, `face_cy`) when pres
 
 `fill_blur`: background = the same frame scaled to cover 16:9, Gaussian blurred (sigma `render.blur_sigma` 30), darkened (brightness -0.15); foreground = frame scaled to fit inside 16:9, centered on top.
 
+**Removed 2026-11-15:** the planner no longer adds Ken Burns or the panorama `pan` framing (photos are still frames; wide panoramas get `fill_blur`). The renderer still plays `kenburns` from older saved EDLs, and renders a still photo by computing one frame and repeating it. Original design, kept for those EDLs:
+
 Ken Burns (photos only, not for `pan`):
 - `zoom_from = 1.0`, `zoom_to = 1.0 + kb_base + kb_gain * intensity_rank_of_slot` (defaults 0.04, 0.08).
 - pan: drift toward the face center if any, else a small seeded drift; |pan| <= 0.03 of frame width/height.

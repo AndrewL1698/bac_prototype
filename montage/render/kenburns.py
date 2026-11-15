@@ -109,7 +109,11 @@ def frames(photo_path: str, framing: str, kb: KenBurns | None, n: int, W: int, H
     ih, iw = img.shape[:2]
     c0 = np.array([x0 + rw / 2, y0 + rh / 2])
     c1 = c0 + np.array([kb.pan_x * rw, kb.pan_y * rh])
+    still = kb.zoom_from == kb.zoom_to and kb.pan_x == kb.pan_y == 0
     for k in range(n):
+        if still and k:
+            yield fr  # every frame of a still photo is the same
+            continue
         s = smoothstep(k / max(n - 1, 1))
         z = kb.zoom_from + (kb.zoom_to - kb.zoom_from) * s
         cw_, ch_ = rw / z, rh / z
@@ -118,5 +122,5 @@ def frames(photo_path: str, framing: str, kb: KenBurns | None, n: int, W: int, H
         cy = min(max(cy, ch_ / 2), ih - ch_ / 2)
         sx, sy = cw_ / W, ch_ / H
         M = np.float32([[sx, 0, cx - cw_ / 2 + 0.5 * sx - 0.5], [0, sy, cy - ch_ / 2 + 0.5 * sy - 0.5]])
-        yield cv2.warpAffine(img, M, (W, H), flags=cv2.INTER_LINEAR | cv2.WARP_INVERSE_MAP,
-                             borderMode=cv2.BORDER_REFLECT)
+        fr = cv2.warpAffine(img, M, (W, H), flags=cv2.INTER_LINEAR | cv2.WARP_INVERSE_MAP, borderMode=cv2.BORDER_REFLECT)
+        yield fr

@@ -16,7 +16,7 @@ from montage.planning.costs import INF, build_costs, rank01
 from montage.planning.edl import assemble, make_reason
 from montage.planning.inout import choose_in
 from montage.planning.slots import build_slots
-from montage.render.framing import decide_framing, kenburns
+from montage.render.framing import decide_framing
 from montage.types import EDL, Asset, Candidate, MusicProfile, ShotScores, UserError
 
 
@@ -130,7 +130,6 @@ def finalize(inp: PlanInputs, run_id: str, seed: int, system: str, slots, cm, se
     asset_by_id = {a.id: a for a in inp.assets}
     irank = rank01(np.array([s.intensity for s in slots]))
     imp_rank = rank01(inp.importance)
-    rng = np.random.default_rng(seed + 7)
     taken_iv: dict[str, list[tuple[float, float]]] = {}
     picks = []
     for j, (s, m) in enumerate(zip(slots, seq)):
@@ -148,7 +147,6 @@ def finalize(inp: PlanInputs, run_id: str, seed: int, system: str, slots, cm, se
             src_out = round(src_in + dur, 3)
             taken_iv.setdefault(c.asset_id, []).append((src_in, src_out))
         framing = decide_framing(a)
-        kb = kenburns(a, framing, float(irank[j]), float(arr["face_cx"][i]), float(arr["face_cy"][i]), rng)
         pair_in = float(cm.pair(np.array([seq[j - 1]]), j)[0, m]) if j > 0 else 0.0
         u = float(cm.U[m, j]) if cm.U[m, j] < INF / 2 else 0.0
         scores = ShotScores(importance=round(float(cm.parts["imp_raw"][m]), 4),
@@ -162,5 +160,5 @@ def finalize(inp: PlanInputs, run_id: str, seed: int, system: str, slots, cm, se
                              j == K - 1 and bool(d.plan.closing_query) and float(d.z_close[i]) > 0.5,
                              float(cm.parts["vr"][m]))
         picks.append({"cand": c, "src_in": None if src_in is None else round(src_in, 3), "src_out": src_out,
-                      "framing": framing, "kenburns": kb, "scores": scores, "reason": reason})
+                      "framing": framing, "kenburns": None, "scores": scores, "reason": reason})
     return assemble(run_id, system, seed, prof.song_hash, prof.excerpt, d.plan, slots, picks, total, notes, preview)

@@ -9,6 +9,7 @@ import functools
 import html
 import json
 import os
+import threading
 import traceback
 
 import gradio as gr
@@ -476,6 +477,8 @@ def main(argv: list[str] | None = None) -> int:
                 theme=THEME, css=CSS,
                 allowed_paths=allowed, blocked_paths=blocked, show_error=True, auth=auth,
                 auth_message="Montage demo: sign in with the username and password you set." if auth else None)
+    from montage.features.clip_encoder import get_clip
+    threading.Thread(target=get_clip, daemon=True).start()  # else the first generate pays ~10-20 s to load CLIP
     url = getattr(demo, "share_url", None) or getattr(demo, "local_url", None) or f"http://127.0.0.1:{args.port}"
     paths.atomic_write(paths.jobs_dir() / "app.url", url + "\n")
     print(f"APP URL: {url} (password {'on' if auth else 'off'})", flush=True)
