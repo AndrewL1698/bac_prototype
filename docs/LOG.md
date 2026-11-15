@@ -301,3 +301,11 @@ Format:
 - Blockers: none. `serve_llm.py` (vLLM 0.11.0 pin) is not yet verified on Colab.
 - Heads-up: new config keys `director.provider` and `director.openai_compat.*` (required in `DirectorCfg`). New `montage.director.llm_label()`. No schema changes.
 - Results: rules baseline on the comparison set passes 34/54 checks (27/46 briefs, 7/8 notes).
+
+## 2026-11-15 16:20 ET | Keshav | director: free Ollama model | branch claude/alternative-ai-models-6ab256 (rebased on main)
+- Done: the open-weight director runs on Ollama instead of vLLM (`scripts/serve_llm.py` installs Ollama, serves, pulls `qwen3:8b`; models on VM scratch). `reasoning_effort: "none"` turns Qwen3 thinking off (108 s -> 5 s per plan; Ollama ignores `think: false` on the OpenAI endpoint). LLM plans now keep the brief's literal "no X" avoids and speed words (`director.keep_explicit_asks`). New `no_people` comparison case; the stale "defaults" check now expects story order. Live tests (`test_9a`, `test_llm_live`) run with either provider; mocked Claude tests pin `provider: anthropic`.
+- Tests: local 168 passed, 68 skipped. Colab A100 with Ollama (MONTAGE_CONFIG provider openai_compat), before the fixture fix: 38 passed, 7 failed: 6 mocked-Claude tests routed to Ollama by the overlay (fixed), and `test_9a::test_note_faster_adds_shots` (20 -> 15 shots after "faster"; pre-existing, fails on main with Claude too).
+- Results: see RESULTS.md "Free director": qwen3:8b 49/56, qwen3:30b-a3b 50/56, rules 36/56.
+- Next: fix the planner so "faster" adds shots. Decide whether the team default flips to `openai_compat` (needs the Ollama job on every runtime).
+- Blockers: none.
+- Heads-up: `director.openai_compat` defaults changed (base_url port 11434, model `qwen3:8b`, `extra_body`, `serve.ollama_version`/`ready_timeout_s` replace the vLLM keys). Default provider is still `anthropic`.

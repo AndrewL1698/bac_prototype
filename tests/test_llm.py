@@ -10,6 +10,7 @@ from types import SimpleNamespace
 import pytest
 
 from montage import director
+from montage.config import override
 from montage.director import llm
 from montage.director.notes import revise_rules
 from montage.director.rules import plan_from_rules
@@ -47,7 +48,8 @@ def fake(monkeypatch):
         msgs = FakeMessages(behavior)
         monkeypatch.setattr(llm, "get_client", lambda: SimpleNamespace(messages=msgs))
         return msgs
-    return use
+    with override({"director.provider": "anthropic"}):  # these fake Claude, whatever MONTAGE_CONFIG selects
+        yield use
 
 
 CTX = {"song_summary": "Song: 120 BPM", "inventory": "a000 photo | beach", "tag_vocab": "beach",
