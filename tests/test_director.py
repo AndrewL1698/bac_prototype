@@ -123,10 +123,11 @@ def test_people_avoid_is_a_hard_filter(monkeypatch):
     # prompts ["a photo of people", "a photo"]: only candidate 2 rates as people by CLIP
     monkeypatch.setattr(apply.clip_encoder, "encode_text", lambda qs: np.stack([f.arrays["emb"][2], np.zeros(768)]))
     assets = [i.split("_")[0] for i in f.ids]
-    d = compile_plan(plan(avoid_queries=["group of friends"], must_include=["a002"]), profile4(), f, assets,
+    d = compile_plan(plan(avoid_queries=["any person"], must_include=["a002"]), profile4(), f, assets,
                      pins=[f.ids[1]])
     assert d.excluded.tolist() == [False, False, True, False, False, False, False, False]  # 1 pinned, 4 must-include
     assert any("people" in n for n in d.notes)
-    assert compile_plan(plan(avoid_queries=["blurry photo"]), profile4(), f, assets).excluded.sum() == 0
+    for soft in (["blurry photo"], ["selfie", "portrait", "group photo"]):  # not a "no people" request
+        assert compile_plan(plan(avoid_queries=soft), profile4(), f, assets).excluded.sum() == 0
     f.arrays["face_count"][:] = 1  # every shot has people: the filter steps aside instead of emptying the cut
     assert compile_plan(plan(avoid_queries=["people"]), profile4(), f, assets).excluded.sum() == 0
