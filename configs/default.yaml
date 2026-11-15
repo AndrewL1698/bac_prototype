@@ -81,7 +81,6 @@ importance:
       kinds: ["linear", "mlp"]
       folds: 5                    # CV folds by group (video or album), each dataset split on its own
       epochs: 30                  # RankNet epochs (early stopping on an inner validation split)
-      clearly_worse: 0.03         # SumMe tau points below the deployed configuration that make a candidate ineligible
       bootstrap: 2000             # album resamples for the 95% CI of the CUFED tau gain
       require_ci: true            # deploy only if that CI is above 0 (133 albums: small gains can be noise)
 

@@ -1,4 +1,4 @@
-"""Phase 15 days 4-7 (spec 15 section 5): CV with CUFED, selection, deploy decision, safe deploy.
+"""Phase 15 days 4-7 (spec 15 section 5): CV with CUFED, photo ranker selection, deploy decision, safe deploy.
 
 Synthetic windows.npz + cufed_photos.npz where importance is learnable from one feature column and the heuristic
 is noise, written to a temp DATA_ROOT; the real trainer runs with few epochs.
@@ -58,20 +58,18 @@ def test_folds_match_phase_10a():
     assert sorted(set(F2[len(G):])) == [0, 1, 2, 3, 4]
 
 
-def test_choose_respects_summe_guard():
+def test_choose_best_on_cufed():
+    """The chosen model only scores photos, so it is chosen on CUFED alone, whatever it does on the videos."""
     from training.importance.evaluate_cufed import choose
 
     def row(summe, cufed):
         return {"summe": {"tau": summe}, "tvsum": {"tau": 0.4}, "cufed": {"tau": cufed}}
 
-    cands = {("learned_cufed_mlp", 1.0): row(0.05, 0.35),   # best on CUFED, much worse on SumMe
-             ("learned_all_mlp", 0.75): row(0.16, 0.30),
-             ("learned_all_mlp", 0.5): row(0.17, 0.30),     # tie on CUFED: smaller alpha wins
+    cands = {("learned_cufed_mlp", 1.0): row(0.05, 0.35),   # best on CUFED, worse on SumMe: still chosen
              ("learned_tvsum_mlp", 0.75): row(0.17, 0.20)}
-    assert choose(cands, ref_summe=0.17, clearly_worse=0.03) == ("learned_all_mlp", 0.5)
-    assert choose(cands, ref_summe=None, clearly_worse=0.03) == ("learned_cufed_mlp", 1.0)
-    with pytest.raises(ValueError):
-        choose(cands, ref_summe=0.5, clearly_worse=0.03)
+    assert choose(cands) == ("learned_cufed_mlp", 1.0)
+    cands[("learned_all_mlp", 0.5)] = row(0.17, 0.35)      # tie on CUFED: the smaller alpha wins
+    assert choose(cands) == ("learned_all_mlp", 0.5)
 
 
 def test_bootstrap_gain():
@@ -103,13 +101,14 @@ def test_eval_deploy_and_rerun(fresh_root, monkeypatch, capsys):
         assert set(m["per_event"]) == {"Wedding", "Birthday"}
         for f in ("report.md", "candidate.pt", "per_album_tau.png"):
             assert (ev.eval_dir() / f).exists()
-        live = paths.weights_dir() / "importance_ranker.pt"
+        live = paths.weights_dir() / "importance_ranker_photo.pt"
         assert not live.exists()  # an evaluation never touches the live weights
 
         assert ev.main(["--deploy"]) == 0
-        r = Ranker.load()
+        r = Ranker.load(live)
         assert r is not None and r.blend_alpha == m["chosen"]["alpha"] and r.kind == "linear"
         assert not live.with_suffix(".prev.pt").exists()
+        assert not (paths.weights_dir() / "importance_ranker.pt").exists()  # the video ranker is never written
 
         calls = []
         real_fit = ev.fit
@@ -118,6 +117,7 @@ def test_eval_deploy_and_rerun(fresh_root, monkeypatch, capsys):
         assert len(calls) == 1  # CV reused from the cache; only the final retrain ran
         m2 = json.loads((ev.eval_dir() / "metrics.json").read_text())
         assert "deployed_as_is" in m2["table"] and "deployed_config_cv" in m2["table"]
+        assert m2["deployed"]["file"] == "importance_ranker_photo.pt"
         saw_cufed = m["chosen"]["trained_on"] in ("cufed", "all")  # then its as-is CUFED score is in sample
         assert m2["baseline"] == ("deployed_config_cv" if saw_cufed else "deployed_as_is")
         assert m2["deployed"]["trained_on"] == m["chosen"]["trained_on"]
@@ -138,27 +138,32 @@ def test_deploy_refuses_mismatched_candidate(fresh_root):
     cand = ev.eval_dir() / "candidate.pt"
     cand.write_bytes(cand.read_bytes() + b"x")
     assert ev.main(["--deploy"]) == 2
-    assert not (paths.weights_dir() / "importance_ranker.pt").exists()
+    assert not (paths.weights_dir() / "importance_ranker_photo.pt").exists()
 
 
-def test_video_trained_deployed_is_the_baseline(fresh_root):
-    """Today's situation: the live ranker was trained on videos only, so on CUFED it is out of sample and the
-    candidate is compared with it as is; its configuration re-run in CV is the reference on the videos."""
+def test_video_ranker_is_todays_photo_baseline(fresh_root):
+    """Today's situation: only the video ranker (trained on TVSum) is live, so it also scores photos. It never saw
+    CUFED, so the candidate is compared with it as is; deploying writes the photo ranker and leaves it alone."""
     pytest.importorskip("torch")
-    from montage import config
+    from montage import config, paths
     from training.importance import evaluate_cufed as ev
     write_data(fresh_root, seed=2)
     with config.override({**FAST, "importance.cufed.eval.sources": ["tvsum"]}):
         assert ev.main([]) == 0
-        first = json.loads((ev.eval_dir() / "metrics.json").read_text())
-        assert first["chosen"]["trained_on"] == "tvsum"
-        if not first["decision"]["deploy"]:
-            pytest.skip("synthetic TVSum ranker did not beat the heuristic on this seed")
-        assert ev.main(["--deploy"]) == 0
+    video = paths.weights_dir() / "importance_ranker.pt"
+    paths.atomic_write(video, (ev.eval_dir() / "candidate.pt").read_bytes())  # stands in for the phase 10A ranker
+    before = video.read_bytes()
     with config.override(FAST):
         assert ev.main([]) == 0
     m = json.loads((ev.eval_dir() / "metrics.json").read_text())
-    assert m["deployed"]["trained_on"] == "tvsum" and m["baseline"] == "deployed_as_is"
+    assert m["deployed"]["file"] == "importance_ranker.pt" and m["deployed"]["trained_on"] == "tvsum"
+    assert m["baseline"] == "deployed_as_is"
     assert "deployed_config_cv" in m["table"] and m["table"]["deployed_config_cv"]["summe"]["n_groups"] == 8
+    assert m["chosen"]["trained_on"] in ("cufed", "all")  # the signal in the albums is learnable
     report = (ev.eval_dir() / "report.md").read_text()
     assert "deployed_as_is" in report and "**Decision:**" in report and "| Wedding |" in report
+    assert "videos keep their ranker" in report
+    if m["decision"]["deploy"]:
+        assert ev.main(["--deploy"]) == 0
+        assert (paths.weights_dir() / "importance_ranker_photo.pt").exists()
+    assert video.read_bytes() == before  # the video ranker is never touched

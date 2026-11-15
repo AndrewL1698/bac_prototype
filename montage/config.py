@@ -100,7 +100,6 @@ class CufedEvalCfg(_B):
     kinds: list[Literal["linear", "mlp"]]
     folds: int
     epochs: int
-    clearly_worse: float
     bootstrap: int
     require_ci: bool
 

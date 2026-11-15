@@ -1,5 +1,5 @@
-"""Phase 15 days 4-7 (spec 15 section 5): train and evaluate the importance ranker with CUFED photo albums next
-to the SumMe/TVSum videos, compare with the deployed ranker, and decide whether to deploy.
+"""Phase 15 days 4-7 (spec 15 section 5): choose a photo importance ranker with CUFED photo albums, compare it
+with what the app uses for photos today, and decide whether to deploy it as the photo ranker.
 
     python scripts/run_job.py --name cufed_eval -- python -m training.importance.evaluate_cufed
     python -m training.importance.evaluate_cufed --deploy      # after reading the report: make the candidate live
@@ -11,17 +11,19 @@ Data: windows.npz (video windows) + cufed_photos.npz (album photos); same ranker
 CV: `folds` folds by group (a video or an album), each dataset split on its own; video folds are drawn exactly as
 evaluate.py draws them. Per held-out group: Kendall tau-b and Spearman rho (tie-aware: CUFED scores are discrete),
 averaged per dataset.
-Rows: random, aesthetic, heuristic H, the deployed ranker as is (out of sample on CUFED only: it was trained on
-the videos), the deployed configuration re-run in this CV (the fair reference on the videos), learned
-{sources} x {kinds}, and blends of the selected model with H at alpha in {0, .25, .5, .75, 1}.
-Selection: the (model, alpha) with the best CUFED tau among those whose SumMe tau is not more than
-`clearly_worse` below the deployed configuration's. Deploy only if it beats today's ranker on CUFED (with
-`require_ci`: the 95% bootstrap CI of the per-album tau gain is above 0). Today's ranker is the live checkpoint as
-is when it never saw CUFED; once a CUFED-trained ranker is live, its as-is score is in sample, so its
-configuration re-run in this CV is the baseline instead. No live checkpoint: the heuristic.
+The app ranks photos and videos separately (importance/blend.py), and photos use importance_ranker_photo.pt when
+it exists (else the video ranker). This evaluation only ever changes the photo ranker, so the video ranker and
+the SumMe/TVSum numbers cannot get worse; the video columns are reported for information.
+Rows: random, aesthetic, heuristic H, what scores photos today as is (`deployed_as_is`: the photo ranker if one
+is live, else the video ranker), its configuration re-run in this CV (`deployed_config_cv`), learned
+{sources} x {kinds}, and blends of the chosen model with H at alpha in {0, .25, .5, .75, 1}.
+Selection: the (model, alpha) with the best CUFED tau; ties prefer the smaller alpha. Deploy only if it beats what
+photos use today on CUFED (with `require_ci`: the 95% bootstrap CI of the per-album tau gain is above 0). That is
+the live ranker as is when it never saw CUFED; a live ranker trained on CUFED has seen these albums, so its
+configuration re-run in this CV is the baseline instead. Nothing live: the heuristic.
 A run always writes the report and a candidate checkpoint, never the live weights: every app loads those, so
-going live is the separate --deploy step, which refuses unless the decision says deploy and keeps the previous
-file as <name>.prev.pt.
+going live is the separate --deploy step (to the photo ranker file), which refuses unless the decision says
+deploy and keeps the previous file as <name>.prev.pt.
 """
 
 from __future__ import annotations
@@ -170,32 +172,34 @@ def cv_predictions(data: dict, F: np.ndarray, src: str, kind: str, k: int, epoch
 
 # ---------- deployed ranker ----------
 
+def photo_weights() -> Path:
+    return paths.weights_dir() / get_config().importance.photo_ranker_weights
+
+
 def deployed() -> tuple[object | None, dict]:
-    """(Ranker, checkpoint metadata) for the live weights, or (None, {})."""
+    """(Ranker, checkpoint metadata) for what scores photos today: the photo ranker if live, else the video
+    ranker; (None, {}) when neither is."""
     from montage.importance.ranker import Ranker
-    path = paths.weights_dir() / get_config().importance.ranker_weights
+    path = photo_weights()
     r = Ranker.load(path)
+    if r is None:
+        path = paths.weights_dir() / get_config().importance.ranker_weights
+        r = Ranker.load(path)
     if r is None:
         return None, {}
     import torch
     ck = torch.load(path, map_location="cpu", weights_only=False)
     alpha = r.blend_alpha if r.blend_alpha is not None else get_config().importance.blend_alpha
-    return r, {"type": ck.get("type"), "trained_on": ck.get("trained_on"), "blend_alpha": float(alpha),
-               "created": ck.get("created"), "git_commit": ck.get("git_commit")}
+    return r, {"file": path.name, "type": ck.get("type"), "trained_on": ck.get("trained_on"),
+               "blend_alpha": float(alpha), "created": ck.get("created"), "git_commit": ck.get("git_commit")}
 
 
 # ---------- selection ----------
 
-def choose(cands: dict[tuple[str, float], dict], ref_summe: float | None, clearly_worse: float,
-           target: str = "cufed") -> tuple[str, float]:
-    """(model, alpha) with the best `target` tau among candidates whose SumMe tau is at least
-    ref_summe - clearly_worse (no SumMe reference: all eligible). Ties prefer the smaller alpha."""
-    def summe(c):
-        return cands[c].get("summe", {}).get("tau", float("nan"))
-    eligible = [c for c in cands if ref_summe is None or np.isnan(summe(c)) or summe(c) >= ref_summe - clearly_worse]
-    if not eligible:
-        raise ValueError("no candidate is within clearly_worse of the deployed SumMe tau")
-    return max(eligible, key=lambda c: (cands[c][target]["tau"], -c[1]))
+def choose(cands: dict[tuple[str, float], dict], target: str = "cufed") -> tuple[str, float]:
+    """(model, alpha) with the best `target` tau; ties prefer the smaller alpha. No video guard is needed: the
+    chosen model only ever scores photos."""
+    return max(cands, key=lambda c: (cands[c][target]["tau"], -c[1]))
 
 
 def blend(L: np.ndarray, H: np.ndarray, G: np.ndarray, alpha: float) -> np.ndarray:
@@ -250,11 +254,11 @@ def run() -> dict:
                 pg = group_scores(blend(oof[name], H, G, ref_key[1]), y, G)
                 cands[ref_key], cand_pg[ref_key] = summarize(pg, D_of, sets), pg
             table["deployed_config_cv"] = cands[ref_key]
-    if dep is not None and ref_key is None:
-        log.warning("the live ranker's configuration (%s/%s) is not among the CV configurations: no SumMe guard",
-                    dep_meta.get("trained_on"), dep_meta.get("type"))
-    ref_summe = cands[ref_key]["summe"]["tau"] if ref_key and "summe" in sets else None
-    chosen = choose(cands, ref_summe, ec.clearly_worse)
+    saw_cufed = dep is not None and dep_meta.get("trained_on") in ("cufed", "all")
+    if saw_cufed and ref_key is None:
+        log.warning("the live ranker's configuration (%s/%s) is not among the CV configurations: its CUFED score "
+                    "is in sample, so the comparison favours it", dep_meta.get("trained_on"), dep_meta.get("type"))
+    chosen = choose(cands)
     for a in ALPHAS:
         table[f"blend_{chosen[0]}_alpha_{a:g}"] = cands[(chosen[0], a)]
 
@@ -263,21 +267,18 @@ def run() -> dict:
     # the fair baseline.
     if dep is None:
         baseline_name, base_pg = "heuristic", per_group["heuristic"]
-    elif dep_meta.get("trained_on") in ("cufed", "all") and ref_key is not None:
+    elif saw_cufed and ref_key is not None:
         baseline_name, base_pg = "deployed_config_cv", cand_pg[ref_key]
     else:
         baseline_name, base_pg = "deployed_as_is", per_group["deployed_as_is"]
     albums = sorted(g for g, d in D_of.items() if d == "cufed")
     gain = bootstrap_gain(cand_pg[chosen], base_pg, albums, ec.bootstrap, seed)
     beats = gain["gain"] > 0 and (gain["ci"][0] > 0 if ec.require_ci else True)
-    summe_note = (f"SumMe tau {cands[chosen]['summe']['tau']:.3f} vs deployed configuration "
-                  f"{ref_summe:.3f} (allowed down to {ref_summe - ec.clearly_worse:.3f})"
-                  if ref_summe is not None else "no SumMe reference")
-    reason = (f"chosen {chosen[0]} at alpha {chosen[1]:g}: CUFED tau {cands[chosen]['cufed']['tau']:.3f} vs "
-              f"{baseline_name} {table[baseline_name]['cufed']['tau']:.3f}, gain {gain['gain']:+.3f} "
-              f"(95% CI {gain['ci'][0]:+.3f} to {gain['ci'][1]:+.3f}, "
-              f"{gain['share_improved']:.0%} of albums improved); "
-              f"{summe_note}. " + ("Deploy." if beats else "Keep the deployed ranker: " + (
+    reason = (f"photo ranker: chosen {chosen[0]} at alpha {chosen[1]:g}: CUFED tau "
+              f"{cands[chosen]['cufed']['tau']:.3f} vs {baseline_name} {table[baseline_name]['cufed']['tau']:.3f}, "
+              f"gain {gain['gain']:+.3f} (95% CI {gain['ci'][0]:+.3f} to {gain['ci'][1]:+.3f}, "
+              f"{gain['share_improved']:.0%} of albums improved); videos keep their ranker (unchanged). "
+              + ("Deploy as the photo ranker." if beats else "Keep what photos use today: " + (
                   "the gain is not clearly above 0." if gain["gain"] > 0 else "no gain on CUFED.")))
     log.info(reason)
 
@@ -295,7 +296,7 @@ def run() -> dict:
     import torch
     ckpt = {"type": kind, "state_dict": final.model.state_dict(), "feat_mean": final.mean.tolist(),
             "feat_std": final.std.tolist(), "blend_alpha": float(chosen[1]), "metrics": metrics,
-            "feature_version": cfg.features.version, "trained_on": src, "phase": 15,
+            "feature_version": cfg.features.version, "trained_on": src, "modality": "photo", "phase": 15,
             "created": metrics["created"], "trained_by": paths.user(), "git_commit": commit}
     buf = io.BytesIO()
     torch.save(ckpt, buf)
@@ -336,9 +337,11 @@ def write_report(metrics: dict, base_pg: dict, chosen_pg: dict, baseline_name: s
              f"| Model | {head} |", "|---" * (1 + 2 * len(sets)) + "|"]
     for name, r in metrics["table"].items():
         lines.append(f"| {name} | " + " | ".join(f"{r[d]['tau']:.3f} | {r[d]['rho']:.3f}" for d in sets) + " |")
-    lines += ["", "`deployed_as_is` is the live checkpoint as it is: out of sample only on data it was not trained on "
-              "(a ranker trained on the videos has never seen CUFED). `deployed_config_cv` re-runs its configuration "
-              "in this CV: the fair reference on the videos, and on CUFED once a CUFED-trained ranker is live.",
+    dep = metrics["deployed"]
+    lines += ["", f"This run only chooses the **photo** ranker; videos keep `importance_ranker.pt` unchanged, so the "
+              "SumMe/TVSum columns are for information. `deployed_as_is` is what scores photos today, as it is "
+              f"({dep.get('file', 'nothing live')}): out of sample on CUFED unless it was trained on CUFED. "
+              "`deployed_config_cv` re-runs its configuration in this CV.",
               "", "Per event type (CUFED tau, chosen vs baseline):", "", "| Event | Albums | Chosen | Baseline |",
               "|---|---|---|---|"]
     for ev, r in sorted(metrics["per_event"].items(), key=lambda kv: -kv[1]["n_albums"]):
@@ -378,7 +381,7 @@ def deploy() -> int:
     if not m["decision"]["deploy"]:
         print("not deploying: " + m["decision"]["reason"], flush=True)
         return 1
-    live = paths.weights_dir() / get_config().importance.ranker_weights
+    live = photo_weights()
     if live.exists():
         paths.atomic_write(live.with_suffix(".prev.pt"), live.read_bytes())
     paths.atomic_write(live, payload)
