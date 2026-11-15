@@ -288,3 +288,10 @@ Format:
 - Next: team review of the PR.
 - Blockers: none.
 - Heads-up: workflow change for everyone: open a PR instead of fast-forwarding `main`.
+
+## 2026-11-15 15:45 ET | Keshav | director: hard "no people" filter | branch director-avoid-people (PR)
+- Done: "no people" briefs now work. Diagnosis on the Summer Trip demo album (183 candidates, 54% with faces): a "make sure it has no people" brief kept 12 of 34 shots with faces (14 with no brief). Claude wrote good avoid queries in earlier sessions ("group of friends", "couple", "person", "child", "selfie"), so the gap was the planner, not the model: the soft z-scored avoid penalty barely separates people shots (CLIP cos 0.153 vs 0.143 for "people"). Now an avoid query naming people (`director.people_filter.words`) hard-excludes candidates with a detected face or CLIP "a photo of people" vs "a photo" > 0.5 (AUC 0.93 against the face detector). Pins and must-include stay; skipped with a note if nothing would be left. Result: 0 shots with people, same 51.5 s length (19 longer shots).
+- Tests: new `test_people_avoid_is_a_hard_filter`; local `pytest -q` 158 passed, 68 skipped.
+- Next: look at the fixed cut's storyboard for people seen from behind (faces and CLIP both miss some). Then the Ollama director (branch `claude/alternative-ai-models-6ab256`, rebase on main).
+- Blockers: none.
+- Heads-up: new config key `director.people_filter` (`words`, `prompts`, `min_prob`; required in `DirectorCfg`). The shared song cache on Drive was written by a branch with a `FullAnalysis.emotion_model` field, and main cannot read it (`TypeError` in `music.profile.load_cached`); every demo song fails on main until that branch merges or main ignores unknown keys.

@@ -138,7 +138,7 @@ def compile_plan(plan: EditPlan, profile: MusicProfile, features, candidate_asse
         drop = people & ~ex_mask & ~pinned & ~np.isin(candidate_assets, must)
         if (~ex_mask & ~drop).any():
             ex_mask |= drop
-            notes.append(f"Left out {int(drop.sum())} shots with people, as the brief asked.")
+            notes.append(f"Left out {int(drop.sum())} photos and video moments showing people, as the brief asked.")
         else:
             notes.append("Every shot shows people, so the no-people request was not applied.")
     return Directives(

@@ -100,6 +100,7 @@ Extension (2 weeks, see ROADMAP.md)
 | Phase | Person | Branch | Started (ET) | Notes |
 |---|---|---|---|---|
 | 17. Story order (default on, timeline term; no coverage term) | Keshav | phase-17-story-order | 2026-11-08 | Track 4 (provisional, owners TBD); PR for review |
+| Director: hard "no people" filter | Keshav | director-avoid-people | 2026-11-15 | PR for review |
 | 12. Song pick (12.1-12.7b: export, Connect Spotify, three modes, YouTube) | Andrew | phase-12-songpick | 2026-11-04 | PR open for review (2026-11-08); Track 1 owner still to confirm |
 
 ## Decisions
@@ -198,3 +199,4 @@ New dev 2 (name TBD)
 - 2026-11-08 | Keshav | Story order adds a timeline unary term (`planner.w_timeline` 4.0): slot j draws from the same fraction of the album by capture-time rank, on top of the pairwise `w_chrono` | the pairwise term alone only priced stepping back in time, so the beam raced ahead to strong late shots and jumped back: on 7 real album x song pairs the cut's Kendall tau against capture time stayed near 0 even at w_chrono 30; with w_timeline 4 it is 0.90 (rules plans) and 0.66-0.72 (Claude plans), mood coupling about 0.39 (0.71-0.77 with no story order, phase 11 full system 0.37)
 - 2026-11-08 | Keshav | The LLM director adds segments only when the brief names a part of the song (intro, build-up, drop/peak, ending, a section) | with no brief or a generic one, Claude invented a per-section storyboard that pulled shots out of story order (Kendall tau 0.45 instead of 0.66 at w_timeline 4)
 - 2026-11-08 | Keshav | No event coverage term (phase 17's second half is dropped) | with story order on, about 70% of an album's parts (split at gaps over 1 hour) get a shot and fewer than one part of 3 or more photos per album is missed; the misses are 1-2 photo moments
+- 2026-11-15 | Keshav | An avoid query that names people is a hard filter (face detected, or CLIP "a photo of people" vs "a photo" > 0.5), not only the soft avoid penalty; other avoid queries stay soft | on the Summer Trip album a "no people" brief still kept 12 of 34 shots with faces, with Claude's avoid queries as well as the rules'; the hard filter gives 0, same 51.5 s length (19 longer shots). The generic "a photo of X" contrast is not trusted for other X yet (it flagged 13 "dog" shots in an album with no dog tags)
