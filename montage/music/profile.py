@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 
 import numpy as np
@@ -54,7 +54,8 @@ def load_cached(h: str) -> FullAnalysis | None:
     arrs = cache.load_npz(npz) if meta else None
     if not meta or arrs is None or meta.get("version") != ANALYSIS_VERSION:
         return None
-    return FullAnalysis(**{k: v for k, v in meta.items() if k != "arrays"}, arrays=arrs)
+    known = {f.name for f in fields(FullAnalysis)} - {"arrays"}  # other branches may add fields to the shared cache
+    return FullAnalysis(**{k: v for k, v in meta.items() if k in known}, arrays=arrs)
 
 
 def save_cached(fa: FullAnalysis) -> None:

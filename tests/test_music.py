@@ -142,6 +142,17 @@ def test_music_cache(fixtures):
     assert fa.beat_source in ("beat_this", "librosa")
 
 
+def test_music_cache_ignores_unknown_fields(fresh_root):
+    """The cache on Drive is shared across branches; a field another branch added must not break loading."""
+    from montage import cache
+    from montage.music.profile import FullAnalysis, _paths, load_cached, save_cached
+    fa = FullAnalysis("h1", 10.0, 120.0, "normal", [0.5], [0.5], [], "heuristic", "librosa", arrays={"grid": np.zeros(3)})
+    save_cached(fa)
+    jp, _ = _paths("h1")
+    cache.write_json(jp, {**cache.read_json(jp), "emotion_model": "x"})
+    assert load_cached("h1").tempo == 120.0
+
+
 @pytest.mark.media
 def test_summary(fixtures):
     from montage.music.excerpt import choose_excerpt
