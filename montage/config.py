@@ -173,8 +173,17 @@ class ExcerptCfg(_B):
     weights: ExcerptWeights
 
 
+class BeatThisCfg(_B):
+    checkpoint: str
+    sha256: dict[str, str]
+    sources: list[str]
+    timeout_s: float
+    retry_s: float
+
+
 class MusicCfg(_B):
     use_beat_this: bool = True
+    beat_this: BeatThisCfg
     min_song_s: float
     max_bpm: float
     min_bpm: float
@@ -201,6 +210,12 @@ class ContactSheetCfg(_B):
     max_cells: int
 
 
+class PeopleFilterCfg(_B):
+    words: list[str]
+    prompts: list[str]
+    min_prob: float
+
+
 class DirectorCfg(_B):
     use_llm: bool
     model: str
@@ -213,6 +228,7 @@ class DirectorCfg(_B):
     weights: DirectorWeights
     mood_targets: dict[str, float]
     energy_bias_scale: float
+    people_filter: PeopleFilterCfg
     contact_sheet: ContactSheetCfg
 
 
@@ -279,12 +295,8 @@ class RenderCfg(_B):
     export: EncodeCfg
     audio_bitrate: str
     max_crop_loss: float
-    pano_aspect: float
     blur_sigma: float
     blur_darken: float
-    kb_base: float
-    kb_gain: float
-    kb_max_pan: float
     fill_blur_oversize: float
     workers: int
     shot_cache: ShotCacheCfg

@@ -100,8 +100,10 @@ Extension (2 weeks, see ROADMAP.md)
 | Phase | Person | Branch | Started (ET) | Notes |
 |---|---|---|---|---|
 | 17. Story order (default on, timeline term; no coverage term) | Keshav | phase-17-story-order | 2026-11-08 | Track 4 (provisional, owners TBD); PR for review |
+| Director: hard "no people" filter | Keshav | director-avoid-people | 2026-11-15 | PR for review |
 | 12. Song pick (12.1-12.7b: export, Connect Spotify, three modes, YouTube) | Andrew | phase-12-songpick | 2026-11-04 | PR open for review (2026-11-08); Track 1 owner still to confirm |
-| 15. Photo-album importance (CUFED; spec 15_cufed.md) | Shiven | phase-15-cufed-eval | 2026-11-10 | Track 2; days 1-3 done on real data (133 albums, 5,657 photos), PR #6; days 4-7 done: photo ranker deployed (CUFED tau 0.305 vs 0.079), PR for days 4-7 open; days 8-10 optional |
+| 13a. Beat This! mirror | Keshav | phase-13-beat-this-mirror | 2026-11-05 | PR #4; checkpoint cached on Drive; HF mirror upload pending (needs an HF write token) |
+| 15. Photo-album importance (CUFED; spec 15_cufed.md) | Shiven | phase-15-cufed-eval | 2026-11-10 | Track 2; days 1-3 merged (PR #6); days 4-7 done: photo ranker deployed (CUFED tau 0.305 vs 0.079), PR #10; days 8-10 optional |
 
 ## Decisions
 
@@ -154,6 +156,7 @@ Extension (2 weeks, see ROADMAP.md)
 - 2026-11-05 | Andrew | YouTube audio fetch is off by default and runs only after a per-session opt-in click; Andrew accepts YouTube's terms and copyright risk for the class demo; yt-dlp has a lower bound, not a pin | YouTube changes break old yt-dlp releases; demo-only use
 - 2026-11-05 | Andrew | Spotify redirect goes through a fixed GitHub Pages page (docs/spotify/callback.html) that sends the browser back only to *.gradio.live or localhost | share links change on every restart, and Spotify needs a fixed redirect URI
 - 2026-11-05 | Andrew | Spotify Development Mode limits accepted: owner on Premium, at most 5 allowlisted users | extended quota needs about 250k monthly users
+- 2026-11-05 | Keshav | Beat This! checkpoint is fetched by our code (not torch hub): Drive copy, then torch hub cache, then `music.beat_this.sources` in order (pinned HF mirror first, authors' host last); every copy must match the sha256 in config; a failed load retries after `retry_s` instead of never | the authors' host was down for the whole demo and a failure used to stick for the life of the app
 
 ## Setup checklist
 
@@ -210,3 +213,6 @@ New dev 2 (name TBD)
 - 2026-11-10 | Shiven | (selection part superseded on 2026-11-15, next lines) CUFED deploy rule: best held-out CUFED tau among (model, alpha) blends whose SumMe tau is within 0.03 of the deployed configuration's (spec 10's margin); deploy only if the per-album tau gain over today's ranker has a 95% bootstrap CI above 0 (`importance.cufed.eval.require_ci`) | 133 albums: an average gain alone can be noise, and the change reaches every app
 - 2026-11-10 | Shiven | The CUFED baseline is the live ranker as is while it has never seen CUFED (today: TVSum-trained), else its configuration re-run in the same CV | a CUFED-trained live ranker scores in sample on the albums, which would make every candidate look worse
 - 2026-11-15 | Shiven | Photos get their own ranker: `weights/importance_ranker_photo.pt` (`importance.photo_ranker_weights`) scores photo candidates when present, videos always use `importance_ranker.pt`, and without a photo ranker photos use the video ranker as before. `evaluate_cufed` chooses the photo ranker on held-out CUFED tau alone and `--deploy` only writes the photo file; the SumMe guard (`clearly_worse`) is removed | first run: CUFED-trained models rank photos about 4x better than the live ranker (tau 0.30 vs 0.08) but drop SumMe to about 0.10, so with one shared ranker the guard excluded them all and picked the live model at alpha 0.25, which dropped TVSum from 0.41 to 0.08 (the guard only checked SumMe). blend.py already ranks photos and videos separately, so separate rankers remove the trade-off and cannot make the videos worse
+- 2026-11-15 | Keshav | An avoid query that names people is a hard filter (face detected, or CLIP "a photo of people" vs "a photo" > 0.5), not only the soft avoid penalty; other avoid queries stay soft | on the Summer Trip album a "no people" brief still kept 12 of 34 shots with faces, with Claude's avoid queries as well as the rules'; the hard filter gives 0, same 51.5 s length (19 longer shots). The generic "a photo of X" contrast is not trusted for other X yet (it flagged 13 "dog" shots in an album with no dog tags)
+- 2026-11-15 | Keshav | No Ken Burns: photos are still frames and panoramas get `fill_blur` instead of the `pan` sweep; config `render.kb_*` and `pano_aspect` removed; old EDLs with `kenburns` still render | product call (Keshav); a still photo also renders faster (one frame computed instead of one per output frame)
+- 2026-11-15 | Keshav | The app loads CLIP in a background thread at start, and every album (not only demo prep) gets its HDR render proxies built in a background thread after ingest | the first generate after an app start spent 10-20 s loading CLIP (RESULTS, render cache); uploaded HDR albums paid tonemapping on every shot of every render

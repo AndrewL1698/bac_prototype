@@ -209,6 +209,13 @@ Format:
 - Next: team review of ROADMAP.md.
 - Blockers: none.
 
+## 2026-11-05 04:35 ET | Keshav | phase 13 (Beat This! mirror) | branch phase-13-beat-this-mirror (pushed, no PR yet)
+- Done: found why Beat This! never ran after 2026-10-27. Its checkpoint host returned HTTP 500 and no copy was ever saved on Drive, so every run used librosa beats. Song analyses cached during the outage also kept librosa beats for good, because the cache was redone when the emotion source changed but not the beat source. The host works again, and the checkpoint is now cached on Drive (`weights/beat_this-final0.ckpt`, sha256 checked).
+- Done (code): `ensure_checkpoint()` takes the Drive copy, then the torch hub cache, then each `music.beat_this.sources` entry in order; every copy must match the sha256 in config. A failed load retries after `retry_s` (it used to fail for the life of the process). Song analyses cached with librosa beats are redone once Beat This! loads. Smoke checks `beat_this` (shows which source was used) and `beat_this_sources` (probes each URL). New `scripts/mirror_beat_this.py --check | --cache | --upload <hf repo>`. `test_app` ignores the app password saved in montage_env.sh and always stops its server.
+- Tests (Colab L4): full `pytest -q` 131 passed, 8 skipped (API key, timing), 3 errors in test_app (the saved app password turned on login; fixed, then test_app 4 passed). Music + mirror tests 26 passed with the cache fix. Smoke: beat_this PASS (99% within 30 ms on click_120), beat_this_sources PASS. Local: 78 passed.
+- Next: publish the Hugging Face mirror (needs an HF account and a write token): `python scripts/mirror_beat_this.py --upload <user>/beat-this-mirror`, then put the printed pinned URL first in `music.beat_this.sources`. Open the PR when Keshav says so.
+- Blockers: HF write token for the mirror upload.
+- Heads-up: new config section `music.beat_this` (checkpoint, sha256, sources, retry_s; required in `MusicCfg`). Songs cached with librosa beats are re-analyzed once, on the first run where Beat This! loads. No schema changes.
 ## 2026-11-05 03:35 ET | Keshav | phase 13 (render cache) | branch phase-13-render-cache
 - Done: per-shot render cache (Track 4, ROADMAP item 7), spec `docs/spec/13_render_cache.md`. New `montage/render/shot_cache.py`. `render_edl` now reuses encoded shots whose key (source hash, in-point, length, framing, Ken Burns, face, size, CRF, render config) is unchanged, encodes a shot used twice only once, and caches the AAC song excerpt (keyed on the hash of the song file actually rendered, not the EDL's song_hash). Files are written atomically and LRU-pruned. Turning `render.shot_cache.enabled` off gives the old behavior.
 - Tests: `tests/test_render_cache.py` passes locally (12 tests, media included). Full `pytest -q` locally: 96 passed, 11 failed; the same 11 fail on a clean copy of main on this laptop (librosa and scenedetect not installed locally, HDR fixture not flagged HDR). Colab A100 (commit 6f2d44f): full `pytest -q` 140 passed, 8 skipped (7 need ANTHROPIC_API_KEY, 1 timing test that runs only with MONTAGE_TIMING=1), 0 failed.
@@ -288,6 +295,19 @@ Format:
 - Next: team review of the PR.
 - Blockers: none.
 - Heads-up: workflow change for everyone: open a PR instead of fast-forwarding `main`.
+
+## 2026-11-15 17:30 ET | Keshav | app speed + no Ken Burns | branch app-speedups
+- Done: (1) the app starts loading CLIP in a background thread at launch (first generate after an app start no longer pays 10-20 s to load it); (2) `_build_state` starts `ensure_proxies` for the album's HDR videos in a background thread (only demo prep did this); (3) Ken Burns removed: the planner sets `kenburns=None` and no longer picks the panorama `pan` framing (wide panoramas get `fill_blur`); a still photo renders one frame and repeats it. Profiling on Summer Trip (A100, 21-shot cut, warm app): render 19-22 s (14 video shots ~14 s, 7 photos ~3 s), director 6 s, plan 0.5 s (11-20 s on the first generate per process). No gain measured from GPU decode, fewer x264 threads, a quarter-size blur, or local copies of Drive sources; 540p previews save 17%.
+- Tests: local `pytest -q` 157 passed, 68 skipped; new still-frame check in `test_kenburns_smooth`.
+- Next: time a warm generate and a first generate after app start on Colab with this branch.
+- Blockers: none.
+- Heads-up: config keys removed: `render.pano_aspect`, `render.kb_base`, `render.kb_gain`, `render.kb_max_pan`. CLAUDE.md section 1 now says photos are still frames. No schema changes (`Shot.kenburns` stays, now always None from the planner).
+## 2026-11-15 15:45 ET | Keshav | director: hard "no people" filter | branch director-avoid-people (PR)
+- Done: "no people" briefs now work. Diagnosis on the Summer Trip demo album (183 candidates, 54% with faces): a "make sure it has no people" brief kept 12 of 34 shots with faces (14 with no brief). Claude wrote good avoid queries in earlier sessions ("group of friends", "couple", "person", "child", "selfie"), so the gap was the planner, not the model: the soft z-scored avoid penalty barely separates people shots (CLIP cos 0.153 vs 0.143 for "people"). Now an avoid query naming people (`director.people_filter.words`) hard-excludes candidates with a detected face or CLIP "a photo of people" vs "a photo" > 0.5 (AUC 0.93 against the face detector). Pins and must-include stay; skipped with a note if nothing would be left. Result: 0 shots with people, same 51.5 s length (19 longer shots).
+- Tests: new `test_people_avoid_is_a_hard_filter`; local `pytest -q` 158 passed, 68 skipped.
+- Next: look at the fixed cut's storyboard for people seen from behind (faces and CLIP both miss some). Then the Ollama director (branch `claude/alternative-ai-models-6ab256`, rebase on main).
+- Blockers: none.
+- Heads-up: new config key `director.people_filter` (`words`, `prompts`, `min_prob`; required in `DirectorCfg`). The shared song cache on Drive was written by a branch with a `FullAnalysis.emotion_model` field, and main cannot read it (`TypeError` in `music.profile.load_cached`); every demo song fails on main until that branch merges or main ignores unknown keys.
 ## 2026-11-10 11:48 ET | Shiven | phase 15 | branch phase-15-cufed (local; to push and open a PR)
 - Done: claimed phase 15 (Track 2, photo-album importance) and did days 1-3 of the ROADMAP schedule.
   - Spec `docs/spec/15_cufed.md` (spec 10's optional 10B section now points to it): dataset facts, three download sources, label mapping, features, the days 4-7 eval and deploy rule, acceptance tests.
@@ -330,3 +350,8 @@ Format:
 - Next: PR review for days 4-7; days 8-10 (personalization) only if time.
 - Blockers: none.
 - Heads-up: a photo ranker is live (`montage_data/weights/importance_ranker_photo.pt`): every app now ranks photos with it once it runs this branch's `importance/blend.py` (main ignores the file until the PR merges). Videos are unchanged. To undo: delete that file.
+## 2026-11-17 ET | Keshav Gollamudi | phase 13 | branch phase-13-beat-this-mirror
+- Done: PR #4 review fixes. A song Beat This! rejects (fewer than 8 beats, or a run-time error) is cached with `beat_this_tried` and no longer re-analyzed on every call; Beat This! checkpoint downloads time out after `music.beat_this.timeout_s` (30 s, was 120 s per source, inside a user request); missing packages (`ImportError`) fail permanently instead of retrying every `retry_s`; `beat_this_sources` in `smoke_models.py` reuses `probe()` from `mirror_beat_this.py`; `fetch_verified` defines its copy/download helpers outside the loops; top-level imports cleaned up in `beats.py` and `demo_mode.py`; unused `LOADED_FROM` removed; merged main (README, PLAN rows from both sides kept).
+- Next: run `tests/test_music.py` on Colab (the two cache tests need librosa), then merge.
+- Blockers: none
+- Heads-up: new config key `music.beat_this.timeout_s`; `FullAnalysis` gains `beat_this_tried` (old caches default to False, so librosa-cached songs are redone once when Beat This! loads, as before). PR #8 edits the same `analyze_song` reuse check: keep both conditions.

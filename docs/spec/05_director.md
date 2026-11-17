@@ -48,6 +48,8 @@ Deterministic, offline. Always available.
   `D(i,j) = w_vibe*z_vibe(i) + w_seg*z_seg[sec(j)](i) - w_avoid*relu(z_avoid(i) - avoid_margin) + [j==0]*w_open*z_open(i) + [j==last]*w_close*z_close(i)`
   Defaults: w_vibe 0.6, w_seg 1.2, w_avoid 1.5, avoid_margin 0.5, w_open 1.5, w_close 1.5.
 
+**People filter**: if any avoid query contains a word from `director.people_filter.words` (people, person, humans, anyone, nobody: people in general, so "no selfies" or "blurry faces" stays soft; "fewer X" from a "less X" note never triggers it), every candidate with a detected face, or that CLIP rates more `"a photo of people"` than `"a photo"` (softmax at CLIP's logit scale > `min_prob` 0.5), is excluded outright. Pinned and must-include candidates stay; if nothing would be left, the filter is skipped with an EDL note. The soft avoid term alone let 12 of 34 shots with faces into a "no people" cut, because a single CLIP query barely separates people shots (cos 0.153 vs 0.143) and the z-score is relative to the album.
+
 **Hard sets**: `exclude` removes every candidate of those assets. `must_include` assets must appear (at least one candidate each) if feasible; infeasible ones produce an EDL note.
 
 **Pins from the UI** (storyboard): pinned candidate ids act like must_include at candidate level; excluded candidate ids are removed.
