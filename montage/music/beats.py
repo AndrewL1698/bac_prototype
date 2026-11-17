@@ -16,7 +16,6 @@ _lock = threading.Lock()
 _beat_this = None
 _failed_at: float | None = None
 CALLS = {"beat_this": 0, "librosa": 0}
-LOADED_FROM: dict[str, str] = {}   # {"checkpoint": path, "source": "cache" | "local:..." | url}
 
 
 def checkpoint_on_drive() -> Path:
@@ -39,7 +38,7 @@ def ensure_checkpoint() -> tuple[Path, str]:
     except Exception:  # noqa: BLE001  torch missing: URLs only
         pass
     return weights.fetch_verified(checkpoint_on_drive(), [s.format(name=name) for s in cfg.sources],
-                                  cfg.sha256[name], local=local)
+                                  cfg.sha256[name], local=local, timeout=cfg.timeout_s)
 
 
 def _get_beat_this():
@@ -60,7 +59,6 @@ def _get_beat_this():
             _failed_at = time.time()
             raise
         _beat_this, _failed_at = model, None
-        LOADED_FROM.update(checkpoint=str(ckpt), source=source)
         log.info("Beat This! loaded from %s (source: %s)", ckpt, source)
         return _beat_this
 

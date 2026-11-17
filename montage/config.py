@@ -155,6 +155,7 @@ class BeatThisCfg(_B):
     checkpoint: str
     sha256: dict[str, str]
     sources: list[str]
+    timeout_s: float
     retry_s: float
 
 

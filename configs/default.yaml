@@ -79,6 +79,7 @@ music:
     # Mirror first (pinned revision, see scripts/mirror_beat_this.py), then the authors' host.
     sources:
       - "https://cloud.cp.jku.at/public.php/dav/files/7ik4RrBKTS273gp/{name}.ckpt"
+    timeout_s: 30                # per-source download timeout (a retry runs inside a user request)
     retry_s: 300                 # after a failed load, use librosa for this long before trying again
   min_song_s: 40
   max_bpm: 160
