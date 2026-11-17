@@ -103,7 +103,7 @@ Extension (2 weeks, see ROADMAP.md)
 | Director: hard "no people" filter | Keshav | director-avoid-people | 2026-11-15 | PR for review |
 | 12. Song pick (12.1-12.7b: export, Connect Spotify, three modes, YouTube) | Andrew | phase-12-songpick | 2026-11-04 | PR open for review (2026-11-08); Track 1 owner still to confirm |
 | 13a. Beat This! mirror | Keshav | phase-13-beat-this-mirror | 2026-11-05 | PR #4; checkpoint cached on Drive; HF mirror upload pending (needs an HF write token) |
-| 15. Photo-album importance (CUFED; spec 15_cufed.md) | Shiven | phase-15-personalize | 2026-11-10 | Track 2; days 1-3 merged (PR #6); days 4-7: photo ranker deployed (CUFED tau 0.305 vs 0.079), PR #10; days 8-10: personalization from Keep/Remove (spec 15 section 6), offline check on Colab next |
+| 15. Photo-album importance (CUFED; spec 15_cufed.md) | Shiven | phase-15-personalize | 2026-11-10 | Track 2; days 1-3 merged (PR #6); days 4-7: photo ranker deployed (CUFED tau 0.305 vs 0.079), PR #10; days 8-10: personalization from Keep/Remove done (beta_max 0.3: +0.023 tau for same-type history, -0.006 for an unrelated user), PR next |
 
 ## Decisions
 

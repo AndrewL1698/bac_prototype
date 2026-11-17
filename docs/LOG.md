@@ -361,3 +361,8 @@ Format:
 - Next: on Colab, the `personalize_eval` job, then set `importance.personalize.beta_max` (or `enabled: false`) from its recommendation; full `pytest -q` incl. the GPU pipeline test; PR after #10 merges.
 - Blockers: none.
 - Heads-up: `pipeline.plan_edit` has a new `personalize=True` argument (eval grids pass False); new config `importance.personalize` (+ `.eval`); new Drive folder `prefs/`. Until this branch merges nothing changes on main.
+
+## 2026-11-17 15:00 ET | Shiven | phase 15 | branch phase-15-personalize
+- Done: `personalize_eval` on Colab at a48ad43: recommended beta_max 0.3 (the default already): +0.023 tau for a user editing albums of the same event type (95% CI +0.017 to +0.031, 76% of albums better), -0.006 for an unrelated user (CI -0.013 to +0.000); 0.5 gains +0.038 but costs -0.023 for an unrelated user. RESULTS.md section "Personalization from Keep/Remove (phase 15)". Full `pytest -q` on Colab: 194 passed, 70 skipped.
+- Next: PR (builds on #10).
+- Blockers: none.
