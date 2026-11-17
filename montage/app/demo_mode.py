@@ -18,6 +18,7 @@ from pathlib import Path
 from montage import jobs, paths
 from montage.config import get_config
 from montage.log import get_logger
+from montage.music.beats import checkpoint_on_drive
 
 log = get_logger("demo")
 
@@ -137,8 +138,6 @@ def prepare() -> dict:
 
 def checklist(report: dict | None = None) -> list[str]:
     import torch
-
-    from montage.music.beats import checkpoint_on_drive
     w = paths.weights_dir()
     cfg = get_config()
     url = paths.jobs_dir() / "app.url"

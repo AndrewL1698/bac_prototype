@@ -320,7 +320,7 @@ Format:
 - Heads-up: `importance.cufed.flickr` is gone from the config (nothing else used it).
 
 ## 2026-11-17 ET | Keshav Gollamudi | phase 13 | branch phase-13-beat-this-mirror
-- Done: PR #4 review fixes. A song Beat This! rejects (fewer than 8 beats, or a run-time error) is cached with `beat_this_tried` and no longer re-analyzed on every call; Beat This! checkpoint downloads time out after `music.beat_this.timeout_s` (30 s, was 120 s per source, inside a user request); unused `LOADED_FROM` removed; merged main (README, PLAN rows from both sides kept).
+- Done: PR #4 review fixes. A song Beat This! rejects (fewer than 8 beats, or a run-time error) is cached with `beat_this_tried` and no longer re-analyzed on every call; Beat This! checkpoint downloads time out after `music.beat_this.timeout_s` (30 s, was 120 s per source, inside a user request); missing packages (`ImportError`) fail permanently instead of retrying every `retry_s`; `beat_this_sources` in `smoke_models.py` reuses `probe()` from `mirror_beat_this.py`; `fetch_verified` defines its copy/download helpers outside the loops; top-level imports cleaned up in `beats.py` and `demo_mode.py`; unused `LOADED_FROM` removed; merged main (README, PLAN rows from both sides kept).
 - Next: run `tests/test_music.py` on Colab (the two cache tests need librosa), then merge.
 - Blockers: none
 - Heads-up: new config key `music.beat_this.timeout_s`; `FullAnalysis` gains `beat_this_tried` (old caches default to False, so librosa-cached songs are redone once when Beat This! loads, as before). PR #8 edits the same `analyze_song` reuse check: keep both conditions.

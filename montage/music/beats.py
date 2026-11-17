@@ -8,6 +8,7 @@ from pathlib import Path
 
 import numpy as np
 
+from montage import paths, weights
 from montage.config import get_config
 from montage.log import get_logger
 
@@ -19,14 +20,12 @@ CALLS = {"beat_this": 0, "librosa": 0}
 
 
 def checkpoint_on_drive() -> Path:
-    from montage import paths
     return paths.weights_dir() / f"beat_this-{get_config().music.beat_this.checkpoint}.ckpt"
 
 
 def ensure_checkpoint() -> tuple[Path, str]:
     """The sha256-verified checkpoint on Drive (weights/), fetched first if missing or corrupt:
     from the torch hub cache, then each configured source (mirror, then the authors' host)."""
-    from montage import weights
     cfg = get_config().music.beat_this
     name = cfg.checkpoint
     if name not in cfg.sha256:
@@ -42,11 +41,13 @@ def ensure_checkpoint() -> tuple[Path, str]:
 
 
 def _get_beat_this():
-    """Loaded once per process from the verified Drive copy (see ensure_checkpoint). After a failure
-    the librosa fallback is used for music.beat_this.retry_s seconds, then loading is tried again,
-    so a long-running app recovers when a source comes back."""
+    """Loaded once per process from the verified Drive copy (see ensure_checkpoint). After a transient
+    failure the librosa fallback is used for music.beat_this.retry_s seconds, then loading is tried again,
+    so a long-running app recovers when a source comes back. Missing packages fail permanently."""
     global _beat_this, _failed_at
     with _lock:
+        if _beat_this is False:
+            raise RuntimeError("Beat This! is not installed in this environment")
         if _beat_this is not None:
             return _beat_this
         retry_s = get_config().music.beat_this.retry_s
@@ -55,6 +56,9 @@ def _get_beat_this():
                                f"(retrying after {retry_s:.0f} s)")
         try:
             model, ckpt, source = _load_model()
+        except ImportError:
+            _beat_this = False
+            raise
         except Exception:
             _failed_at = time.time()
             raise

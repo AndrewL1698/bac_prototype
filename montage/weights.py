@@ -62,25 +62,27 @@ def fetch_verified(target: Path, urls: list[str], sha256: str, local: list[Path]
         if got != sha256:
             raise IOError(f"sha256 mismatch ({got[:12]}...)")
 
+    def copy_from(src: Path, tmp: Path) -> None:
+        shutil.copyfile(src, tmp)
+        check(tmp)
+
+    def download_from(url: str, tmp: Path) -> None:
+        with urllib.request.urlopen(url, timeout=timeout) as r, open(tmp, "wb") as f:
+            while chunk := r.read(1 << 20):
+                f.write(chunk)
+        check(tmp)
+
     for p in local:
         p = Path(p)
         if not p.exists():
             continue
         try:
-            def copy(tmp: Path, p: Path = p) -> None:
-                shutil.copyfile(p, tmp)
-                check(tmp)
-            return paths.atomic_write(target, copy), f"local:{p}"
+            return paths.atomic_write(target, lambda tmp, p=p: copy_from(p, tmp)), f"local:{p}"
         except Exception as e:  # noqa: BLE001
             errors.append(f"{p}: {e}")
     for url in urls:
         try:
-            def fetch(tmp: Path, url: str = url) -> None:
-                with urllib.request.urlopen(url, timeout=timeout) as r, open(tmp, "wb") as f:
-                    while chunk := r.read(1 << 20):
-                        f.write(chunk)
-                check(tmp)
-            return paths.atomic_write(target, fetch), url
+            return paths.atomic_write(target, lambda tmp, u=url: download_from(u, tmp)), url
         except Exception as e:  # noqa: BLE001
             errors.append(f"{url}: {e}")
     raise IOError(f"no valid copy of {target.name}: " + "; ".join(errors or ["no sources"]))

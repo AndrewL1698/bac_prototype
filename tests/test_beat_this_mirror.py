@@ -81,6 +81,13 @@ def test_failed_load_retries_after_window(monkeypatch):
     with pytest.raises(IOError):
         beats._get_beat_this()       # window over: tried again
     assert len(calls) == 2
+    # missing package (ImportError) is permanent and never retried
+    monkeypatch.setattr(beats, "_load_model", lambda: (_ for _ in ()).throw(ImportError("no beat_this")))
+    monkeypatch.setattr(beats, "_failed_at", None)
+    with pytest.raises(ImportError):
+        beats._get_beat_this()
+    with pytest.raises(RuntimeError, match="not installed"):
+        beats._get_beat_this()
     # analyze_beats still answers via librosa while Beat This! is unavailable
     np = pytest.importorskip("numpy")
     pytest.importorskip("librosa")

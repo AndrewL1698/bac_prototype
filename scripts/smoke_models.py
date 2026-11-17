@@ -112,15 +112,13 @@ def beat_this():
 def beat_this_sources():
     """Every configured download source still serves the checkpoint (first 1 KB), so a dead mirror
     or host is noticed before a fresh Drive needs it."""
-    import urllib.request
+    from scripts.mirror_beat_this import probe
     cfg = get_config().music.beat_this
     bad, ok = [], []
     for s in cfg.sources:
         url = s.format(name=cfg.checkpoint)
         try:
-            req = urllib.request.Request(url, headers={"Range": "bytes=0-1023"})
-            with urllib.request.urlopen(req, timeout=30) as r:
-                assert len(r.read(1024)) == 1024
+            probe(url)
             ok.append(url.split("/")[2])
         except Exception as e:  # noqa: BLE001
             bad.append(f"{url.split('/')[2]}: {e}")

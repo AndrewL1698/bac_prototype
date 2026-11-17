@@ -45,6 +45,8 @@ def probe(url: str) -> str:
     req = urllib.request.Request(url, headers={"Range": "bytes=0-1023"})
     with urllib.request.urlopen(req, timeout=30) as r:
         n = len(r.read(1024))
+        if n < 1024:
+            raise IOError(f"short read ({n} bytes)")
         return f"HTTP {r.status}, {n} bytes"
 
 
