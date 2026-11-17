@@ -355,3 +355,9 @@ Format:
 - Next: run `tests/test_music.py` on Colab (the two cache tests need librosa), then merge.
 - Blockers: none
 - Heads-up: new config key `music.beat_this.timeout_s`; `FullAnalysis` gains `beat_this_tried` (old caches default to False, so librosa-cached songs are redone once when Beat This! loads, as before). PR #8 edits the same `analyze_song` reuse check: keep both conditions.
+
+## 2026-11-17 15:30 ET | Shiven | phase 15 | branch phase-15-personalize
+- Done: days 8-10, personalization from Keep/Remove (spec 15 section 6). `montage/importance/personalize.py` records each recut's pins and excludes as per-session embedding sums in `DATA_ROOT/prefs/<user>.json` and nudges importance toward shots like the kept ones and away from shots like the removed ones, within each modality; `pipeline.recut` records, `pipeline.plan_edit` applies (EDL note "personalized from N kept/removed shots"); failures only log a warning. `python -m montage.importance.personalize --show` / `--reset`. Offline check `training/importance/evaluate_personalize.py` (simulated user on CUFED, same event type vs unrelated control, beta_max sweep). Tests: `tests/test_personalize.py`, `tests/test_personalize_eval.py`, plus a GPU pipeline test for recut.
+- Next: on Colab, the `personalize_eval` job, then set `importance.personalize.beta_max` (or `enabled: false`) from its recommendation; full `pytest -q` incl. the GPU pipeline test; PR after #10 merges.
+- Blockers: none.
+- Heads-up: `pipeline.plan_edit` has a new `personalize=True` argument (eval grids pass False); new config `importance.personalize` (+ `.eval`); new Drive folder `prefs/`. Until this branch merges nothing changes on main.
