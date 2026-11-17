@@ -101,6 +101,7 @@ Extension (2 weeks, see ROADMAP.md)
 |---|---|---|---|---|
 | 17. Story order (default on, timeline term; no coverage term) | Keshav | phase-17-story-order | 2026-11-08 | Track 4 (provisional, owners TBD); PR for review |
 | 12. Song pick (12.1-12.7b: export, Connect Spotify, three modes, YouTube) | Andrew | phase-12-songpick | 2026-11-04 | PR open for review (2026-11-08); Track 1 owner still to confirm |
+| 13a. Beat This! mirror | Keshav | phase-13-beat-this-mirror | 2026-11-05 | PR #4; checkpoint cached on Drive; HF mirror upload pending (needs an HF write token) |
 | 15. Photo-album importance (CUFED; spec 15_cufed.md) | Shiven | phase-15-cufed | 2026-11-10 | Track 2; days 1-3 done on real data (133 albums, 5,657 photos); PR #6 review fixes in |
 
 ## Decisions
@@ -154,6 +155,7 @@ Extension (2 weeks, see ROADMAP.md)
 - 2026-11-05 | Andrew | YouTube audio fetch is off by default and runs only after a per-session opt-in click; Andrew accepts YouTube's terms and copyright risk for the class demo; yt-dlp has a lower bound, not a pin | YouTube changes break old yt-dlp releases; demo-only use
 - 2026-11-05 | Andrew | Spotify redirect goes through a fixed GitHub Pages page (docs/spotify/callback.html) that sends the browser back only to *.gradio.live or localhost | share links change on every restart, and Spotify needs a fixed redirect URI
 - 2026-11-05 | Andrew | Spotify Development Mode limits accepted: owner on Premium, at most 5 allowlisted users | extended quota needs about 250k monthly users
+- 2026-11-05 | Keshav | Beat This! checkpoint is fetched by our code (not torch hub): Drive copy, then torch hub cache, then `music.beat_this.sources` in order (pinned HF mirror first, authors' host last); every copy must match the sha256 in config; a failed load retries after `retry_s` instead of never | the authors' host was down for the whole demo and a failure used to stick for the life of the app
 
 ## Setup checklist
 
