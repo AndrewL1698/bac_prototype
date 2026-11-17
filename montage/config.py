@@ -95,6 +95,16 @@ class HeuristicWeights(_B):
     junk: float
 
 
+class CufedCfg(_B):
+    sources: list[Literal["manual", "official", "hf"]]
+    official_url: str | None = None
+    hf_repo: str
+    hf_revision: str
+    min_photos: int
+    score_range: tuple[float, float]
+    max_consecutive_failures: int
+
+
 class ImportanceCfg(_B):
     heuristic: HeuristicWeights
     junk_tags: list[str]
@@ -103,6 +113,7 @@ class ImportanceCfg(_B):
     reject_exposure_clip: float
     blend_alpha: float
     ranker_weights: str
+    cufed: CufedCfg
 
 
 class StructureCfg(_B):
