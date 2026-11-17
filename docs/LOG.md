@@ -318,3 +318,9 @@ Format:
 - Next: on Colab, pull the branch and run the full `pytest -q` (incl. `test_cufed_parity`); `pytest -q tests/test_cufed.py` on Windows; post the counts and the pytest summary in PR #6.
 - Blockers: none.
 - Heads-up: `importance.cufed.flickr` is gone from the config (nothing else used it).
+
+## 2026-11-17 ET | Keshav Gollamudi | phase 13 | branch phase-13-beat-this-mirror
+- Done: PR #4 review fixes. A song Beat This! rejects (fewer than 8 beats, or a run-time error) is cached with `beat_this_tried` and no longer re-analyzed on every call; Beat This! checkpoint downloads time out after `music.beat_this.timeout_s` (30 s, was 120 s per source, inside a user request); unused `LOADED_FROM` removed; merged main (README, PLAN rows from both sides kept).
+- Next: run `tests/test_music.py` on Colab (the two cache tests need librosa), then merge.
+- Blockers: none
+- Heads-up: new config key `music.beat_this.timeout_s`; `FullAnalysis` gains `beat_this_tried` (old caches default to False, so librosa-cached songs are redone once when Beat This! loads, as before). PR #8 edits the same `analyze_song` reuse check: keep both conditions.
