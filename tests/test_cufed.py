@@ -256,8 +256,9 @@ def test_sources_official_and_hf(fresh_root, monkeypatch):
             seen["info"] = (repo, revision)
             return types.SimpleNamespace(sha="abc123def")
 
-    def fake_snapshot(repo_id, repo_type, revision, local_dir):
+    def fake_snapshot(repo_id, repo_type, revision, local_dir, tqdm_class=None):
         seen["snapshot"] = (repo_id, repo_type, revision)
+        seen["tqdm"] = tqdm_class is not None
         d = Path(local_dir)
         d.mkdir(parents=True, exist_ok=True)
         (d / "image_importance.json").write_text(json.dumps({"0_b@N00": [["u", "0_b@N00/7", 0.5]]}))
@@ -268,7 +269,7 @@ def test_sources_official_and_hf(fresh_root, monkeypatch):
                         types.SimpleNamespace(HfApi=FakeApi, snapshot_download=fake_snapshot))
     root, info = cufed.fetch_hf("someone/CUFED-mirror", "main")
     assert seen == {"info": ("someone/CUFED-mirror", "main"),
-                    "snapshot": ("someone/CUFED-mirror", "dataset", "abc123def")}
+                    "snapshot": ("someone/CUFED-mirror", "dataset", "abc123def"), "tqdm": True}
     assert root == cufed.raw_dir() / "hf" and (root / "images/0_b@N00/7.jpg").exists()
     assert {k: info[k] for k in ("repo", "revision", "sha")} == {
         "repo": "someone/CUFED-mirror", "revision": "main", "sha": "abc123def"}

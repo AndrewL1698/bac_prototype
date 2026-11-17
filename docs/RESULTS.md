@@ -35,6 +35,29 @@ Features from the app's own pipeline (CLIP, aesthetic, quality, faces) on 74 vid
 
 Takeaways: the learned ranker beats the heuristic on both datasets, clearly so on TVSum (0.43 vs -0.02 tau), where the heuristic carries almost no signal. Selection followed the spec (best SumMe tau, then the blend weight by the same CV): the TVSum-trained MLP transfers best to SumMe (the dataset closest to personal footage), and blending it 0.75/0.25 with the heuristic gives the best SumMe score. Training on SumMe alone (about 19 videos per fold) is too little data. Correlations are within-video rankings of 3 s windows against averaged annotator scores, not comparable to frame-level numbers in the summarization literature.
 
+## Importance ranker for photos (phase 15)
+Last updated 2026-11-15 by Shiven (git phase-15-cufed-eval@bdb473e). Full report: `montage_data/eval/importance_cufed/report.md` (+ `metrics.json`, `per_album_tau.png`).
+
+The 10A ranker learned from videos, but uploads are about 90% photos. CUFED (Wang et al., CVPR 2016) event albums with per-photo human importance: the 133 albums available (5,657 photos after ingest), run through the app's own feature pipeline. Same RankNet and features as 10A; 5-fold cross-validation by album (videos by video, folds as in 10A); Kendall tau / Spearman rho within each held-out album, averaged. Photos and videos are ranked separately in the app, so photos now get their own ranker (`weights/importance_ranker_photo.pt`) and the video ranker above is unchanged.
+
+| Model (scoring photos) | CUFED Kendall tau | CUFED Spearman rho | SumMe tau | TVSum tau |
+|---|---|---|---|---|
+| Random | 0.003 | 0.004 | -0.002 | 0.002 |
+| Aesthetic only | 0.154 | 0.212 | 0.136 | 0.015 |
+| Heuristic (spec 04) | 0.166 | 0.222 | 0.123 | -0.018 |
+| Video ranker as is (what photos used before) | 0.079 | 0.109 | 0.140 | (seen) |
+| Learned, TVSum only (MLP) | 0.050 | 0.070 | 0.160 | 0.431 |
+| Learned, SumMe + TVSum (linear) | 0.071 | 0.096 | 0.139 | 0.437 |
+| Learned, all three (linear) | 0.283 | 0.376 | 0.105 | 0.404 |
+| Learned, CUFED only (MLP) | 0.304 | 0.403 | 0.105 | 0.008 |
+| **Learned, CUFED only (linear), alpha 1 (deployed photo ranker)** | **0.305** | **0.405** | 0.103 | 0.014 |
+
+Gain over what photos used before: +0.226 tau per album (95% bootstrap CI +0.189 to +0.262), better on 86% of albums.
+
+Takeaways: the video ranker did not transfer to photos; it ranked them worse than the plain heuristic (0.079 vs 0.166). Training on photo albums nearly quadruples photo ranking quality (0.305). The linear model is as good as the MLP, and using it alone beats blending it with the heuristic. The CUFED-trained models are poor on videos (SumMe 0.10, TVSum 0.01), which is why photos get a separate ranker instead of replacing the shared one: one shared ranker would have to trade photos against videos, and the video columns of this table never apply to the photo ranker. Honest limits: 133 albums (the only part of CUFED still downloadable), Flickr event albums rather than personal phone albums, and rankings against averaged rater scores.
+
+CUFED photos are from YFCC100M (Yahoo Webscope, http://webscope.sandbox.yahoo.com; Thomee et al., arXiv:1503.01817); used under its terms (no redistribution, no identifying people).
+
 ## Editor evaluation (phase 11)
 Last updated 2026-10-27 by Keshav (git track-b@909a030). Full report: `montage_data/eval/report.md` (+ `grid.json`, `render_check.json`), figures in `montage_data/eval/figures/`.
 

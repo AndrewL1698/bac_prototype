@@ -16,6 +16,7 @@ event_type.json {album: [event, ...]}, images/<album>/<photo>.jpg. Idempotent; d
 from __future__ import annotations
 
 import argparse
+import inspect
 import json
 import math
 import os
@@ -310,13 +311,27 @@ def fetch_official(url: str | None) -> tuple[Path | None, dict]:
     return find_root(dest), info
 
 
+def _job_tqdm():
+    """A tqdm that also moves the job's progress (5% to 55%) as files arrive, so job_status shows the download."""
+    from tqdm.auto import tqdm
+
+    class JobTqdm(tqdm):
+        def update(self, n=1):
+            out = super().update(n)
+            if self.total:
+                jobs.report(0.05 + 0.5 * self.n / self.total, f"downloading: {self.n}/{self.total} files")
+            return out
+    return JobTqdm
+
+
 def fetch_hf(repo: str, revision: str) -> tuple[Path | None, dict]:
     try:
         from huggingface_hub import HfApi, snapshot_download
         sha = HfApi().dataset_info(repo, revision=revision).sha
         dest = raw_dir() / SOURCE_DIRS["hf"]
         jobs.report(0.05, f"downloading {repo}@{(sha or revision)[:8]}")
-        snapshot_download(repo_id=repo, repo_type="dataset", revision=sha or revision, local_dir=str(dest))
+        kw = {"tqdm_class": _job_tqdm()} if "tqdm_class" in inspect.signature(snapshot_download).parameters else {}
+        snapshot_download(repo_id=repo, repo_type="dataset", revision=sha or revision, local_dir=str(dest), **kw)
     except Exception as e:  # missing repo, gated repo without HF_TOKEN, network: try the next source
         log.warning("hf: could not download %s@%s (%s: %s). If the repo needs a login, accept its terms on "
                     "huggingface.co and set the HF_TOKEN Colab Secret.", repo, revision, type(e).__name__, e)

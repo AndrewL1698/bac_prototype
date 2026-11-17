@@ -57,6 +57,55 @@ def test_blend_with_ranker(fresh_root):
     assert all(0 <= v <= 1 for v in imp.final)
 
 
+def _save_ranker(path, alpha, seed):
+    import torch
+    from montage import paths
+    from montage.importance.ranker import Ranker
+    torch.manual_seed(seed)
+    model = Ranker.build("linear", 776)
+    ck = {"type": "linear", "state_dict": model.state_dict(), "feat_mean": [0.0] * 776, "feat_std": [1.0] * 776,
+          "blend_alpha": alpha}
+    buf = io.BytesIO()
+    torch.save(ck, buf)
+    paths.atomic_write(path, buf.getvalue())
+
+
+def test_photo_ranker_scores_photos_only(fresh_root):
+    """Phase 15: photos use the photo ranker when it exists; videos keep the video ranker, unchanged."""
+    pytest.importorskip("torch")
+    from montage import paths
+    from montage.config import get_config
+    from montage.importance.blend import importance, rank_normalize
+    from montage.importance.ranker import Ranker, ranker_features
+    from test_importance import synth
+    f = synth()
+    w, cfg = paths.weights_dir(), get_config().importance
+    v = f.arrays["is_video"]
+    groups = np.where(v, 1, 0)
+    X = ranker_features(f.arrays)
+
+    _save_ranker(w / cfg.ranker_weights, alpha=0.25, seed=0)
+    before = importance(f)  # no photo ranker: the video ranker scores both, as before phase 15
+    video = Ranker.load()
+    H = np.array(before.heuristic)
+    expect = 0.25 * rank_normalize(video.score(X), groups) + 0.75 * rank_normalize(H, groups)
+    assert np.allclose(before.final, expect)
+
+    _save_ranker(w / cfg.photo_ranker_weights, alpha=1.0, seed=1)
+    after = importance(f)
+    photo = Ranker.load(w / cfg.photo_ranker_weights)
+    assert np.allclose(np.array(after.final)[v], np.array(before.final)[v])  # videos unchanged
+    assert np.allclose(np.array(after.learned)[~v], photo.score(X[~v]), atol=1e-5)
+    assert np.allclose(np.array(after.final)[~v], rank_normalize(photo.score(X[~v]), groups[~v]))
+    assert importance(f, photo_ranker=False).final == before.final
+    assert importance(f, ranker=False).source == "heuristic"
+
+    (w / cfg.ranker_weights).unlink()  # photo ranker only: videos fall back to the heuristic
+    only = importance(f)
+    assert only.source == "blend"
+    assert np.allclose(np.array(only.final)[v], rank_normalize(H, groups)[v])
+
+
 def test_deam_splits_disjoint():
     from training.emotion.dataset import ccc, split_ids
     ids = list(range(2, 1001)) + list(range(2001, 2059))
