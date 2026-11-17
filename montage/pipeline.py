@@ -20,7 +20,7 @@ from pydantic import BaseModel
 
 from montage import cache, config, paths
 from montage.log import get_logger, stage, timings
-from montage.types import EDL, EditPlan, RunResult, UserError
+from montage.types import EDL, Candidate, EditPlan, RunResult, UserError
 
 log = get_logger("pipeline")
 Progress = Callable[[float, str], None] | None
@@ -181,6 +181,21 @@ def _sanitize(plan: EditPlan, st: State) -> EditPlan:
     return plan
 
 
+def expand_excluded(cands: list[Candidate], dup: np.ndarray, excluded: list[str]) -> list[str]:
+    """An excluded shot names one candidate; also drop every candidate that would show the same footage:
+    windows of the same video that overlap it (they never share a dup cluster) and near-duplicates (bursts)."""
+    ex = [(i, c) for i, c in enumerate(cands) if c.id in set(excluded)]
+
+    def shows_excluded(i: int, c: Candidate) -> bool:
+        for j, e in ex:
+            if dup[i] == dup[j] or (c.asset_id == e.asset_id and (
+                    c.kind == "photo" or (c.src_start < e.src_end and e.src_start < (c.src_max_end or c.src_end)))):
+                return True
+        return False
+
+    return [c.id for i, c in enumerate(cands) if shows_excluded(i, c)]
+
+
 def plan_edit(s: Session, plan: EditPlan, seed: int = 0, system: str = "full", run_id: str | None = None,
               preview: bool = True, persist: bool = True) -> EDL:
     """persist=False skips writing the run folder (evaluation grids plan many EDLs that are never rendered)."""
@@ -196,7 +211,8 @@ def plan_edit(s: Session, plan: EditPlan, seed: int = 0, system: str = "full", r
         prof = _profile(st, plan)
         imp = st.importance if system != "no_learned" else importance(st.features, ranker=False)
         d = compile_plan(plan, prof, st.features, [c.asset_id for c in st.media.candidates],
-                         pins=s.pins, excluded=s.excluded)
+                         pins=s.pins,
+                         excluded=expand_excluded(st.media.candidates, st.features.arrays["dup_cluster"], s.excluded))
         inp = PlanInputs(st.media.assets, st.media.candidates, st.features, np.asarray(imp.final),
                          np.asarray(imp.heuristic), prof, d)
         with config.override(SYSTEM_OVERRIDES.get(system, {})):

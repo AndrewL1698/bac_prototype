@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-08T00:00:00Z",
+  "title": "Design System: Montage",
+  "extensions": {
+    "colorMeta": {
+      "signal-red": { "role": "primary", "displayName": "Signal Red", "canonical": "#d22f22", "tonalRamp": ["#2a0b08", "#4a120d", "#701a13", "#9e2419", "#d22f22", "#e5402f", "#f2a59c", "#fbe3e0"] },
+      "signal-red-hover": { "role": "primary", "displayName": "Signal Red Lift", "canonical": "#e5402f" },
+      "signal-red-wash": { "role": "primary", "displayName": "Red Wash", "canonical": "rgba(210, 47, 34, 0.16)" },
+      "red-ink": { "role": "primary", "displayName": "Red Ink", "canonical": "#ffffff" },
+      "table-black": { "role": "neutral", "displayName": "Table Black", "canonical": "#121212", "tonalRamp": ["#0a0a0a", "#121212", "#1a1a1a", "#232323", "#2b2b2b", "#3c3c3c", "#9ba1a9", "#fafafa"] },
+      "panel": { "role": "neutral", "displayName": "Panel", "canonical": "#1a1a1a" },
+      "monitor-well": { "role": "neutral", "displayName": "Monitor Well", "canonical": "#0a0a0a" },
+      "input": { "role": "neutral", "displayName": "Input", "canonical": "#232323" },
+      "hairline": { "role": "neutral", "displayName": "Hairline", "canonical": "#2b2b2b" },
+      "hairline-strong": { "role": "neutral", "displayName": "Hairline Strong", "canonical": "#3c3c3c" },
+      "text": { "role": "neutral", "displayName": "Text", "canonical": "#f2f2f2" },
+      "muted-text": { "role": "neutral", "displayName": "Muted Text", "canonical": "#9ba1a9" },
+      "placeholder-text": { "role": "neutral", "displayName": "Placeholder Text", "canonical": "#8f959e" },
+      "print-white": { "role": "neutral", "displayName": "Print White", "canonical": "#fafafa" },
+      "print-ink": { "role": "neutral", "displayName": "Print Ink", "canonical": "#121212" }
+    },
+    "typographyMeta": {
+      "headline": { "displayName": "Headline", "purpose": "The wordmark only." },
+      "readout-figure": { "displayName": "Readout Figure", "purpose": "Tempo, shot count, length under the monitor; 22px under 480px." },
+      "readout-word": { "displayName": "Readout Word", "purpose": "A readout value that is a word (director in use)." },
+      "title": { "displayName": "Title", "purpose": "Panel titles, with an optional muted 400-weight hint." },
+      "body": { "displayName": "Body", "purpose": "Editor's note and general copy." },
+      "body-small": { "displayName": "Body Small", "purpose": "Tagline, shot reasoning, Changes list, empty states." },
+      "readout-label": { "displayName": "Readout Label", "purpose": "Small muted word beside each readout figure." },
+      "print-caption": { "displayName": "Print Caption", "purpose": "Timecode and id on a print's bottom margin, plus ' · kept' / ' · out'." },
+      "dock-label": { "displayName": "Dock Label", "purpose": "Uppercase column labels inside the Revise dock only." }
+    },
+    "shadows": [
+      { "name": "none", "value": "none", "purpose": "Flat system: block and input shadows are off; depth is tonal." },
+      { "name": "selected-ring", "value": "0 0 0 2px #d22f22", "purpose": "Selected print: a 2px red ring with a 4px lift. A state, not elevation." }
+    ],
+    "motion": [
+      { "name": "settle", "value": "0.45s cubic-bezier(.16, 1, .3, 1); from opacity .25, translateY(3px)", "purpose": "The one authored motion: readout values settle in when a cut lands. Off under reduced motion." },
+      { "name": "chevron-turn", "value": "rotate 0.2s cubic-bezier(.2, .8, .2, 1)", "purpose": "Accordion chevron rotates -45deg to 45deg. Off under reduced motion." }
+    ],
+    "breakpoints": [
+      { "name": "compact", "value": "480px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one filled action on screen: Generate before a cut, Recut after, carrying the pending count.",
+      "html": "<button class=\"ds-btn-primary\">Recut · 2 changes</button>",
+      "css": ".ds-btn-primary { background: #d22f22; color: #ffffff; border: 1px solid #d22f22; border-radius: 4px; padding: 10px 24px; font: 600 15px Archivo, system-ui, sans-serif; cursor: pointer; } .ds-btn-primary:hover { background: #e5402f; border-color: #e5402f; } .ds-btn-primary:focus-visible { outline: 2px solid #d22f22; outline-offset: 2px; } .ds-btn-primary:disabled { background: #232323; color: #8f959e; border-color: #2b2b2b; cursor: not-allowed; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Export, Keep/Remove, Put back removed shots; Generate once a cut exists.",
+      "html": "<button class=\"ds-btn-secondary\">Export 1080p</button>",
+      "css": ".ds-btn-secondary { background: #232323; color: #f2f2f2; border: 1px solid #3c3c3c; border-radius: 4px; padding: 10px 24px; font: 600 15px Archivo, system-ui, sans-serif; cursor: pointer; } .ds-btn-secondary:hover { background: #2b2b2b; } .ds-btn-secondary:focus-visible { outline: 2px solid #d22f22; outline-offset: 2px; } .ds-btn-secondary:disabled { color: #8f959e; border-color: #2b2b2b; cursor: not-allowed; }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Director's brief and the note for the editor.",
+      "html": "<textarea class=\"ds-input\" rows=\"3\" placeholder=\"Warm, nostalgic summer recap...\"></textarea>",
+      "css": ".ds-input { width: 280px; background: #232323; color: #f2f2f2; border: 1px solid #3c3c3c; border-radius: 4px; padding: 8px 10px; font: 400 14px/1.5 Archivo, system-ui, sans-serif; caret-color: #d22f22; box-shadow: none; } .ds-input::placeholder { color: #8f959e; } .ds-input:focus { outline: none; border-color: #d22f22; } .ds-input:focus-visible { outline: 2px solid #d22f22; outline-offset: 2px; }"
+    },
+    {
+      "name": "Source Toggle",
+      "kind": "chip",
+      "description": "Radio pill choosing uploaded vs demo media or song.",
+      "html": "<div class=\"ds-toggle\"><label class=\"ds-pill\"><input type=\"radio\" name=\"src\"> Upload media</label><label class=\"ds-pill\"><input type=\"radio\" name=\"src\" checked> Demo album</label></div>",
+      "css": ".ds-toggle { display: flex; gap: 8px; } .ds-pill { display: inline-flex; align-items: center; gap: 8px; background: #232323; color: #f2f2f2; border: 1px solid #3c3c3c; border-radius: 4px; padding: 8px 12px; font: 400 14px Archivo, system-ui, sans-serif; cursor: pointer; } .ds-pill input { accent-color: #d22f22; margin: 0; } .ds-pill:has(input:checked) { background: rgba(210, 47, 34, 0.16); border-color: #d22f22; } .ds-pill:has(input:focus-visible) { outline: 2px solid #d22f22; outline-offset: 2px; }"
+    },
+    {
+      "name": "Workspace Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "One frame per panel; title over a hairline; blocks inside sit flat.",
+      "html": "<section class=\"ds-panel\"><p class=\"ds-panel-title\">Revise<span>pick a shot, keep or remove it, add a note, then recut</span></p><p class=\"ds-panel-body\">Your editor's note about each cut shows up here.</p></section>",
+      "css": ".ds-panel { width: 360px; background: #1a1a1a; border: 1px solid #2b2b2b; border-radius: 6px; padding: 10px; display: flex; flex-direction: column; gap: 8px; font-family: Archivo, system-ui, sans-serif; } .ds-panel-title { margin: 0; padding-bottom: 10px; border-bottom: 1px solid #2b2b2b; font-size: 13px; font-weight: 600; color: #f2f2f2; } .ds-panel-title span { font-weight: 400; color: #9ba1a9; margin-left: 10px; } .ds-panel-body { margin: 0; font-size: 14px; line-height: 1.5; color: #f2f2f2; }"
+    },
+    {
+      "name": "Readout Strip",
+      "kind": "custom",
+      "refersTo": "readout",
+      "description": "Scale-contrast figures under the monitor; tempo is the one lit figure; values settle in when a cut lands.",
+      "html": "<div class=\"ds-readout\"><span><em>Tempo</em><b class=\"lit\">120 BPM</b></span><span><em>Shots</em><b>8</b></span><span><em>Length</em><b>0:16</b></span><span><em>Director</em><b class=\"word\">Built-in</b></span></div>",
+      "css": ".ds-readout { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 32px; padding: 11px 16px; border: 1px solid #2b2b2b; border-radius: 0 0 6px 6px; background: #1a1a1a; font-family: Archivo, system-ui, sans-serif; } .ds-readout span { display: inline-flex; align-items: baseline; gap: 9px; white-space: nowrap; } .ds-readout em { font-style: normal; font-size: 12px; color: #9ba1a9; } .ds-readout b { font-variant-numeric: tabular-nums; font-weight: 800; font-size: 28px; letter-spacing: -.02em; color: #f2f2f2; animation: ds-settle .45s cubic-bezier(.16, 1, .3, 1) both; } .ds-readout b.lit { color: #d22f22; } .ds-readout b.word { font-size: 16px; font-weight: 600; letter-spacing: 0; } @keyframes ds-settle { from { opacity: .25; transform: translateY(3px); } } @media (prefers-reduced-motion: reduce) { .ds-readout b { animation: none; } }"
+    },
+    {
+      "name": "Instant Print Row",
+      "kind": "custom",
+      "refersTo": "print",
+      "description": "Timeline of white prints; bottom margin holds a fixed state cell (hollow open, red kept, struck removed) and the timecode.",
+      "html": "<div class=\"ds-strip\"><button class=\"ds-print\"><span class=\"ds-img\"></span><span class=\"ds-cap\">0:00 a000</span></button><button class=\"ds-print out\"><span class=\"ds-img\"></span><span class=\"ds-cap\">0:04 a002 · out</span></button><button class=\"ds-print kept selected\"><span class=\"ds-img\"></span><span class=\"ds-cap\">0:08 a004 · kept</span></button></div>",
+      "css": ".ds-strip { display: flex; gap: 10px; padding: 8px 4px; background: #1a1a1a; } .ds-print { position: relative; width: 168px; aspect-ratio: 16 / 9; background: #fafafa; padding: 5px 5px 24px; border: 0; border-radius: 2px; cursor: pointer; transition: translate .2s; } .ds-img { display: block; width: 100%; height: 100%; background: #5a6470; } .ds-cap { position: absolute; left: 6px; right: 6px; bottom: 4px; display: flex; align-items: center; gap: 6px; color: #121212; font: 600 11px Archivo, system-ui, sans-serif; font-variant-numeric: tabular-nums; } .ds-cap::before { content: \"\"; flex: 0 0 9px; height: 9px; border: 1.5px solid #121212; } .ds-print.kept .ds-cap::before { background: #d22f22; border-color: #d22f22; } .ds-print.out .ds-cap::before { background: linear-gradient(45deg, transparent 42%, #121212 42% 58%, transparent 58%); } .ds-print.out .ds-img { opacity: .6; filter: grayscale(1); } .ds-print.selected { box-shadow: 0 0 0 2px #d22f22; translate: 0 -4px; } .ds-print:focus-visible { outline: 2px solid #d22f22; outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Print Table",
+    "overview": "Your shots are prints laid out on a dark table: pick one up, keep it or put it aside, and the music decides the order. The table is a neutral black with no warm tint; panels sit one step up on it, divided by 1px neutral hairlines. The footage itself arrives as crisp white instant prints, and the only colour the interface adds is one signal red, spent on action, selection and kept marks.\n\nThe world refuses both category defaults: the dark graphite pro editor and the pastel soft-card consumer app. It is dark in every OS colour scheme. Hierarchy comes from scale contrast (large figures, small quiet labels) and from state shown as a mark in a fixed cell, not from fills, glows or badges. Archivo carries everything, with tabular figures wherever a number can change.\n\nDensity is a workspace, not a landing page: three panels and a revise dock fit a 1440x900 viewport, and each panel draws exactly one frame so inputs inside it sit flat.",
+    "keyCharacteristics": [
+      "Neutral black table, panels one step up, 1px hairlines; no warm tint.",
+      "White instant prints whose wide bottom margin carries timecode and a state cell.",
+      "One signal red for action, selection and kept; white text on red.",
+      "Archivo only; tabular figures for every number.",
+      "Small radii on panels, near-square print corners, no shadows, no glow, no gradients, no tilt.",
+      "One authored motion: readout values settle in when a cut lands."
+    ],
+    "rules": [
+      { "name": "The One Signal Rule", "body": "Red is reserved for action, selection, kept marks and errors. Nothing decorative is red. A screen with nothing selected and nothing to do carries one red element at most.", "section": "colors" },
+      { "name": "The One Lit Figure Rule", "body": "Exactly one readout value is lit red: tempo, because the music owns timing. Every other figure stays in text colour. Do not light a second figure.", "section": "colors" },
+      { "name": "The Neutral Table Rule", "body": "Greys stay neutral (no warm or cool tint in surfaces). Colour on the table comes from the footage and the one red, never from the chrome.", "section": "colors" },
+      { "name": "The Scale Contrast Rule", "body": "In the readout, figures are large and heavy, labels small and muted, on one baseline. Hierarchy is the size gap, not colour or boxes.", "section": "typography" },
+      { "name": "The Tabular Rule", "body": "Every number that can change (timecode, BPM, counts, length) uses tabular figures.", "section": "typography" },
+      { "name": "The Tonal Step Rule", "body": "Separate surfaces with a one-step grey change and a 1px hairline, never with a shadow or glow.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep every surface on the neutral grey ladder (table-black, panel, input) and separate steps with 1px hairlines.",
+      "Do show footage as white prints with the timecode and state cell on the bottom margin.",
+      "Do show state as a mark in a fixed cell (hollow open, red kept, struck removed), written by the app as a caption suffix.",
+      "Do keep exactly one filled red button visible; move primary to the next decision (Generate, then Recut).",
+      "Do use tabular figures for every changing number and scale contrast for hierarchy in the readout.",
+      "Do keep the app dark regardless of the visitor's OS colour scheme."
+    ],
+    "donts": [
+      "Don't use red for decoration, or light a second readout figure.",
+      "Don't add shadows, glows or gradients; the struck state cell is the only drawn diagonal.",
+      "Don't tilt prints, add handwriting, or warm-tint the greys.",
+      "Don't introduce a second typeface or a monospace face for numbers.",
+      "Don't draw a second frame inside a panel; blocks in a panel sit flat.",
+      "Don't add transitions or overlays that imply effects between shots; the only motion is the readout settle and the chevron turn."
+    ]
+  }
+}

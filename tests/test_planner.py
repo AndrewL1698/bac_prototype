@@ -175,6 +175,16 @@ def test_pins():
     assert "a005" in [s.candidate_id for s in plan_edit(inp, "r", seed=0).shots]
 
 
+def test_story_order_runs_through_the_album():
+    """A chronological cut walks through the album once, in capture order (no racing ahead, then jumping back)."""
+    inp = make_inputs(n_photo=40, n_video=0, p=plan(chronological=True))
+    for k, a in enumerate(inp.assets):
+        a.taken_at = datetime(2026, 7, 1) + timedelta(hours=k)
+    order = [int(s.asset_id[1:]) for s in plan_edit(inp, "r", seed=0).shots]
+    assert spearmanr(range(len(order)), order).statistic > 0.9, order
+    assert order[0] < 10 and order[-1] >= 30, order
+
+
 def test_beam_determinism():
     inp = make_inputs()
     a = plan_edit(inp, "r", seed=1)
@@ -273,3 +283,18 @@ def test_beam_speed():
         dt = time.time() - t0
     assert dt < 2.0, dt
     assert len(pool) == 120
+
+
+def test_expand_excluded_covers_same_footage():
+    from montage.pipeline import expand_excluded
+
+    def w(i, s, e, mx):
+        return Candidate(id=f"a001_w{i}", asset_id="a001", kind="video", src_start=s, src_end=e, src_max_end=mx,
+                         thumb_path="t.jpg")
+    photo = lambda a: Candidate(id=a, asset_id=a, kind="photo", thumb_path="t.jpg")  # noqa: E731
+    cands = [w(0, 0, 3, 3), w(1, 1.5, 4.5, 9), w(2, 6, 9, 9), photo("a002"), photo("a003")]
+    dup = np.array([0, 1, 2, 3, 3])  # a003 is a burst twin of a002; video windows never share a cluster
+    assert expand_excluded(cands, dup, ["a001_w0"]) == ["a001_w0", "a001_w1"]  # overlapping window goes too
+    assert expand_excluded(cands, dup, ["a001_w2"]) == ["a001_w1", "a001_w2"]  # w1 can extend into w2's footage
+    assert expand_excluded(cands, dup, ["a002"]) == ["a002", "a003"]
+    assert expand_excluded(cands, dup, []) == []

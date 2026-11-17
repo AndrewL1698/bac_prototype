@@ -20,7 +20,7 @@ Privacy default: only text (brief, song summary, tag inventory, EDL summary) goe
 Deterministic, offline. Always available.
 - `vibe` = brief (trimmed to 200 chars); `vibe_queries` = [brief] if brief else []; plus any tag-vocabulary words found in the brief as extra queries.
 - Pacing keywords: slower (`slow, chill, calm, gentle, relaxed, mellow, cinematic`) -> -0.5; faster (`fast, hype, energetic, quick, intense, upbeat, punchy`) -> +0.5.
-- Chronology: `chronological, in order, timeline, as it happened` -> true.
+- Chronology: true by default (story order, phase 17); `shuffle(d), mix it up, random order, any order, out of order, not in order, not chronological, non-chronological` -> false.
 - Avoid: phrases after `skip|avoid|no|without|don't use` up to punctuation -> `avoid_queries`; `blurry` maps to "blurry photo".
 - Opening/closing: "open on X", "start with X" -> opening_query X; "end on X", "finish with X" -> closing_query X.
 - Length: "N seconds" / "Ns" -> target_length_s clamped to [45, 60].
@@ -52,7 +52,8 @@ Deterministic, offline. Always available.
 
 **Pins from the UI** (storyboard): pinned candidate ids act like must_include at candidate level; excluded candidate ids are removed.
 
-**Chronology**: `plan.chronological` enables the chronology pairwise term.
+**Chronology**: `plan.chronological` enables the chronology terms (story order: the timeline unary term and the pairwise term, spec 06). It is true unless the brief asks for another order (rules above; the LLM prompt says the same), so a one-click montage with no brief follows capture time.
+The LLM adds segments only when the brief names a part of the song (intro, build-up, drop/peak, ending, a section). With no or a generic brief it used to invent per-section content, which pulled shots out of story order.
 
 **Length/excerpt**: `target_length_s` (0 -> config default) and `excerpt_hint`/`excerpt_start_s` pass to excerpt selection (spec 02).
 
@@ -112,6 +113,7 @@ After planning, one plain-text call (no structured output, `max_tokens` 200): gi
 ## Acceptance tests
 
 - `test_rules_parse`: "chill, chronological, skip anything blurry, end on the sunset, 45 seconds" gives pacing -0.5, chronological true, avoid ["blurry photo"], closing_query "the sunset", target 45.
+- `test_rules_story_order_default`: an empty or generic brief gives chronological true; "mix it up, random order", "not in order" and "shuffled, not chronological" give false.
 - `test_anchor_mapping`: on a profile with 4 sections and the peak in section 2: intro->0, build->1, peak->2, outro->3.
 - `test_target_arousal`: calm segment gives 0.15 (+0.25 with energy_bias 1 -> 0.4).
 - `test_director_scores_shape`: D has shape (N candidates, K slots) and exclude removes all windows of the asset.

@@ -241,6 +241,12 @@ Format:
 - Blockers: Track 1 ownership not agreed yet. YouTube may block downloads from Colab IPs ("confirm you're not a bot"); upload is the fallback.
 - Heads-up (branch only): schemas `ListeningEvent` (+source, duration_ms), new `TopTrack`, `TrackCandidate` (+duration_ms, sources), `SongPick` (+sources). New config `songpick.w_sources`, `songpick.spotify.*`, `songpick.youtube.*`. New requirements `yt-dlp[default]>=2025.10.22`, `requests>=2.31`. New pytest marker `network`. The bootstrap passes the optional Colab Secret `SPOTIFY_CLIENT_ID`.
 
+## 2026-11-08 02:47 ET | Keshav | app UI redesign + exclude fix | branch claude/montage-ui-design-critique-1fa16d (PR #2)
+- Done: design critique of the Gradio app, then three commits. (1) Layout: preview is output-only, Generate under the brief, Upload/Demo toggles so a demo album can't silently override uploads, Recut/Export disabled until a cut exists. (2) Restyle: new `montage/app/theme.py` (warm graphite + soft apricot, dark in every OS mode, Geist / Geist Mono); editor workspace with Media / program monitor / Director panels, a timeline strip with mono timecodes and pinned/out marks, a readout strip (tempo, shots, length, director), a shot inspector that keeps the "why" after pinning, and Under the hood / Compare / Rate moved into a collapsed Lab drawer. Progress shows on the monitor only. `PRODUCT.md`, `DESIGN.md` and `.impeccable/` record the design. (3) Fix: excluding a shot now also drops overlapping windows of the same video and near-duplicate photos (`pipeline.expand_excluded`), so excluded footage no longer comes back on Recut.
+- Tests: local `pytest -q -m "not gpu and not media and not api"`: 82 passed, 1 skipped (incl. new `test_expand_excluded_covers_same_footage`). App run on Colab A100 from the branch code on the "Summer Trip (picked)" demo album. Full GPU/media suite (`tests/test_app.py` etc.) not yet run on these commits.
+- Next: teammate review of PR #2; full `pytest -q` on Colab before merging.
+- Blockers: none.
+- Heads-up: `/generate` and `/recut` keep their first 11 outputs (new outputs appended). `montage/app/gradio_app.py` is largely rewritten: Andrew's `phase-12-songpick` branch adds a panel there, so expect a merge conflict; the song-pick panel would fit in the Media panel. No schema or config changes.
 ## 2026-11-07 ET | Andrew | planning (2-week re-scope) | branch main
 - Done: re-scoped the extension to 4 people x 2 weeks and reframed the product as an **automatic montage maker** (one click; brief and notes optional; no timeline editor; a simple "My montages" gallery). ROADMAP.md rewritten; PLAN.md goal, tracks, phases, cut order and decisions updated; CLAUDE.md §1 and README intro updated.
   - Song pick has three modes: Connect Spotify (songs played in the past year, released near the photos' median date), best vibe fit, full export upload.
@@ -248,6 +254,14 @@ Format:
 - Next: agree track owners; update `docs/spec/12_songpick.md` on `phase-12-songpick` for the release-date and best-vibe modes; Track 3 checks contrastive dataset access by day 3.
 - Blockers: track owners not agreed.
 - Heads-up: scope change. Phases 14 (temporal emotion), 16 (people-aware), 19 (learned preferences), 20 (9:16/variable length), 21 (FastAPI + timeline editor) are dropped. New phases 22 (contrastive model) and 23 (gallery). No code, schema or config changes.
+
+## 2026-11-08 01:45 ET | Keshav | phase 17 (story order) | branch phase-17-story-order (PR)
+- Done: story order is the default. Rules director: chronological unless the brief asks for another order (shuffle, mix it up, random order, ...). Claude prompt says the same, and adds segments only when the brief names a part of the song. New planner term `planner.w_timeline` 4.0 (slot j draws from the same fraction of the album by capture-time rank): the old pairwise term alone left cuts out of order. Event coverage term dropped (not needed, see PLAN Decisions). Specs 05 and 06, PLAN, README, RESULTS updated.
+- Tests: local 82 passed, 1 skipped (no GPU/media/API marks). Colab A100 full `pytest -q` with the API key: 148 passed, 1 skipped (timing opt-in), 1 failed: `test_9a.py::test_note_faster_adds_shots` (18 -> 18 shots after "faster"). It fails the same way on main; it was skipped in earlier runs that had no API key. Not fixed here.
+- Results: story order (Kendall tau vs capture time) -0.07 on main today -> 0.66-0.72 (Claude plans) / 0.90 (rules plans); mood coupling 0.49 -> about 0.39. Recut timing on the real demo album (phase 13 follow-up): cold render 22.7 s, recut with one shot excluded 11.2 s (21 of 47 shots reused). Both in RESULTS.md.
+- Next: teammate review of the PR. Fix or rewrite test_note_faster_adds_shots (pre-existing). Open the PR for `phase-13-beat-this-mirror` (pushed 2026-11-05, no PR): main still uses librosa beats for songs cached during the Beat This! outage (the demo album run reported `beats:librosa`), and that branch fixes it.
+- Blockers: none.
+- Heads-up: new config key `planner.w_timeline` (required in `PlannerCfg`). Default plans are now chronological; the unpushed branch `claude/alternative-ai-models-6ab256` has a `director_compare` check ("defaults" case) expecting not chronological: flip it before merging. No schema changes.
 
 ## 2026-11-08 18:20 ET | Andrew | phase 12 | branch phase-12-songpick (PR)
 - Done: fixes from the first Colab test, and the three song-pick modes from the Nov 7 roadmap.
@@ -269,3 +283,38 @@ Format:
 - Next: full `pytest -q` on Colab; merge. If #3 or #4 lands first, rebase and keep every PLAN.md row and decision from both sides.
 - Blockers: none.
 - Heads-up: the YouTube audio cache is never an allowed Gradio path (CLAUDE.md §11).
+
+## 2026-11-10 01:49 ET | Keshav | app UI: Print Table look + Revise panel | branch claude/montage-ui-design-critique-1fa16d (PR #2)
+- Done: (1) Revise loop in one panel, in task order: print strip, Selected shot (with why), Note for the editor, Changes with Recut first. Pin/Exclude became Keep/Stop keeping and Remove/Put back; pending changes listed live with "Recut · N changes"; the note clears after a recut; "Put back removed shots" undoes removals after a recut. (2) Print Table look, picked in an Impeccable direction round: neutral black, white text, one signal red; Archivo with tabular figures; timeline shots are white instant prints with a state cell in the bottom margin. Themed error/empty states; Gradio footer hidden. (3) Merged main (phase 12) into the PR: the "Pick a song for me (Spotify)" accordion now sits in the Media panel; "Use this song" switches the song source to Upload so the picked song shows. (4) Planner error now ends "Put back at least one shot, then recut."
+- Tests: Colab A100 full `pytest -q` on the merged commit ee03dd5: 215 passed, 8 skipped (7 need ANTHROPIC_API_KEY, 1 timing test needs MONTAGE_TIMING=1), 0 failed. Local non-GPU suite: 154 passed, 2 skipped. Playwright replay of the Revise loop on a stub pipeline passes at 1440x900 and 390 wide.
+- Next: teammate review of PR #2.
+- Blockers: none.
+- Heads-up: montage/app/gradio_app.py layout changed again (Revise panel, Spotify accordion moved into the Media panel); /generate and /recut keep their first 11 outputs (new outputs appended). The app's look lives in montage/app/theme.py; DESIGN.md and .impeccable/design.json describe it. No schema or config changes.
+## 2026-11-11 ET | Andy | CLAUDE.md rules | branch docs-claude-md-rules (PR)
+- Done: two new team rules in CLAUDE.md. (1) Coding: readable first, then as concise as possible, in one consistent style (section 8). (2) Never push to `main`: every change reaches `main` through a pull request (new golden rule 9; "Finishing a phase" now ends with opening a PR; later golden rules renumbered, no-AI-attribution is now 12).
+- Next: team review of the PR.
+- Blockers: none.
+- Heads-up: workflow change for everyone: open a PR instead of fast-forwarding `main`.
+## 2026-11-10 11:48 ET | Shiven | phase 15 | branch phase-15-cufed (local; to push and open a PR)
+- Done: claimed phase 15 (Track 2, photo-album importance) and did days 1-3 of the ROADMAP schedule.
+  - Spec `docs/spec/15_cufed.md` (spec 10's optional 10B section now points to it): dataset facts, three download sources, label mapping, features, the days 4-7 eval and deploy rule, acceptance tests.
+  - `training/importance/cufed.py`: finds or downloads CUFED / ML-CUFED (manual copy under `datasets/importance/cufed/raw/` -> the authors' archive via `importance.cufed.official_url` -> the Hugging Face mirror), safe zip/tar extraction, layout check, opt-in Flickr fill for missing photos, and the label mapping `cufed/mapping.json` (one group per album; y = min-max within the album's photos on disk; drops with reasons).
+  - `training/importance/cufed_features.py`: every album through `build_media` + `extract` unchanged, one album per call; per-album npz files (resumable) and `datasets/importance/cufed_photos.npz` (X, y, heuristic, aesthetic, group, dataset, event, photo; same core keys as `windows.npz`).
+  - Dataset findings (2026-11-10): the authors' page cannot be reached from the cloud workspace; the HF mirror `Shawn-Huang/CUFED-AlbumBench` has images for the 133-album test split only (byu-vision/albumbench#2); the "CUFED"/"CUFED5" Google Drive sets from super-resolution papers have no importance labels and are rejected by the layout check.
+- Tests: `tests/test_cufed.py` 13 pass locally (+ `test_cufed_parity`, gpu/media, for Colab). Full `pytest -q -m "not gpu and not api and not network"` locally: 194 passed, 6 skipped, 1 failed (`test_music::test_sections`, which also fails on a clean main on this machine: no torch, so Beat This! falls back to librosa). The real ingest/candidates/extract path was also run on a synthetic CUFED album with the neural models stubbed: rows, labels, events, and an exact-duplicate photo dropped by ingest all came out as specified.
+- Next: on Colab, `python -m training.importance.cufed --inspect`, then the `cufed_dl` job (first try the official link: copy it from the authors' page into `--set importance.cufed.official_url=...`), then `cufed_features --limit 5` as a smoke run, then the full `cufed_feats` job and `pytest -q` (incl. `test_cufed_parity`). Days 4-7: generalize `evaluate.py` to a CUFED column, train, compare with the deployed ranker, deploy decision.
+- Blockers: none in code. Needs the shared `montage_data` Drive and Colab access for Shiven; the full 1,883-album dataset needs the official link (the mirror is the 133-album test split).
+- Heads-up: new config section `importance.cufed` (`CufedCfg`, required in `ImportanceCfg`). No schema changes. New data under `montage_data/datasets/importance/cufed/` and `cufed_photos.npz` (Drive only).
+
+## 2026-11-10 12:25 ET | Shiven | phase 15 | branch phase-15-cufed (local)
+- Done: checked the official CUFED download by hand. The authors' site times out from a normal browser too. Its last Wayback Machine capture (2024-04-20) leads, through the Yahoo YFCC100M terms page, to a Google Drive file that now says "file does not exist"; the Wayback Machine has no copy. Spec 15, config comments and a PLAN decision updated: the Hugging Face mirror (133 albums) is the main source, plus the opt-in Flickr fill. CUFED data follows the YFCC100M terms (no redistribution, no identifying people, attribution in published results).
+- Next: Colab: `--inspect`, the `cufed_dl` job, check whether the mirror's labels cover more than the 133 albums with photos (then try the Flickr fill), then the feature job.
+- Blockers: the full 1,883-album set is only available if the authors re-share it.
+
+## 2026-11-13 20:45 ET | Shiven | phase 15 | branch phase-15-cufed
+- Done: days 1-3 on real data (Colab T4). `cufed_dl`: Hugging Face mirror `Shawn-Huang/CUFED-AlbumBench`@d1e9a034, 133 albums, 5,665 labeled photos, all on disk; mapping: 133 kept, nothing dropped. `cufed_feats`: 133 albums, 5,657 photos with features (8 exact duplicate files inside albums dropped by ingest, as designed). `tests/test_cufed.py` on Colab: GPU parity passes.
+- Done: review fixes for PR #6 (Keshav). Item 1, the log capture test: fixed earlier by letting `montage` logs propagate to pytest's `caplog` inside the test (`capsys` would miss them whenever an earlier test created the stdout handler, since the handler keeps the stdout it saw first). Item 2: no false super-resolution warning on reruns once the mirror is in `raw/hf/` (new test). Item 3: archive extraction treats names starting with `/` or `\` or a drive letter as absolute on every OS; the failure test matches album folders by path parts. Item 5: the Flickr fill is removed (code, config, tests, spec, PLAN), since the mirror's labels cover only albums whose photos are all present. Rebased on `main` (PLAN conflict: kept every row and decision from both sides).
+- Tests: `tests/test_cufed.py` 13 passed, 1 skipped (gpu parity) locally.
+- Next: on Colab, pull the branch and run the full `pytest -q` (incl. `test_cufed_parity`); `pytest -q tests/test_cufed.py` on Windows; post the counts and the pytest summary in PR #6.
+- Blockers: none.
+- Heads-up: `importance.cufed.flickr` is gone from the config (nothing else used it).

@@ -9,7 +9,9 @@ from montage.types import EditPlan
 
 SLOWER = ("slow", "chill", "calm", "gentle", "relaxed", "mellow", "cinematic")
 FASTER = ("fast", "hype", "energetic", "quick", "intense", "upbeat", "punchy")
-CHRONO = ("chronological", "in order", "timeline", "as it happened")
+# Story order (capture time) is the default; only these phrases turn it off.
+SHUFFLE = ("shuffle", "shuffled", "mix it up", "random order", "any order", "out of order", "not in order",
+           "not chronological", "non-chronological")
 FILLER = {"anything", "any", "all", "the", "of", "shots", "shot", "photos", "photo", "clips", "clip", "videos", "video"}
 _PUNCT = r"[,.;:!?\n]"
 AVOID_RE = re.compile(r"\b(?:skip|avoid|without|don't use|dont use|do not use|no)\b\s+([^,.;:!?\n]+)", re.I)
@@ -66,7 +68,7 @@ def plan_from_rules(brief: str) -> EditPlan:
     queries = queries[: cfg.director.max_queries]
     return EditPlan(
         vibe=brief[:200], vibe_queries=queries, avoid_queries=avoid[: cfg.director.max_queries],
-        pacing=max(-1.0, min(1.0, pacing)), energy_bias=0.0, chronological=_has(text, CHRONO),
+        pacing=max(-1.0, min(1.0, pacing)), energy_bias=0.0, chronological=not _has(text, SHUFFLE),
         target_length_s=target, excerpt_hint="auto", excerpt_start_s=0.0,
         opening_query=_cap_words(opening), closing_query=_cap_words(closing), segments=[], must_include=[],
         exclude=[], rationale="Rule-based plan (no LLM).", source="rules",
