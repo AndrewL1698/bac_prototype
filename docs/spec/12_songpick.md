@@ -192,7 +192,7 @@ Goal: rank the user's songs by how well they fit the photos, before any audio ex
 - **Ranking hook:** `pick.suggest(..., vibe_scorer=vibe.Scorer(album, tags.lookup))`. `pick.py` stays network-free. The scorer runs on the best `max_tracks` songs by affinity (release mode: on the eligible songs, so eligibility and widening are unchanged), then `score = alpha * affinity + (1 - alpha) * vibe` with `alpha_by_mode` (release 0.3, vibe 0.15, export 0.5).
   - Some song had tags: `vibe_source = "tags"`. No tags at all: affinity ranking + the note "Found no genre or mood tags...". No scorer in mode `vibe`: the note "Couldn't compare songs with your photos' mood...".
   - `SongPick.album_valence` / `album_arousal` carry the album mood for the UI and later evaluation.
-- **Calibration** (on Colab, demo + eval albums): `album_mood_center` is their mean raw score (raw arousal sits below 0 for ordinary photos) and `album_mood_scale` is set so they span about +/-0.6 (RESULTS.md).
+- **Calibration** (`scripts/calibrate_album_mood.py`, on Colab; 2026-11-17): over the 133 CUFED event albums (`cufed_photos.npz`, phase 15) plus the demo and eval albums, `album_mood_center` is the mean raw score per album and `album_mood_scale` the std (RESULTS.md). The first calibration (2026-11-11, travel albums only) put most event albums at arousal ~1.
 
 ### Later
 - **12.9 Sentiment match with audio (ROADMAP F1 piece 5):** with the YouTube opt-in, fetch the top few songs and get their valence/arousal from the MERT head (`montage.music.emotion`, the editor's code path); re-rank by the distance to the album mood (+ curve shape).
@@ -217,7 +217,7 @@ Goal: rank the user's songs by how well they fit the photos, before any audio ex
 
 `songpick.spotify`: `client_id_env`, `redirect_uri`, `scopes`, `return_hosts`, `auth_ttl_s 600`, `timeout_s 10`, `top_limit 50`, `range_days {28, 182, 365}`, `range_weight {1.0, 0.7, 0.5}`.
 
-`songpick.vibe` (12.8; replaces `songpick.alpha`): `enabled true`, `max_tracks 40`, `alpha_by_mode {release 0.3, vibe 0.15, export 0.5}`, `w_clip 0.5`, `w_mood 0.5`, `templates`, `tag_mood_file configs/tag_mood.tsv`, `top_tags 8`, `min_tag_weight 10`, `reason_tags 3`, `artist_tag_weight 0.5`, `junk_tags`, `album_mood_center {valence 0.28, arousal -1.53}`, `album_mood_scale {valence 1.0, arousal 0.6}`, `mood_word_min 0.2`, `lastfm {api_key_env LASTFM_API_KEY, url, timeout_s 5, workers 4, min_tags 3}`, `musicbrainz {url, user_agent, interval_s 1.1, max_lookups 10, min_score 90, timeout_s 5}`.
+`songpick.vibe` (12.8; replaces `songpick.alpha`): `enabled true`, `max_tracks 40`, `alpha_by_mode {release 0.3, vibe 0.15, export 0.5}`, `w_clip 0.5`, `w_mood 0.5`, `templates`, `tag_mood_file configs/tag_mood.tsv`, `top_tags 8`, `min_tag_weight 10`, `reason_tags 3`, `artist_tag_weight 0.5`, `junk_tags`, `album_mood_center {valence 0.03, arousal 0.55}`, `album_mood_scale {valence 1.53, arousal 2.18}`, `mood_word_min 0.2`, `lastfm {api_key_env LASTFM_API_KEY, url, timeout_s 5, workers 4, min_tags 3}`, `musicbrainz {url, user_agent, interval_s 1.1, max_lookups 10, min_score 90, timeout_s 5}`.
 
 `songpick.youtube`: `enabled false`, `max_results 6`, `duration_tol_s 10`, `min_song_s 60`, `max_song_s 900`, `min_match 0.55`, `topic_bonus 0.25`, `bad_words`, `bad_penalty 0.4`, `duration_penalty 0.4`, `cookies_file`, `cookies_env MONTAGE_YT_COOKIES`.
 
