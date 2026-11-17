@@ -12,11 +12,11 @@ _Keep this list current. Update it when a phase merges to `main`._
 
 - **Phase 0 (scaffold):** config (`montage.config`, dotted `--set` overrides), data contracts (`montage.types`), shared-Drive paths with atomic writes, background jobs (`scripts/run_job.py`, `scripts/job_status.py`), Colab bootstrap, synthetic test media (`scripts/make_fixtures.py`), model smoke tests (`scripts/smoke_models.py`: CLIP, LAION aesthetic, Beat This!, YuNet, Claude API, FFmpeg pass; MERT pending), `pytest -q` green.
 - **Phase 1 (ingest + candidates):** `montage.candidates.build_media(paths)` probes, orders, and validates uploads, extracts analysis frames/motion pairs/proxies in one FFmpeg pass per video, detects scenes, and makes photo + 3 s video-window candidates with thumbnails (all cached).
-- **Phase 2 (music):** `montage.music.profile.analyze_song(path)` gives beats/downbeats (Beat This!, librosa fallback), 2 Hz energy/intensity/arousal curves, section boundaries (cached by song hash); `montage.music.excerpt.choose_excerpt` + `build_profile` produce a whole-bar 45-60 s `MusicProfile`; `summarize` writes the director's song summary.
+- **Phase 2 (music):** `montage.music.profile.analyze_song(path)` gives beats/downbeats (Beat This!, librosa fallback; the checkpoint is sha256-verified and cached on Drive, fetched from a mirror or the authors' host via `scripts/mirror_beat_this.py --check/--cache/--upload`), 2 Hz energy/intensity/arousal curves, section boundaries (cached by song hash); `montage.music.excerpt.choose_excerpt` + `build_profile` produce a whole-bar 45-60 s `MusicProfile`; `summarize` writes the director's song summary.
 - **Phase 3 (visual features + heuristic importance):** `montage.features.extract.extract(assets, candidates, frames)` gives CLIP embeddings, aesthetic, quality, motion/shake, faces, mood, tags, near-dup clusters per candidate (per-asset cache on Drive); `montage.importance.blend.importance(features)` gives rank-normalized importance (heuristic now, learned ranker blended automatically when its weights exist).
 - **Phase 4 (director, rules):** `montage.director.make_plan(brief)` turns the brief into an `EditPlan` (rule-based for now); `montage.director.apply.compile_plan` turns a plan into planner directives (section intents, pacing, target arousal, CLIP query scores, excludes/must-includes).
 - **Phase 5 (planner):** `montage.planning.plan_edit(PlanInputs, run_id, seed, system)` builds the beat grid, scores every candidate/slot pair, runs the constrained beam search (or a naive/beat_random/greedy baseline), picks in/out points, and writes an `EDL` with frame-exact cuts and a reason per shot.
-- **Phase 6 (render):** `montage.render.assemble.render_edl(edl, assets, song_path, preview)` renders frame-exact 720p previews or 1080p exports (Ken Burns photos, face-aware crop or blurred fill for odd aspect ratios, HDR tonemapping), muxes the song excerpt, and verifies frame and audio counts. Encoded shots and the song excerpt are cached (`render.shot_cache`), so a recut only encodes the shots that changed (phase 13).
+- **Phase 6 (render):** `montage.render.assemble.render_edl(edl, assets, song_path, preview)` renders frame-exact 720p previews or 1080p exports (still photos, no Ken Burns since 2026-11-15; face-aware crop or blurred fill for odd aspect ratios, HDR tonemapping), muxes the song excerpt, and verifies frame and audio counts. Encoded shots and the song excerpt are cached (`render.shot_cache`), so a recut only encodes the shots that changed (phase 13).
 - **Phase 7 (pipeline + CLI):** `python -m montage.cli generate --media DIR --song FILE --brief "..."` (and `recut --session ID --note ...`, `export --run ID`) runs the whole thing; outputs land in `montage_data/runs/<run_id>/` (preview.mp4, edl.json, plan.json, curves.png, storyboard.jpg).
 - **Phase 8 (Gradio app):** `python -m montage.app.gradio_app --share` (as job `app` on Colab): upload media + song + brief -> beat-synced preview, editor's note, plan, storyboard with why-this-shot and pin/exclude, notes + Recut, Export 1080p, under-the-hood curves/timings, naive-cut comparison. Day 1 uses fallbacks only (rule-based director).
 - **Phase 9A (LLM director):** with `ANTHROPIC_API_KEY` set, Claude (claude-haiku-5-5, structured outputs) turns the brief into the edit plan, revises it from notes ("faster", "more of the beach", "lose the shot at 0:12"), and writes the editor's note; any failure falls back to the rules and the status line says so. Optional thumbnail contact sheet (off by default).
@@ -31,6 +31,7 @@ _Keep this list current. Update it when a phase merges to `main`._
     - **My full Spotify history**: upload the Spotify data export to get songs you actually played back then.
   - Opt-in: tick **Fetch the song's audio from YouTube** and press **Use this song** to fill the Song box. On Colab this needs the `YOUTUBE_COOKIES` secret (below); otherwise the app links to a YouTube search and you upload the file.
   - CLI for the export: `python -m montage.songpick --history DIR --start YYYY-MM-DD --end YYYY-MM-DD [--mode vibe]`.
+- **Phase 15 (photo-album importance, branch `phase-15-cufed`, not merged yet; days 1-3 of 10):** the CUFED / ML-CUFED event albums (per-photo human importance) are downloaded and turned into ranker training data with our own pipeline. `python -m training.importance.cufed` finds or fetches the dataset (a copy under `montage_data/datasets/importance/cufed/raw/`, the authors' link via `--set importance.cufed.official_url=...`, or the Hugging Face mirror, which only has the 133-album test split) and writes the label mapping; `python -m training.importance.cufed_features` runs every album through the app's own feature pipeline into `cufed_photos.npz`. Training and the evaluation against the SumMe/TVSum ranker come next (spec [`15_cufed.md`](docs/spec/15_cufed.md)).
 - **Phase 11 (evaluation):** `scripts/make_eval_set.py` builds held-out eval albums and songs; `python -m montage.eval.run_grid` (as a job) plans every album x song with the full editor, three baselines and five ablations (3 seeds each) and writes metrics, slide figures, and `montage_data/eval/report.md`; `python -m montage.eval.render_check` renders the full cuts and checks with scene detection that every cut lands on its planned frame. Headline numbers in [`docs/RESULTS.md`](docs/RESULTS.md).
 - **Phase 17 (story order):** every montage follows capture time by default, also with no brief; a brief that asks for another order ("shuffle", "mix it up", "random order") turns it off.
 
@@ -83,6 +84,8 @@ python scripts/run_job.py --name emo_train   -- python -m training.emotion.train
 python scripts/run_job.py --name vsum_dl     -- python -m training.importance.download
 python scripts/run_job.py --name vsum_feats  -- python -m training.importance.extract_clip
 python scripts/run_job.py --name rank_train  -- python -m training.importance.train
+python scripts/run_job.py --name cufed_dl    -- python -m training.importance.cufed            # phase 15
+python scripts/run_job.py --name cufed_feats -- python -m training.importance.cufed_features   # phase 15
 python scripts/run_job.py --name eval_grid   -- python -m montage.eval.run_grid
 python scripts/run_job.py --name demo_prep   -- python -m montage.app.demo_mode --prepare
 python scripts/job_status.py                 # all your jobs
@@ -132,11 +135,11 @@ README.md  CLAUDE.md  KICKOFF.md
 configs/      default.yaml (every weight and threshold), tags.txt
 docs/         PLAN.md  LOG.md  RESULTS.md  DEMO.md  spec/
 montage/      the app: ingest, candidates, features, importance, music, director, planning, render, app, eval
-training/     emotion (MERT + DEAM), importance (SumMe/TVSum ranker)
-scripts/      colab_bootstrap, run_job, job_status, make_fixtures, smoke_models
+training/     emotion (MERT + DEAM), importance (SumMe/TVSum ranker, CUFED photo albums)
+scripts/      colab_bootstrap, run_job, job_status, make_fixtures, smoke_models, mirror_beat_this
 tests/        pytest suite (fixtures are generated, not committed)
 ```
 
 ## Licenses and data notes
 
-Prototype for non-commercial demo use. MERT-v1-95M is CC-BY-NC-4.0 and SumMe is non-commercial; both would need replacing before any commercial use. DEAM audio is Creative Commons. Datasets and weights are downloaded at runtime and never stored in this repo.
+Prototype for non-commercial demo use. MERT-v1-95M is CC-BY-NC-4.0, SumMe is non-commercial, and CUFED is for non-commercial research (its Hugging Face mirror states CC BY-NC 2.0); all would need replacing before any commercial use. DEAM audio is Creative Commons. Datasets and weights are downloaded at runtime and never stored in this repo.

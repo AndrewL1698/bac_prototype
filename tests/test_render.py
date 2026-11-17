@@ -28,7 +28,7 @@ def test_framing_table():
     assert decide_framing(_asset(1200, 1600)) == "fill_blur"   # 3:4
     assert decide_framing(_asset(1500, 1200)) == "fill_blur"   # 5:4 loses 30% > 0.25
     assert decide_framing(_asset(1000, 1000)) == "fill_blur"   # 1:1
-    assert decide_framing(_asset(3000, 1000)) == "pan"         # 3:1 photo
+    assert decide_framing(_asset(3000, 1000)) == "fill_blur"   # 3:1 photo: no panorama sweep (no Ken Burns)
     assert decide_framing(_asset(2200, 1000, "video")) == "crop"  # 2.2:1 loses 19% <= 0.25
     assert decide_framing(_asset(3000, 1000, "video")) == "fill_blur"
     assert decide_framing(_asset(1700, 1080)) == "crop"        # 1.57:1 loses 11%
@@ -45,6 +45,8 @@ def test_kenburns_smooth():
     try:
         kb = KenBurns(zoom_from=1.0, zoom_to=1.12, pan_x=0.02, pan_y=0.0)
         frs = [cv2.cvtColor(f, cv2.COLOR_RGB2GRAY) for f in kenburns.frames(str(p), "native", kb, 45, 640, 360)]
+        still = list(kenburns.frames(str(p), "native", None, 5, 640, 360))  # no Ken Burns: one frame, repeated
+        assert len(still) == 5 and all(np.array_equal(f, still[0]) for f in still)
     finally:
         p.unlink(missing_ok=True)
     orb = cv2.ORB_create(1500)
