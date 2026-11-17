@@ -104,14 +104,15 @@ def nudge(final: np.ndarray, pref: np.ndarray, groups: np.ndarray, b: float) -> 
 
 
 def apply(final, features, user: str | None = None) -> tuple[np.ndarray, int]:
-    """(personalized final scores, evidence count). Unchanged when disabled, no file, or too little evidence."""
+    """(final scores, number of kept + removed shots used). Unchanged, with 0, when disabled, without a prefs
+    file, or with fewer than min_events shots."""
     final = np.asarray(final, float)
     if not get_config().importance.personalize.enabled:
         return final, 0
     pos, neg, n = evidence(load(user))
     b = beta(n)
     if b <= 0:
-        return final, n
+        return final, 0
     arr = features.arrays
     groups = np.where(np.asarray(arr["is_video"], bool), 1, 0)
     return nudge(final, preference(arr["emb"], pos, neg), groups, b), n

@@ -43,7 +43,7 @@ def test_no_evidence_leaves_scores_unchanged(fresh_root):
     assert np.array_equal(P.apply(final, f)[0], final)  # no file
     P.record("s1", f, pins=["c0"], excluded=["c3"])     # 2 shots < min_events (3)
     out, n = P.apply(final, f)
-    assert n == 2 and np.array_equal(out, final)
+    assert n == 0 and np.array_equal(out, final)
     P.record("s1", f, pins=["c0"], excluded=["c3", "c4"])
     with config.override({"importance.personalize.enabled": False}):
         assert np.array_equal(P.apply(final, f)[0], final)

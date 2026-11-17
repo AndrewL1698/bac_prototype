@@ -83,6 +83,24 @@ def test_recut_lose_shot(run):
     assert target.asset_id not in {sh.asset_id for sh in pipeline.load_edl(r.run_id).shots}
 
 
+def test_recut_keep_remove_personalizes(run):
+    """Spec 15 section 6: Keep/Remove in a recut are remembered, and the next plan is nudged by them."""
+    pipeline, res, _ = run
+    from montage import config
+    from montage.importance import personalize
+    s = pipeline.session_for_run(res.run_id)
+    shots = pipeline.load_edl(s.runs[-1]).shots
+    keep, remove = shots[0].candidate_id, [sh.candidate_id for sh in shots[1:3]]
+    with config.override(OFF):
+        r = pipeline.recut(s.session_id, pins=[keep], excluded=remove)
+    assert personalize.load()["sessions"][s.session_id]["neg_n"] == 2
+    assert "personalized from 3 kept/removed shots" in pipeline.load_edl(r.run_id).notes
+    s = pipeline.load_session(s.session_id)
+    plain = pipeline.plan_edit(s, s.plan_history[-1], seed=0, persist=False, personalize=False)
+    assert not any(n.startswith("personalized") for n in plain.notes)
+    personalize.prefs_path().unlink()
+
+
 def test_export(run):
     pipeline, res, _ = run
     out = pipeline.export(res.run_id)
