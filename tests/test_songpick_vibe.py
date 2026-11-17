@@ -118,6 +118,26 @@ def test_score_reason_names_the_shared_mood():
     assert cs[1].reason.startswith("Tagged sad, ambient, melancholy.")
 
 
+@pytest.mark.parametrize("w_clip,w_mood", [(0.4, 0.6), (0.6, 0.4)])
+def test_score_weights_mean_what_they_say(w_clip, w_mood):
+    # a: CLIP a hair closer to the party album, mood further; b: the reverse. The heavier weight decides,
+    # however small the CLIP gap (min-max let a 0.007 cosine gap beat any mood gap).
+    tags = {"a|x": [("sad", 99.0), ("party", 100.0)], "b|y": [("calm", 100.0), ("party", 99.0)]}
+    cs = [cand("a|x"), cand("b|y")]
+    with config.override({"songpick.vibe.w_clip": w_clip, "songpick.vibe.w_mood": w_mood}):
+        vibe.score(cs, album("party"), tags, fake_encode)
+    a, b = cs
+    assert (a.vibe_clip, a.vibe_mood, b.vibe_clip, b.vibe_mood) == (1.0, 0.0, 0.0, 1.0)
+    assert (b.vibe > a.vibe) == (w_mood > w_clip)
+
+
+def test_score_terms_are_rank_normalized():
+    tags = {"a|x": [("party", 100.0)], "b|y": [("party", 100.0), ("calm", 100.0)], "c|z": [("sad", 100.0)]}
+    cs = [cand("a|x"), cand("b|y"), cand("c|z")]
+    vibe.score(cs, album("party"), tags, fake_encode)
+    assert [c.vibe_clip for c in cs] == [1.0, 0.5, 0.0] and [c.vibe_mood for c in cs] == [1.0, 0.5, 0.0]
+
+
 def test_score_without_tags_leaves_vibe_unset():
     cs = [cand("a|b"), cand("c|d")]
     assert vibe.score(cs, album("party"), {}, fake_encode) == 0

@@ -2,9 +2,10 @@
 
 Two terms, each in [0, 1], combined as a weighted mean of the ones available (`songpick.vibe.w_clip`, `w_mood`):
 - vibe_clip: CLIP text embedding of the song's tags (prompt ensemble `vibe.templates`, weighted by tag weight)
-  vs the album's pooled CLIP image embedding; min-max normalized over the scored songs.
-- vibe_mood: 1 - distance between the song's valence/arousal (tag lexicon `configs/tag_mood.tsv`) and the photos'
-  absolute mood (mean raw CLIP mood-pole scores, `features/mood.py`, centered and squashed), scaled to [0, 1].
+  vs the album's pooled CLIP image embedding.
+- vibe_mood: closeness of the song's valence/arousal (tag lexicon `configs/tag_mood.tsv`) to the photos' absolute
+  mood (mean raw CLIP mood-pole scores, `features/mood.py`, centered and squashed).
+Each term is rank-normalized over the songs that have it, so the weights mean what they say.
 Songs without tags get the median vibe of the scored songs, so a missing tag neither helps nor hurts.
 
 The album side reuses the editor's own feature path (`candidates.build_media` + `features.extract`, cached by
@@ -23,6 +24,7 @@ from typing import Callable, Sequence
 import numpy as np
 
 from montage.config import get_config, repo_path
+from montage.importance.blend import rank_normalize
 from montage.log import get_logger
 from montage.types import TrackCandidate
 
@@ -147,6 +149,13 @@ def _reason(c: TrackCandidate, album: AlbumVibe, good: bool) -> str:
     return f"Fits your photos (tagged {named})."
 
 
+def _ranks(raw: dict[str, float]) -> dict[str, float]:
+    """Rank-normalize to [0, 1] (as importance/blend.py), so `w_clip` and `w_mood` are each term's real share of the
+    order and a tiny gap in a small pool counts no more than a large one."""
+    x = rank_normalize(np.array(list(raw.values())), np.zeros(len(raw)))
+    return {k: round(float(v), 6) for k, v in zip(raw, x)}
+
+
 def score(cands: list[TrackCandidate], album: AlbumVibe, tags_by_key: dict[str, Tags],
           encode_text: EncodeText | None = None) -> int:
     """Fill vibe fields and prepend a vibe reason, in place. Returns how many songs had usable tags."""
@@ -154,6 +163,7 @@ def score(cands: list[TrackCandidate], album: AlbumVibe, tags_by_key: dict[str, 
     if encode_text is None:
         from montage.features.clip_encoder import encode_text
     raw_clip: dict[str, float] = {}
+    raw_mood: dict[str, float] = {}
     for c in cands:
         tags = (tags_by_key.get(c.key) or [])[: cfg.top_tags]
         c.tags = [t for t, _ in tags]
@@ -163,13 +173,10 @@ def score(cands: list[TrackCandidate], album: AlbumVibe, tags_by_key: dict[str, 
         va = tag_mood(tags)
         if va is not None:
             c.valence, c.arousal = round(va[0], 4), round(va[1], 4)
-            c.vibe_mood = round(mood_match(va, album), 6)
-    if raw_clip:
-        lo, hi = min(raw_clip.values()), max(raw_clip.values())
-        for c in cands:
-            if c.key in raw_clip:
-                c.vibe_clip = round((raw_clip[c.key] - lo) / (hi - lo), 6) if hi - lo > 1e-9 else 0.5
+            raw_mood[c.key] = mood_match(va, album)
+    clip, mood = _ranks(raw_clip), _ranks(raw_mood)
     for c in cands:
+        c.vibe_clip, c.vibe_mood = clip.get(c.key), mood.get(c.key)
         terms = [(cfg.w_clip, c.vibe_clip), (cfg.w_mood, c.vibe_mood)]
         terms = [(w, x) for w, x in terms if x is not None and w > 0]
         if terms:
