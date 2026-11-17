@@ -119,15 +119,23 @@ def test_people_avoid_is_a_hard_filter(monkeypatch):
     from montage.director import apply
     f = feats()
     f.arrays["emb"] = np.eye(8, 768, dtype=np.float32)
+    # Candidates 0..7 belong to assets a000, a000, a001, a001, a002, a002, a003, a003:
+    # - idx 1 (a000_w01): has 2 faces, but is pinned in UI -> kept
+    # - idx 2 (a001_w00): 0 faces, but CLIP rates it as people -> excluded
+    # - idx 4 (a002_w00): has 1 face, but asset a002 is in must_include -> kept
     f.arrays["face_count"] = np.array([0, 2, 0, 0, 1, 0, 0, 0], np.float32)
-    # prompts ["a photo of people", "a photo"]: only candidate 2 rates as people by CLIP
     monkeypatch.setattr(apply.clip_encoder, "encode_text", lambda qs: np.stack([f.arrays["emb"][2], np.zeros(768)]))
     assets = [i.split("_")[0] for i in f.ids]
+
     d = compile_plan(plan(avoid_queries=["any person"], must_include=["a002"]), profile4(), f, assets,
                      pins=[f.ids[1]])
-    assert d.excluded.tolist() == [False, False, True, False, False, False, False, False]  # 1 pinned, 4 must-include
+    assert d.excluded.tolist() == [i == 2 for i in range(8)]
     assert any("people" in n for n in d.notes)
+
+    # Soft avoids ("fewer people", specific shot types like selfies/portraits, or "blurry faces") do not hard-filter:
     for soft in (["blurry photo"], ["selfie", "portrait", "group photo"], ["fewer people"], ["blurry faces"]):
         assert compile_plan(plan(avoid_queries=soft), profile4(), f, assets).excluded.sum() == 0
-    f.arrays["face_count"][:] = 1  # every shot has people: the filter steps aside instead of emptying the cut
+
+    # Fallback: if every shot has people, the filter steps aside instead of emptying the cut:
+    f.arrays["face_count"][:] = 1
     assert compile_plan(plan(avoid_queries=["people"]), profile4(), f, assets).excluded.sum() == 0
