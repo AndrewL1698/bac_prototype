@@ -216,9 +216,25 @@ class PeopleFilterCfg(_B):
     min_prob: float
 
 
+class LLMServeCfg(_B):
+    ollama_version: str
+    ready_timeout_s: float
+
+
+class OpenAICompatCfg(_B):
+    base_url: str
+    model: str
+    api_key_env: str
+    temperature: float
+    extra_body: dict[str, Any]
+    serve: LLMServeCfg
+
+
 class DirectorCfg(_B):
     use_llm: bool
+    provider: Literal["anthropic", "openai_compat"]
     model: str
+    openai_compat: OpenAICompatCfg
     max_tokens: int
     timeout_s: float
     max_queries: int

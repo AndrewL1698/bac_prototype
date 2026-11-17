@@ -97,6 +97,12 @@ resp = client.messages.create(
 
 **User content blocks**: brief; song summary; media inventory; tag vocabulary; (optional) contact sheet image (section 8).
 
+### 5b. Open-weight provider (no API key, default)
+
+`director.provider: openai_compat` sends the same prompts to an open-weight model behind an OpenAI-compatible server (Ollama on Colab via `scripts/serve_llm.py`, or Ollama / LM Studio locally) at `director.openai_compat.base_url`, model `director.openai_compat.model` (default `qwen3:8b`, Apache 2.0). Plans use `response_format = {"type": "json_schema", ...}` with `EditPlanLLM.model_json_schema()`, so decoding is constrained to the schema; `extra_body` passes server extras (Qwen3 on Ollama: `reasoning_effort: "none"` turns thinking off, 5 s per plan instead of 20-100 s; Ollama ignores `think: false` on this endpoint); any `<think>` block is stripped. The editor's note is a plain chat call. The contact sheet is sent as an `image_url` data URL (needs a vision model; a text-only model fails and falls back). `finish_reason == "length"`, HTTP errors, an unreachable server, and bad JSON all follow the same retry-then-rules path as Claude. This is the **default provider** (2026-11-15; Claude is optional and paid). `llm_enabled()` is true when `use_llm` is set and the server answers `GET <base_url>/models` (no key needed); `scripts/start_app.py` starts the server as the `llm` job.
+
+Comparison: `python -m montage.eval.director_compare --systems haiku=anthropic,open=openai_compat,rules` runs 21 briefs and 5 notes against fixed synthetic context and scores each plan with objective checks from the prompt rules (report in `DATA_ROOT/eval/director_compare/`). It calls `plan_from_llm` / `revise_from_llm` directly, so it measures the raw model without the note guards in `notes.py`.
+
 ## 6. Notes and recut (`director/notes.py`), Day 2
 
 `revise_plan(prev_plan, edl, note) -> EditPlan`

@@ -123,6 +123,18 @@ Takeaways: on a real album a recut renders in about half the time of a cold rend
 ## Live vote (phase 11)
 _Runs live at the workshop (Rate tab); `python -m montage.eval.vote --analyze` summarizes the votes._
 
+## Free director (Ollama, 2026-11-15)
+
+`montage.eval.director_compare` on the A100, 21 briefs + 5 notes, objective checks from the prompt rules. Raw model output: the guards in `director.make_plan` / `notes.revise_plan` are not applied here.
+
+| system | valid plans | checks (briefs) | checks (notes) | total | latency (warm) | GPU |
+|---|---|---|---|---|---|---|
+| qwen3:30b-a3b-instruct-2507 (Ollama) | 26/26 | 42/48 | 8/8 | 50/56 | ~3 s | 21 GB |
+| qwen3:8b (Ollama, thinking off) | 26/26 | 42/48 | 7/8 | 49/56 (twice) | 3.3 s | 10 GB |
+| rules | 26/26 | 29/48 | 7/8 | 36/56 | 0.01 s | 0 |
+
+qwen3:8b misses: "no people" (no people avoid), "fast cuts" / "slower" (pacing 0), "length auto" on a vague brief, a faster outro. Claude Haiku was not rerun (costs money).
+
 ## Takeaways
 - Each learned component beats its fallback on held-out data: the MERT emotion head (test CCC 0.74 valence / 0.82 arousal vs 0 for predict-mean) and the importance ranker (Kendall tau SumMe 0.17 vs 0.12, TVSum 0.41 vs -0.02 for the heuristic).
 - On held-out albums the editor does what the product promises: beat-exact cuts that follow the song's intensity and mood, steered by the brief, with no near-duplicates and frame-exact renders.

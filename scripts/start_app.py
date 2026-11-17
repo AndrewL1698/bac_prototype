@@ -73,6 +73,11 @@ def main(argv: list[str] | None = None) -> int:
     # Fresh processes for everything else, so a git pull is always picked up (no stale imports here).
     while _job_state(data_root, user, "pip_install") == "running" and time.time() < deadline:
         time.sleep(2)
+    provider = subprocess.run([py, "-c", "from montage.config import get_config; print(get_config().director.provider)"],
+                              cwd=REPO, capture_output=True, text=True).stdout.strip()
+    if provider == "openai_compat":  # start the free director; "refused" (already running) is fine
+        subprocess.run([py, str(REPO / "scripts" / "run_job.py"), "--name", "llm", "--", py, "scripts/serve_llm.py"],
+                       cwd=REPO, capture_output=True)
     subprocess.run([py, str(REPO / "scripts" / "job_stop.py"), "app"], cwd=REPO)
     url_file = data_root / "jobs" / user / "app.url"
     url_file.unlink(missing_ok=True)

@@ -96,11 +96,12 @@ def revise_rules(prev: EditPlan, edl: EDL | None, note: str) -> EditPlan:
 
 def revise_plan(prev: EditPlan, edl: EDL | None, note: str, ctx: dict | None = None) -> tuple[EditPlan, list[str]]:
     """Returns (plan, fallbacks)."""
-    from montage.director import llm_enabled
+    from montage.director import keep_explicit_avoids, llm_enabled
     if llm_enabled():
         try:
             from montage.director.llm import revise_from_llm
-            plan = revise_from_llm(prev, edl, note, ctx or {})
+            note_only = revise_rules(prev.model_copy(update={"avoid_queries": []}), edl, note)  # the note's own avoids, so the model can still drop old ones
+            plan = keep_explicit_avoids(revise_from_llm(prev, edl, note, ctx or {}), note_only)
             targets = time_targets(edl, note)
             if targets:  # the cut decides which shot a time code names; the model misreads time codes
                 plan.exclude = list(dict.fromkeys(prev.exclude + targets))

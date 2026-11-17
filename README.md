@@ -44,7 +44,7 @@ The app **sees** your media (CLIP embeddings, an aesthetic score, mood, tags, sh
 1. Open a new Colab notebook, Runtime -> Change runtime type -> **A100 GPU**.
 2. In the key icon (Secrets) add, with notebook access enabled:
    - `MONTAGE_USER`: your name, lowercase.
-   - `ANTHROPIC_API_KEY` (optional): without it the director uses rules.
+   - `ANTHROPIC_API_KEY` (optional, paid): only used with `director.provider: anthropic`. The default director is free (below).
    - `APP_PASSWORD` (optional): password-protects the app (username `montage`). Recommended, because anyone with the link can use the app and your API credits.
    - `SPOTIFY_CLIENT_ID` (optional): turns on **Pick a song for me** (Connect Spotify). One-time setup is in [`docs/spec/12_songpick.md`](docs/spec/12_songpick.md) ("Human setup"). Spotify's Development Mode allows 5 users, who must be added in the Spotify dashboard.
    - `YOUTUBE_COOKIES` (optional): lets **Use this song** fetch audio from YouTube on Colab, which YouTube otherwise blocks. Use a **spare** Google account, never your own: the cookies work as that account's full login, and YouTube may flag it. Sign in to YouTube in a private window, export youtube.com cookies with a cookies.txt extension, close the window, and paste `base64 -i cookies.txt` output as the secret. Re-export if the app says they expired.
@@ -58,6 +58,13 @@ The app **sees** your media (CLIP embeddings, an aesthetic score, mood, tags, sh
 5. In the app: pick a demo album and song (or upload), type a brief, **Generate**. Give notes and **Recut**. **Export 1080p** when happy.
 
 Keep the Colab tab open while you use the app.
+
+**Director model (free, default).** The director is Qwen3-8B on Ollama, on the same A100, no API key. `start_app.py` starts it as the `llm` job (first run on a fresh runtime: install and download, about 2 minutes; until it is ready, plans come from the rules). For the CLI or tests, start it yourself:
+```
+!python scripts/run_job.py --name llm -- python scripts/serve_llm.py     # installs Ollama and pulls the model
+!python scripts/job_status.py llm                                        # wait for "ready"
+```
+If the server is down the director falls back to rules. Claude is still possible (`--set director.provider=anthropic` plus `ANTHROPIC_API_KEY`, paid). Compare systems on 21 briefs + 5 notes: `python -m montage.eval.director_compare --systems open=openai_compat,rules`.
 
 ## Command line
 

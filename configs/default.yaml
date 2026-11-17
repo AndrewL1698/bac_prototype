@@ -133,7 +133,17 @@ music:
 
 director:
   use_llm: true
+  provider: "openai_compat"   # openai_compat (free: qwen3:8b on Ollama, started by start_app.py) | anthropic (Claude API, paid, needs ANTHROPIC_API_KEY)
   model: "claude-haiku-5-5"
+  openai_compat:          # used when provider = openai_compat; serve the model with scripts/serve_llm.py
+    base_url: "http://127.0.0.1:11434/v1"   # Ollama's default port
+    model: "qwen3:8b"                       # about 10 GB of the A100
+    api_key_env: "MONTAGE_LLM_API_KEY"      # optional; Ollama needs no key
+    temperature: 0.2
+    extra_body: {reasoning_effort: "none"}  # Qwen3 thinking off: 5 s per plan instead of 20-100 s
+    serve:
+      ollama_version: "0.40.16"
+      ready_timeout_s: 120
   max_tokens: 2000
   timeout_s: 30
   max_queries: 6

@@ -1,14 +1,20 @@
-"""Claude as the director: brief -> EditPlan, note -> revised EditPlan, and the editor's note.
+"""The LLM director: brief -> EditPlan, note -> revised EditPlan, and the editor's note.
 
-Structured outputs (json_schema) on messages.create; enums are lowercased before validation; the plan is
-repaired (unknown ids dropped, numbers clamped, queries capped). Any failure raises, and callers fall back
-to the rule-based director.
+Two providers (`director.provider`): Claude (structured outputs on messages.create) or an open-weight model
+behind an OpenAI-compatible server such as vLLM or Ollama (`response_format` json_schema, so decoding is
+constrained to the plan schema). Either way enums are lowercased before validation and the plan is repaired
+(unknown ids dropped, numbers clamped, queries capped). Any failure raises, and callers fall back to the
+rule-based director.
 """
 
 from __future__ import annotations
 
 import base64
 import json
+import os
+import re
+import urllib.error
+import urllib.request
 
 from montage.config import get_config
 from montage.director.prompts import EDITOR_NOTE_PROMPT, REVISE_INSTRUCTIONS, SYSTEM_PROMPT
@@ -48,18 +54,78 @@ def _blocks(ctx: dict, parts: list[tuple[str, str]]) -> list[dict]:
     return blocks
 
 
-def _structured_call(blocks: list[dict]) -> dict:
+# ---------- OpenAI-compatible servers (vLLM, Ollama, LM Studio) ----------
+
+_THINK = re.compile(r"<think>.*?</think>", re.S)
+
+
+def _post(url: str, payload: dict, headers: dict[str, str], timeout: float) -> dict:
+    req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"),
+                                 headers={"Content-Type": "application/json", **headers}, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return json.loads(r.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        raise LLMFailure(f"HTTP {e.code}: {e.read()[:300]!r}") from e
+    except (urllib.error.URLError, OSError) as e:
+        raise LLMFailure(f"server unreachable at {url}: {e}") from e
+
+
+def _openai_messages(system: str, blocks: list[dict]) -> list[dict]:
+    """Anthropic-style content blocks -> one OpenAI chat user message (images as data URLs)."""
+    if all(b["type"] == "text" for b in blocks):
+        content: str | list[dict] = "\n\n".join(b["text"] for b in blocks)
+    else:
+        content = [{"type": "image_url",
+                    "image_url": {"url": f"data:{b['source']['media_type']};base64,{b['source']['data']}"}}
+                   if b["type"] == "image" else {"type": "text", "text": b["text"]} for b in blocks]
+    return [{"role": "system", "content": system}, {"role": "user", "content": content}]
+
+
+def _openai_complete(system: str, blocks: list[dict], max_tokens: int, schema: dict | None) -> str:
     cfg = get_config().director
+    oc = cfg.openai_compat
+    payload: dict = {"model": oc.model, "messages": _openai_messages(system, blocks),
+                     "max_tokens": max_tokens, "temperature": oc.temperature, **(oc.extra_body or {})}
+    if schema is not None:
+        payload["response_format"] = {"type": "json_schema",
+                                      "json_schema": {"name": "edit_plan", "schema": schema, "strict": True}}
+    key = os.environ.get(oc.api_key_env, "") if oc.api_key_env else ""
+    resp = _post(oc.base_url.rstrip("/") + "/chat/completions", payload,
+                 {"Authorization": f"Bearer {key}"} if key else {}, cfg.timeout_s)
+    try:
+        choice = resp["choices"][0]
+        text = choice["message"].get("content") or ""
+    except (KeyError, IndexError, TypeError) as e:
+        raise LLMFailure(f"unexpected response: {str(resp)[:300]}") from e
+    if choice.get("finish_reason") == "length":
+        raise LLMFailure("stop_reason=max_tokens")
+    return _THINK.sub("", text).strip()
+
+
+# ---------- provider switch ----------
+
+def _complete(system: str, blocks: list[dict], max_tokens: int, schema: dict | None = None) -> str:
+    """One model call -> response text. Raises LLMFailure on refusal, truncation, or transport errors."""
+    cfg = get_config().director
+    if cfg.provider == "openai_compat":
+        return _openai_complete(system, blocks, max_tokens, schema)
+    output_config: dict = {"effort": "low"}
+    if schema is not None:
+        output_config["format"] = {"type": "json_schema", "schema": schema}
     resp = get_client().messages.create(
-        model=cfg.model, max_tokens=cfg.max_tokens, system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": blocks}],
-        output_config={"format": {"type": "json_schema", "schema": json_schema()}, "effort": "low"},
-        timeout=cfg.timeout_s,
+        model=cfg.model, max_tokens=max_tokens, system=system,
+        messages=[{"role": "user", "content": blocks}], output_config=output_config, timeout=cfg.timeout_s,
     )
     if resp.stop_reason in ("refusal", "max_tokens"):
         raise LLMFailure(f"stop_reason={resp.stop_reason}")
+    return _text(resp)
+
+
+def _structured_call(blocks: list[dict]) -> dict:
+    text = _complete(SYSTEM_PROMPT, blocks, get_config().director.max_tokens, json_schema())
     try:
-        return json.loads(_text(resp))
+        return json.loads(text)
     except json.JSONDecodeError as e:
         raise LLMFailure(f"bad JSON: {e}") from e
 
@@ -146,15 +212,11 @@ def revise_from_llm(prev: EditPlan, edl: EDL | None, note: str, ctx: dict) -> Ed
 
 
 def note_from_llm(edl: EDL, profile: MusicProfile, ctx: dict) -> str:
-    cfg = get_config().director
     plan = edl.plan
     body = "\n\n".join([f"## Plan\nvibe: {plan.vibe}\nrationale: {plan.rationale}\nqueries: {plan.vibe_queries}",
                         f"## Song summary\n{ctx.get('song_summary', '')}",
                         f"## Cut (time-coded shots)\n{ctx.get('edl_summary', '')}"])
-    resp = get_client().messages.create(
-        model=cfg.model, max_tokens=400, system=EDITOR_NOTE_PROMPT,
-        messages=[{"role": "user", "content": body}], output_config={"effort": "low"}, timeout=cfg.timeout_s)
-    text = _text(resp).strip()
-    if resp.stop_reason == "refusal" or not text:
+    text = _complete(EDITOR_NOTE_PROMPT, [{"type": "text", "text": body}], 400).strip()
+    if not text:
         raise LLMFailure("no editor note")
     return text

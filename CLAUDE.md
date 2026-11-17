@@ -38,7 +38,7 @@ upload (media + song + brief)
   -> features      CLIP ViT-L/14 embeddings, aesthetics, mood, tags, quality, motion, faces, dedup
   -> importance    heuristic score + learned ranker -> blended rank score
   -> music         beats, downbeats, energy, sections, emotion (MERT head), intensity, excerpt
-  -> director      brief/notes -> EditPlan (Claude API or rule-based fallback)
+  -> director      brief/notes -> EditPlan (free Qwen3-8B on Ollama, optional Claude API, or rule-based fallback)
   -> planning      slots (beat grid) -> beam search -> in/out points -> EDL
   -> render        per-shot encodes (framing, still photos) -> concat -> mux song -> MP4
   -> app           Gradio UI: generate, plan, editor's note, storyboard, curves, notes/recut, export
@@ -191,4 +191,4 @@ If a spec is ambiguous, choose the simplest option consistent with this file, re
 - Do not use GoogLeNet/precomputed dataset features for training. Extract features with our pipeline.
 - Do not commit data, weights, media, secrets, or personal info (public repo).
 - Do not rewrite or delete other people's LOG entries, push or force-push to `main` (PRs only), or work on a phase someone else has claimed.
-- Do not let a failed optional component (MERT, ranker, Beat This!, Claude API, CUFED) break `generate()`.
+- Do not let a failed optional component (MERT, ranker, Beat This!, Ollama director, Claude API, CUFED) break `generate()`.

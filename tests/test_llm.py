@@ -10,8 +10,9 @@ from types import SimpleNamespace
 import pytest
 
 from montage import director
+from montage.config import override
 from montage.director import llm
-from montage.director.notes import revise_rules
+from montage.director.notes import revise_plan, revise_rules
 from montage.director.rules import plan_from_rules
 from montage.types import EDL, Excerpt, Shot, ShotScores
 
@@ -47,7 +48,8 @@ def fake(monkeypatch):
         msgs = FakeMessages(behavior)
         monkeypatch.setattr(llm, "get_client", lambda: SimpleNamespace(messages=msgs))
         return msgs
-    return use
+    with override({"director.provider": "anthropic"}):  # these fake Claude, whatever MONTAGE_CONFIG selects
+        yield use
 
 
 CTX = {"song_summary": "Song: 120 BPM", "inventory": "a000 photo | beach", "tag_vocab": "beach",
@@ -143,8 +145,7 @@ def test_notes_rules():
 
 
 @pytest.mark.api
-@pytest.mark.skipif(not os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_API_KEY", "").startswith("test"),
-                    reason="needs ANTHROPIC_API_KEY")
+@pytest.mark.skipif(not director.llm_enabled(), reason="needs the Ollama server (scripts/serve_llm.py) or, with provider anthropic, ANTHROPIC_API_KEY")
 @pytest.mark.parametrize("brief", [
     "Warm, nostalgic summer recap. Open slow on the beach at sunrise, build through the road trip, save the party for "
     "the drop, end on the sunset. Skip anything blurry.",
@@ -167,3 +168,84 @@ def test_llm_live(brief):
         assert 0 < len(q.split()) <= 8
     assert set(plan.must_include + plan.exclude) <= set(ctx["asset_ids"])
     print(plan.model_dump_json(indent=1))
+
+
+# ---------- open-weight provider (OpenAI-compatible server), mocked ----------
+
+class FakeServer:
+    def __init__(self, behavior):
+        self.behavior, self.calls = behavior, []
+
+    def __call__(self, url, payload, headers, timeout):
+        self.calls.append((url, payload, headers))
+        b = self.behavior
+        if b == "down":
+            raise llm.LLMFailure("server unreachable")
+        if b == "length":
+            return {"choices": [{"message": {"content": "{\"vibe\": \"tru"}, "finish_reason": "length"}]}
+        if b == "garbage":
+            return {"error": "model not found"}
+        text = b if isinstance(b, str) else json.dumps(b)
+        return {"choices": [{"message": {"content": text}, "finish_reason": "stop"}]}
+
+
+@pytest.fixture
+def server(monkeypatch):
+    from montage.config import override
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setattr(director, "server_up", lambda url: True)
+
+    def use(behavior):
+        srv = FakeServer(behavior)
+        monkeypatch.setattr(llm, "_post", srv)
+        return srv
+    with override({"director.provider": "openai_compat"}):
+        yield use
+
+
+def test_openai_compat_plan(server):
+    srv = server(GOOD)
+    assert director.llm_enabled() and director.llm_label() == "qwen3:8b"
+    plan, fb = director.make_plan("beach then party", CTX)
+    assert plan.source == "llm" and fb == [] and plan.must_include == ["a001"]
+    url, payload, _ = srv.calls[0]
+    assert url == "http://127.0.0.1:11434/v1/chat/completions"
+    assert payload["model"] == "qwen3:8b" and payload["reasoning_effort"] == "none"
+    schema = payload["response_format"]["json_schema"]["schema"]
+    assert payload["response_format"]["type"] == "json_schema" and "segments" in schema["properties"]
+    assert payload["messages"][0]["role"] == "system" and isinstance(payload["messages"][1]["content"], str)
+
+
+def test_llm_plan_keeps_explicit_avoids(server):
+    server(GOOD)  # the model returns no avoids
+    plan, _ = director.make_plan("Fast cuts, make sure it has no people", CTX)
+    assert plan.source == "llm" and "people" in plan.avoid_queries and plan.pacing == GOOD["pacing"]
+    revised, _ = revise_plan(plan.model_copy(update={"avoid_queries": []}), None, "no people please", CTX)
+    assert "people please" in revised.avoid_queries  # the rules parser's literal phrase; it names people
+    undone, _ = revise_plan(revised, None, "people are fine again", CTX)  # the model drops every avoid
+    assert undone.avoid_queries == []
+
+
+def test_openai_compat_strips_think(server):
+    server("<think>the brief says beach</think>\n" + json.dumps(GOOD))
+    plan, fb = director.make_plan("beach", CTX)
+    assert plan.source == "llm" and fb == []
+
+
+@pytest.mark.parametrize("behavior", ["down", "length", "garbage", "{not json"])
+def test_openai_compat_fallbacks(server, behavior):
+    srv = server(behavior)
+    plan, fb = director.make_plan("chill beach recap", CTX)
+    assert plan.source == "rules" and fb == ["director:rules"] and len(srv.calls) == 2
+
+
+def test_openai_compat_image_and_note(server):
+    srv = server("Opened on the beach, party on the drop at 0:32.")
+    msgs = llm._openai_messages("sys", llm._blocks({"contact_sheet": b"\xff\xd8jpeg"}, [("Brief", "beach")]))
+    parts = msgs[1]["content"]
+    assert parts[0]["type"] == "image_url" and parts[0]["image_url"]["url"].startswith("data:image/jpeg;base64,")
+    assert parts[1]["type"] == "text"
+    edl = _edl()
+    from montage.director.editor_note import editor_note
+    note, _ = editor_note(edl, None, CTX)
+    assert note.startswith("Opened on the beach") and "response_format" not in srv.calls[0][1]
