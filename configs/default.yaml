@@ -135,6 +135,14 @@ director:
   weights: {vibe: 0.6, seg: 1.2, avoid: 1.5, avoid_margin: 0.5, open: 1.5, close: 1.5}
   mood_targets: {calm: 0.15, neutral: 0.5, energetic: 0.85}
   energy_bias_scale: 0.25
+  # An avoid query naming people becomes a hard filter: the soft CLIP penalty let 12 of 34 shots with faces through.
+  # Drop shots with a detected face, or that CLIP rates more "a photo of people" than "a photo".
+  # shortcut: min_prob calibrated on one album (AUC 0.93 vs the face detector), retune on more albums.
+  people_filter:
+    # Only words for people in general: "no selfies" or a model's "group photo" avoid must not empty the cut.
+    words: [people, person, persons, human, humans, anyone, anybody, nobody]
+    prompts: ["a photo of people", "a photo"]
+    min_prob: 0.5
   contact_sheet: {cell_px: 128, max_cells: 100}
 
 planner:
