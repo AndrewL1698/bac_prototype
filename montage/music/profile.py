@@ -32,6 +32,7 @@ class FullAnalysis:
     boundaries: list[float]              # song time, snapped to downbeats
     emotion_source: str
     beat_source: str
+    beat_this_tried: bool = False        # Beat This! loaded at analysis time (librosa then means it found no beats)
     version: int = ANALYSIS_VERSION
     arrays: dict[str, np.ndarray] = field(default_factory=dict, repr=False)
 
@@ -78,7 +79,9 @@ def analyze_song(path: str | Path) -> FullAnalysis:
     h = cache.file_hash(path)
     want_emotion = "mert" if emotion.mert_available() else "heuristic"
     fa = load_cached(h)
-    if fa is not None and fa.emotion_source == want_emotion:
+    # an analysis cached while Beat This! was unavailable is redone once it loads (like emotion above)
+    if (fa is not None and fa.emotion_source == want_emotion
+            and not (fa.beat_source == "librosa" and not fa.beat_this_tried and beats_mod.beat_this_ready())):
         if fa.duration < cfg.min_song_s:
             raise UserError(f"The song must be at least {cfg.min_song_s:.0f} seconds long.")
         return fa
@@ -100,6 +103,7 @@ def analyze_song(path: str | Path) -> FullAnalysis:
     fa = FullAnalysis(
         song_hash=h, duration=round(audio.duration, 4), tempo=b["tempo"], beat_mode=b["beat_mode"],
         beats=b["beats"], downbeats=b["downbeats"], boundaries=bounds, emotion_source=src, beat_source=b["beat_source"],
+        beat_this_tried=beats_mod.beat_this_ready(),
         arrays={"grid": grid.astype(np.float32), "intensity": intensity,
                 "arousal": gauss_smooth(arousal, 1.0), "valence": gauss_smooth(valence, 1.0),
                 "novelty": nov, "rms_db": curves["rms_db"], "onset_density": curves["onset_density"],

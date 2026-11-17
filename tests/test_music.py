@@ -153,6 +153,38 @@ def test_music_cache_ignores_unknown_fields(fresh_root):
     assert load_cached("h1").tempo == 120.0
 
 
+def test_librosa_cache_redone_when_beat_this_loads(fixtures, fresh_root, monkeypatch):
+    """A song analyzed while Beat This! was down keeps librosa beats only until Beat This! loads."""
+    from montage import config
+    from montage.music import beats
+    from montage.music.profile import analyze_song
+    pytest.importorskip("librosa")
+    with config.override({"music.use_beat_this": False}):
+        assert analyze_song(fixtures / "click_120.wav").beat_source == "librosa"
+    fake = lambda y, sr: (np.arange(0.5, len(y) / sr, 0.5), np.arange(0.5, len(y) / sr, 2.0))  # noqa: E731
+    monkeypatch.setattr(beats, "_beat_this", fake)
+    with config.override({"music.use_beat_this": True}):
+        fa = analyze_song(fixtures / "click_120.wav")
+        assert fa.beat_source == "beat_this"
+        before = dict(beats.CALLS)
+        assert analyze_song(fixtures / "click_120.wav").beat_source == "beat_this"   # now cached
+        assert beats.CALLS == before
+
+
+def test_beatless_song_stays_cached(fixtures, fresh_root, monkeypatch):
+    """Beat This! loads but finds < 8 beats: the librosa result is cached, not redone every call."""
+    from montage import config
+    from montage.music import beats
+    from montage.music.profile import analyze_song
+    pytest.importorskip("librosa")
+    monkeypatch.setattr(beats, "_beat_this", lambda y, sr: (np.array([1.0]), np.array([1.0])))
+    with config.override({"music.use_beat_this": True}):
+        assert analyze_song(fixtures / "click_120.wav").beat_source == "librosa"
+        before = dict(beats.CALLS)
+        analyze_song(fixtures / "click_120.wav")
+        assert beats.CALLS == before
+
+
 @pytest.mark.media
 def test_summary(fixtures):
     from montage.music.excerpt import choose_excerpt

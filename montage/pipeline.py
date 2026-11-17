@@ -106,6 +106,8 @@ def _build_state(media_paths: list[str], song_path: str, progress: Progress = No
     _report(progress, 0.02, "reading media")
     with stage("ingest"):
         ms = build_media(media_paths, lambda f, m: _report(progress, 0.02 + 0.28 * f, m))
+    from montage.render.proxy import ensure_proxies  # renders use a proxy once it exists, the original until then
+    threading.Thread(target=ensure_proxies, args=(ms.assets,), daemon=True).start()
     with stage("features"):
         feats = extract(ms.assets, ms.candidates, ms.frames, lambda f, m: _report(progress, 0.3 + 0.35 * f, m))
     with stage("importance"):

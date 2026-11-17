@@ -18,6 +18,7 @@ from pathlib import Path
 from montage import jobs, paths
 from montage.config import get_config
 from montage.log import get_logger
+from montage.music.beats import checkpoint_on_drive
 
 log = get_logger("demo")
 
@@ -153,7 +154,7 @@ def checklist(report: dict | None = None) -> list[str]:
         _director_line(cfg),
         f"[{'x' if (w / cfg.music.emotion.head_weights).exists() else ' '}] emotion head weights (else heuristic arousal)",
         f"[{'x' if (w / cfg.importance.ranker_weights).exists() else ' '}] importance ranker weights (else heuristic)",
-        f"[{'x' if (w / 'beat_this-final0.ckpt').exists() else ' '}] Beat This! checkpoint cached on Drive (else librosa beats)",
+        f"[{'x' if checkpoint_on_drive().exists() else ' '}] Beat This! checkpoint cached on Drive (else librosa beats)",
     ]
     for a in albums():
         b = demo_root() / "backups" / f"{a.name}.mp4"

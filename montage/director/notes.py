@@ -10,7 +10,7 @@ from montage.types import EDL, EditPlan
 FASTER = re.compile(r"\b(faster|quicker|more energy|speed (it )?up|too slow)\b", re.I)
 SLOWER = re.compile(r"\b(slower|calmer|slow (it )?down|too fast|less frantic)\b", re.I)
 MORE = re.compile(r"\bmore (?:of )?(?:the )?([^,.;:!?\n]+)", re.I)
-LESS = re.compile(r"\b(less|fewer|no|lose|drop|remove|without) (?:of )?(?:the )?([^,.;:!?\n]+)", re.I)
+LESS = re.compile(r"\b(less|fewer|no|lose|drop|remove|without|skip|avoid) (?:of )?(?:the )?([^,.;:!?\n]+)", re.I)
 TIME = re.compile(r"\bat (\d{1,2}):(\d{2})\b")
 REMOVE = re.compile(r"\b(lose|drop|remove|cut|no|skip|without)\b", re.I)
 PARTS = {"beginning": "start", "start": "start", "intro": "start", "opening": "start", "middle": "middle",

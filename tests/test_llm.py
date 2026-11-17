@@ -140,8 +140,8 @@ def test_notes_rules():
     assert any(s.anchor == "intro" and s.pacing < 0 for s in p2.segments)
     assert "dog" in p2.vibe_queries
     assert "fewer people" in revise_rules(edl.plan, edl, "less people").avoid_queries
-    p3 = revise_rules(edl.plan, edl, "no selfies")
-    assert "selfies" in p3.avoid_queries
+    p3 = revise_rules(edl.plan, edl, "no selfies, skip people")
+    assert "selfies" in p3.avoid_queries and "people" in p3.avoid_queries
 
 
 @pytest.mark.api

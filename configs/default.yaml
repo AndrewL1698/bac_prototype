@@ -67,9 +67,28 @@ importance:
   reject_exposure_clip: 0.5
   blend_alpha: 0.5                # overridden by the ranker checkpoint if present
   ranker_weights: "importance_ranker.pt"
+  cufed:                          # phase 15 (spec 15): CUFED / ML-CUFED photo albums for training the ranker
+    sources: ["manual", "official", "hf"]   # tried in order; the first that yields a valid dataset root wins
+    official_url: null            # authors' archive link; their site and Drive file are gone (2026-11-10, spec 15 section 2)
+    hf_repo: "Shawn-Huang/CUFED-AlbumBench"   # main source; as of 2026-11-10 images for the 133-album test split only
+    hf_revision: "main"           # the resolved commit sha is recorded in raw/_downloaded.json
+    min_photos: 10                # albums with fewer labeled photos on disk are dropped (= ingest.min_assets)
+    score_range: [-2.0, 2.0]      # CUFED mean ratings; scores outside are counted and logged
+    max_consecutive_failures: 10  # the feature job stops after this many failing albums in a row
 
 music:
   use_beat_this: true            # false = librosa beats only (fallback / tests)
+  beat_this:
+    checkpoint: "final0"         # cached as DATA_ROOT/weights/beat_this-<checkpoint>.ckpt
+    sha256:                      # every copy (Drive, mirror, upstream) must match before it is loaded
+      final0: "8c328b45f59d8dd3dff219253ff6a8d6482be57d0133a29140e2febbf8eb8331"
+      small0: "6074be2c4d490c5f6101fcc374a1ec72ae93456e23bb6019783b849f5dc7d47b"
+    # Download sources, tried in order when the Drive copy is missing; {name} = checkpoint.
+    # Mirror first (pinned revision, see scripts/mirror_beat_this.py), then the authors' host.
+    sources:
+      - "https://cloud.cp.jku.at/public.php/dav/files/7ik4RrBKTS273gp/{name}.ckpt"
+    timeout_s: 30                # per-source download timeout (a retry runs inside a user request)
+    retry_s: 300                 # after a failed load, use librosa for this long before trying again
   min_song_s: 40
   max_bpm: 160
   min_bpm: 70
@@ -179,12 +198,8 @@ render:
   export: {width: 1920, height: 1080, crf: 18}
   audio_bitrate: "192k"
   max_crop_loss: 0.25             # 4:3 (25% loss) is cropped to fill; anything wider/taller gets blurred fill
-  pano_aspect: 2.5
   blur_sigma: 30
   blur_darken: -0.15
-  kb_base: 0.04
-  kb_gain: 0.08
-  kb_max_pan: 0.03
   fill_blur_oversize: 1.15
   workers: 8
   # per-shot render cache: unchanged shots are reused across renders and recuts.

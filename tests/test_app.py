@@ -29,8 +29,9 @@ def app(fixtures, tmp_path_factory):
         if f.suffix in (".mp4", ".mov", ".jpg"):
             shutil.copy(f, album / f.name)
     shutil.copy(fixtures / "song_sections.wav", data / "demo" / "songs" / "song_sections.wav")
+    # MONTAGE_APP_PASSWORD="" keeps the bootstrap's saved app password (montage_env.sh) from turning on login
     env = {**os.environ, "MONTAGE_DATA_ROOT": str(data), "MONTAGE_SCRATCH": str(root / "scratch"),
-           "MONTAGE_USER": "apptest", "MONTAGE_CONFIG": str(root / "cfg.yaml")}
+           "MONTAGE_USER": "apptest", "MONTAGE_CONFIG": str(root / "cfg.yaml"), "MONTAGE_APP_PASSWORD": ""}
     (root / "cfg.yaml").write_text("director:\n  use_llm: false\n")
     log = open(root / "app.log", "w")
     proc = subprocess.Popen([sys.executable, "-m", "montage.app.gradio_app", "--port", str(PORT)], env=env,
@@ -44,9 +45,11 @@ def app(fixtures, tmp_path_factory):
         pytest.fail("app did not start: " + (root / "app.log").read_text()[-2000:])
     print(f"app.url after {time.time() - t0:.1f}s")
     from gradio_client import Client
-    yield Client(f"http://127.0.0.1:{PORT}", verbose=False), fixtures, data
-    proc.terminate()
-    proc.wait(timeout=20)
+    try:   # stop the app even when the client cannot connect, so the port is free for the next run
+        yield Client(f"http://127.0.0.1:{PORT}", verbose=False), fixtures, data
+    finally:
+        proc.terminate()
+        proc.wait(timeout=20)
 
 
 def test_generate_and_recut(app):
