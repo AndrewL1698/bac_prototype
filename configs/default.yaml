@@ -188,12 +188,8 @@ render:
   export: {width: 1920, height: 1080, crf: 18}
   audio_bitrate: "192k"
   max_crop_loss: 0.25             # 4:3 (25% loss) is cropped to fill; anything wider/taller gets blurred fill
-  pano_aspect: 2.5
   blur_sigma: 30
   blur_darken: -0.15
-  kb_base: 0.04
-  kb_gain: 0.08
-  kb_max_pan: 0.03
   fill_blur_oversize: 1.15
   workers: 8
   # per-shot render cache: unchanged shots are reused across renders and recuts.

@@ -284,12 +284,8 @@ class RenderCfg(_B):
     export: EncodeCfg
     audio_bitrate: str
     max_crop_loss: float
-    pano_aspect: float
     blur_sigma: float
     blur_darken: float
-    kb_base: float
-    kb_gain: float
-    kb_max_pan: float
     fill_blur_oversize: float
     workers: int
     shot_cache: ShotCacheCfg

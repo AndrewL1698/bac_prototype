@@ -10,7 +10,7 @@ An **automatic montage maker**, not a video editor. A proof-of-concept web app t
 
 Roles: **the music owns timing** (every cut is on a beat), **the system does everything else** (song pick, selection, ordering, trimming, framing, rendering), and the user can optionally direct (what to show, how it should feel).
 
-v1 is **cuts only**: no transitions, fades, or effects between shots. Ken Burns motion inside a photo shot is allowed (it is not a transition). Clip audio is muted; only the song plays.
+v1 is **cuts only**: no transitions, fades, or effects between shots. Photos are still frames: no Ken Burns zoom or pan (removed 2026-11-15). Clip audio is muted; only the song plays.
 
 The MVP (phases 0-11) was a live workshop demo; the project is now a 2-week, 4-person extension (`docs/ROADMAP.md`, tracks in `docs/PLAN.md`). Optimize for: works every time, explains itself, fast recuts. Every learned component has a non-learned fallback so the app works end to end before any training finishes.
 
@@ -40,7 +40,7 @@ upload (media + song + brief)
   -> music         beats, downbeats, energy, sections, emotion (MERT head), intensity, excerpt
   -> director      brief/notes -> EditPlan (Claude API or rule-based fallback)
   -> planning      slots (beat grid) -> beam search -> in/out points -> EDL
-  -> render        per-shot encodes (framing, Ken Burns) -> concat -> mux song -> MP4
+  -> render        per-shot encodes (framing, still photos) -> concat -> mux song -> MP4
   -> app           Gradio UI: generate, plan, editor's note, storyboard, curves, notes/recut, export
 ```
 

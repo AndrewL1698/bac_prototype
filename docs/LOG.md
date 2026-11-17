@@ -296,6 +296,12 @@ Format:
 - Blockers: none.
 - Heads-up: workflow change for everyone: open a PR instead of fast-forwarding `main`.
 
+## 2026-11-15 17:30 ET | Keshav | app speed + no Ken Burns | branch app-speedups
+- Done: (1) the app starts loading CLIP in a background thread at launch (first generate after an app start no longer pays 10-20 s to load it); (2) `_build_state` starts `ensure_proxies` for the album's HDR videos in a background thread (only demo prep did this); (3) Ken Burns removed: the planner sets `kenburns=None` and no longer picks the panorama `pan` framing (wide panoramas get `fill_blur`); a still photo renders one frame and repeats it. Profiling on Summer Trip (A100, 21-shot cut, warm app): render 19-22 s (14 video shots ~14 s, 7 photos ~3 s), director 6 s, plan 0.5 s (11-20 s on the first generate per process). No gain measured from GPU decode, fewer x264 threads, a quarter-size blur, or local copies of Drive sources; 540p previews save 17%.
+- Tests: local `pytest -q` 157 passed, 68 skipped; new still-frame check in `test_kenburns_smooth`.
+- Next: time a warm generate and a first generate after app start on Colab with this branch.
+- Blockers: none.
+- Heads-up: config keys removed: `render.pano_aspect`, `render.kb_base`, `render.kb_gain`, `render.kb_max_pan`. CLAUDE.md section 1 now says photos are still frames. No schema changes (`Shot.kenburns` stays, now always None from the planner).
 ## 2026-11-15 15:45 ET | Keshav | director: hard "no people" filter | branch director-avoid-people (PR)
 - Done: "no people" briefs now work. Diagnosis on the Summer Trip demo album (183 candidates, 54% with faces): a "make sure it has no people" brief kept 12 of 34 shots with faces (14 with no brief). Claude wrote good avoid queries in earlier sessions ("group of friends", "couple", "person", "child", "selfie"), so the gap was the planner, not the model: the soft z-scored avoid penalty barely separates people shots (CLIP cos 0.153 vs 0.143 for "people"). Now an avoid query naming people (`director.people_filter.words`) hard-excludes candidates with a detected face or CLIP "a photo of people" vs "a photo" > 0.5 (AUC 0.93 against the face detector). Pins and must-include stay; skipped with a note if nothing would be left. Result: 0 shots with people, same 51.5 s length (19 longer shots).
 - Tests: new `test_people_avoid_is_a_hard_filter`; local `pytest -q` 158 passed, 68 skipped.
