@@ -68,6 +68,17 @@ importance:
   blend_alpha: 0.5                # overridden by the ranker checkpoint if present
   ranker_weights: "importance_ranker.pt"              # video ranker (phase 10A); also scores photos if no photo ranker
   photo_ranker_weights: "importance_ranker_photo.pt"  # photo ranker (phase 15, CUFED); used for photo candidates when present
+  personalize:                    # spec 15 section 6: nudge importance from each user's Keep/Remove across albums
+    enabled: true
+    beta_max: 0.3                 # largest weight of the preference rank (chosen by evaluate_personalize)
+    half_evidence: 10             # kept + removed shots at which the weight reaches half of beta_max
+    min_events: 3                 # fewer kept + removed shots: no nudge
+    max_sessions: 50              # newest sessions kept in DATA_ROOT/prefs/<user>.json
+    eval:                         # offline check on CUFED: training/importance/evaluate_personalize.py
+      k: 3                        # the simulated user keeps the k best and removes the k worst photos per album
+      beta_grid: [0.1, 0.2, 0.3, 0.5]
+      control_floor: -0.01        # a beta_max may not lower tau by more than this for an unrelated user
+      bootstrap: 2000             # album resamples for the 95% CI
   cufed:                          # phase 15 (spec 15): CUFED / ML-CUFED photo albums for training the ranker
     sources: ["manual", "official", "hf"]   # tried in order; the first that yields a valid dataset root wins
     official_url: null            # authors' archive link; their site and Drive file are gone (2026-11-10, spec 15 section 2)

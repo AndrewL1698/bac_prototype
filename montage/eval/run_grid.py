@@ -89,7 +89,7 @@ def main() -> int:
             for system in cfg.systems:
                 for seed in range(cfg.seeds):
                     edl = pipeline.plan_edit(s, plan, seed, system, run_id=f"eval_{key(album, song)}_{system}_{seed}",
-                                             persist=False)
+                                             persist=False, personalize=False)
                     paths.atomic_write(eval_root() / "edls" / f"{key(album, song)}__{system}__{seed}.json",
                                        edl.model_dump_json(indent=1))
                     m = metrics.compute(edl, profile, st.features, imp, n_assets=len(st.media.assets),

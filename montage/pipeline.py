@@ -199,8 +199,9 @@ def expand_excluded(cands: list[Candidate], dup: np.ndarray, excluded: list[str]
 
 
 def plan_edit(s: Session, plan: EditPlan, seed: int = 0, system: str = "full", run_id: str | None = None,
-              preview: bool = True, persist: bool = True) -> EDL:
-    """persist=False skips writing the run folder (evaluation grids plan many EDLs that are never rendered)."""
+              preview: bool = True, persist: bool = True, personalize: bool = True) -> EDL:
+    """persist=False skips writing the run folder (evaluation grids plan many EDLs that are never rendered).
+    personalize=False ignores the user's Keep/Remove history (evaluations, so results don't depend on who runs)."""
     from montage.director.apply import compile_plan
     from montage.importance.blend import importance
     from montage.planning import PlanInputs
@@ -212,15 +213,16 @@ def plan_edit(s: Session, plan: EditPlan, seed: int = 0, system: str = "full", r
     with stage("plan"):
         prof = _profile(st, plan)
         imp = st.importance if system != "no_learned" else importance(st.features, ranker=False)
+        final, n_pref = _personalized(imp.final, st.features) if personalize else (np.asarray(imp.final), 0)
         d = compile_plan(plan, prof, st.features, [c.asset_id for c in st.media.candidates],
                          pins=s.pins,
                          excluded=expand_excluded(st.media.candidates, st.features.arrays["dup_cluster"], s.excluded))
-        inp = PlanInputs(st.media.assets, st.media.candidates, st.features, np.asarray(imp.final),
-                         np.asarray(imp.heuristic), prof, d)
+        inp = PlanInputs(st.media.assets, st.media.candidates, st.features, final, np.asarray(imp.heuristic), prof, d)
         with config.override(SYSTEM_OVERRIDES.get(system, {})):
             edl = _plan(inp, run_id, seed, system if system in ("naive", "beat_random", "greedy") else "full", preview)
     edl.system = system
-    edl.notes = list(dict.fromkeys(edl.notes + st.notes))
+    edl.notes = list(dict.fromkeys(edl.notes + st.notes + ([f"personalized from {n_pref} kept/removed shots"]
+                                                            if n_pref else [])))
     if not persist:
         return edl
     rd = paths.run_dir(run_id)
@@ -231,6 +233,16 @@ def plan_edit(s: Session, plan: EditPlan, seed: int = 0, system: str = "full", r
              for c in st.media.candidates if c.id in {sh.candidate_id for sh in edl.shots}}
     cache.write_json(rd / "meta.json", {"session_id": s.session_id, "song_path": s.song_path, "faces": faces})
     return edl
+
+
+def _personalized(final, features) -> tuple[np.ndarray, int]:
+    """Importance nudged by the user's Keep/Remove history (spec 15 section 6); never breaks planning."""
+    from montage.importance import personalize
+    try:
+        return personalize.apply(final, features)
+    except Exception as e:  # noqa: BLE001  optional, must not break generate()
+        log.warning("personalization skipped: %s", e)
+        return np.asarray(final), 0
 
 
 def load_edl(run_id: str) -> EDL:
@@ -318,6 +330,8 @@ def recut(session_id: str, note: str | None = None, pins: list[str] | None = Non
             s.pins = list(dict.fromkeys(pins))
         if excluded is not None:
             s.excluded = list(dict.fromkeys(excluded))
+        if pins is not None or excluded is not None:
+            _record_prefs(s, st)
         if not s.plan_history:
             raise UserError("Generate a cut first.")
         plan = s.plan_history[-1]
@@ -335,6 +349,15 @@ def recut(session_id: str, note: str | None = None, pins: list[str] | None = Non
     res.timings = dict(t)
     paths.atomic_write(paths.run_dir(res.run_id) / "result.json", res.model_dump_json(indent=1))
     return res
+
+
+def _record_prefs(s: Session, st: State) -> None:
+    """Remember this session's Keep/Remove for later cuts (spec 15 section 6); never breaks the recut."""
+    from montage.importance import personalize
+    try:
+        personalize.record(s.session_id, st.features, s.pins, s.excluded)
+    except Exception as e:  # noqa: BLE001  optional, must not break recut()
+        log.warning("could not save Keep/Remove preferences: %s", e)
 
 
 def export(run_id: str, progress: Progress = None) -> str:

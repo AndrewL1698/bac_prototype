@@ -56,7 +56,7 @@ def main() -> int:
     for i, (album, song) in enumerate(pairs):
         sess = pipeline.analyze([str(album)], str(song))
         plan = plan_for(sess, album, song)
-        edl = pipeline.plan_edit(sess, plan, 0, "full")
+        edl = pipeline.plan_edit(sess, plan, 0, "full", personalize=False)
         video = pipeline.render_edl(edl, preview=True)
         detected = detect_cuts(video)
         expected = [s.frame_start for s in edl.shots[1:]]

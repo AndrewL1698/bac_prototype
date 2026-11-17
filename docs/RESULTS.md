@@ -58,6 +58,20 @@ Takeaways: the video ranker did not transfer to photos; it ranked them worse tha
 
 CUFED photos are from YFCC100M (Yahoo Webscope, http://webscope.sandbox.yahoo.com; Thomee et al., arXiv:1503.01817); used under its terms (no redistribution, no identifying people).
 
+## Personalization from Keep/Remove (phase 15)
+Last updated 2026-11-17 by Shiven (git phase-15-personalize@a48ad43). Full report: `montage_data/eval/personalize/report.md` (+ `metrics.json`).
+
+Offline check on CUFED: a simulated user keeps the 3 best and removes the 3 worst photos of each album they edit. Each of the 133 albums is held out in turn, with every other album of its event type as the user's history ("same type"), and with as many albums of other event types ("unrelated user"). Base: the photo ranker's out-of-fold scores (learned on CUFED, linear, alpha 1; mean tau 0.305). Mean Kendall tau gain per held-out album, 95% bootstrap CI over albums.
+
+| beta_max | Same event type: tau gain (95% CI) | Albums better | Unrelated user: tau gain (95% CI) | Albums better |
+|---|---|---|---|---|
+| 0.1 | +0.006 (+0.004 to +0.007) | 59% | -0.001 (-0.003 to +0.001) | 39% |
+| 0.2 | +0.014 (+0.010 to +0.019) | 72% | -0.001 (-0.006 to +0.003) | 43% |
+| **0.3 (default)** | **+0.023 (+0.017 to +0.031)** | **76%** | **-0.006 (-0.013 to +0.000)** | 36% |
+| 0.5 | +0.038 (+0.026 to +0.051) | 70% | -0.023 (-0.035 to -0.011) | 33% |
+
+Takeaways: remembering what a user keeps and removes helps on their next album of the same kind, and more weight helps more, but too much weight hurts when the history is unrelated. beta_max 0.3 is the largest value that does not clearly hurt an unrelated user (its CI reaches 0), so it is the default; 0.5 gains more for matching albums but costs 0.023 tau otherwise. Honest limits: the simulated user's taste is the CUFED raters' consensus, and their history is every other album of that event type (about 5 albums, 30 clicks); a real user has fewer clicks at first, which the evidence-scaled weight accounts for.
+
 ## Editor evaluation (phase 11)
 Last updated 2026-10-27 by Keshav (git track-b@909a030). Full report: `montage_data/eval/report.md` (+ `grid.json`, `render_check.json`), figures in `montage_data/eval/figures/`.
 

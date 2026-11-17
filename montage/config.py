@@ -115,6 +115,22 @@ class CufedCfg(_B):
     eval: CufedEvalCfg
 
 
+class PersonalizeEvalCfg(_B):
+    k: int
+    beta_grid: list[float]
+    control_floor: float
+    bootstrap: int
+
+
+class PersonalizeCfg(_B):
+    enabled: bool
+    beta_max: float
+    half_evidence: float
+    min_events: int
+    max_sessions: int
+    eval: PersonalizeEvalCfg
+
+
 class ImportanceCfg(_B):
     heuristic: HeuristicWeights
     junk_tags: list[str]
@@ -124,6 +140,7 @@ class ImportanceCfg(_B):
     blend_alpha: float
     ranker_weights: str
     photo_ranker_weights: str
+    personalize: PersonalizeCfg
     cufed: CufedCfg
 
 
