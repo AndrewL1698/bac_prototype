@@ -42,6 +42,7 @@ class AlbumVibe:
     arousal: float
     n_assets: int
     taken_at: list[datetime | None] = field(default_factory=list)
+    raw: tuple[float, float] = (0.0, 0.0)  # (valence, arousal) before center/scale; for calibration
 
 
 def norm_tag(t: str) -> str:
@@ -79,7 +80,7 @@ def album_from_features(emb: np.ndarray, asset_ids: Sequence[str], arousal_raw: 
     c, s = cfg.album_mood_center, cfg.album_mood_scale
     return AlbumVibe(emb=pooled, valence=math.tanh((v_raw - c["valence"]) / s["valence"]),
                      arousal=math.tanh((a_raw - c["arousal"]) / s["arousal"]),
-                     n_assets=len(order), taken_at=list(taken_at or []))
+                     n_assets=len(order), taken_at=list(taken_at or []), raw=(v_raw, a_raw))
 
 
 def album_vibe(media_paths: list[str], progress: Callable[[float, str], None] | None = None) -> AlbumVibe:

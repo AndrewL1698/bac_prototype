@@ -79,7 +79,7 @@ def test_album_pools_per_asset_and_mood_is_absolute():
     assert np.allclose(av.emb, np.array([1, 1, 0, 0]) / np.sqrt(2)) and av.n_assets == 2
     assert av.arousal == pytest.approx(np.tanh((2.0 - c["arousal"]) / s["arousal"]))
     assert av.valence == pytest.approx(np.tanh((-1.0 - c["valence"]) / s["valence"]))
-    assert av.taken_at == [datetime(2026, 7, 3)]
+    assert av.taken_at == [datetime(2026, 7, 3)] and av.raw == pytest.approx((-1.0, 2.0))
 
 
 def test_mood_word_quadrants():
