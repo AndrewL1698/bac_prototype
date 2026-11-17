@@ -86,7 +86,19 @@ python -m training.importance.evaluate_cufed --deploy      # only after reading 
 
 ## 6. Personalization (days 8-10, only if time)
 
-Learn from each user's pins and excludes (`Session.pins`, `Session.excluded`) to nudge importance for that user. Specified separately if reached; first thing dropped if time runs short.
+Learn from each user's pins and excludes (`Session.pins` = shots marked Keep, `Session.excluded` = shots marked Remove) to nudge importance for that user, across albums. Today they only act inside one session (kept shots are forced in, removed shots are dropped); nothing carries over.
+
+**Module `montage/importance/personalize.py`.** Settings in `importance.personalize`.
+
+- **Evidence.** When a recut applies pins or excludes, `record(session_id, features, pins, excluded)` stores, for that session, the sum and count of the CLIP embeddings (`features.arrays["emb"]`, L2-normalized) of the kept shots (`pos`) and of the removed shots (`neg`). Re-recording a session replaces its evidence, so "Stop keeping" / "Put back" take the shot out again. File: `DATA_ROOT/prefs/<user>.json` (`paths.user()`), written atomically; the newest `max_sessions` (50) sessions are kept. Only these per-session sums are stored: no photos, ids or file names.
+- **Preference score** for a candidate with embedding e: `cos(e, mean_pos) - cos(e, mean_neg)` over all stored sessions (each term only when that side has evidence).
+- **Nudge** (`apply(final, features)`), within each modality (photos, videos), like the blend: `final' = rank01((1 - beta) * final + beta * rank01(pref))`, with `beta = beta_max * n / (n + half_evidence)`, n = number of kept + removed shots stored. Nothing changes below `min_events` (3) or without a prefs file. beta grows with evidence and never exceeds `beta_max`, so a few clicks cannot override the ranker.
+- **Where.** `pipeline.recut` records before planning; `pipeline.plan_edit` applies the nudge to `importance.final` (not to `heuristic`) when `personalize=True` (the default) and adds an EDL note "personalized from N kept/removed shots". Evaluation callers (`eval/run_grid.py`, `eval/render_check.py`) pass `personalize=False`, so their numbers do not depend on who runs them. `python -m montage.importance.personalize --show` prints the evidence counts; `--reset` deletes the user's file.
+- **Privacy.** The file holds averaged CLIP vectors of the user's kept and removed shots, in that user's namespace on the shared Drive; it cannot be turned back into photos. Nothing leaves the machine.
+
+**Offline check (`training/importance/evaluate_personalize.py`, CUFED).** A simulated user edits albums of one event type: in each history album they keep the `k` (3) photos with the highest CUFED score and remove the `k` lowest. For each held-out album, the history is every other album of the same event type (leave one album out). Base scores: the chosen photo ranker's out-of-fold predictions from the phase 15 CV (`eval/importance_cufed/oof/cufed_linear.npz`), so the held-out album was never trained on. Report: CUFED tau base vs personalized per held-out album, mean gain with a 95% bootstrap CI over albums, for (a) a history of the same event type and (b) a control history from other event types (a random user's taste), at `beta_max` in {0.1, 0.2, 0.3, 0.5}. Default `beta_max`: the largest value whose control gain is not below -0.01 and whose same-event gain CI is above 0; if none, personalization ships disabled (`enabled: false`). Output `DATA_ROOT/eval/personalize/report.md` + `metrics.json`.
+
+**Tests (`tests/test_personalize.py`).** Record and re-record a session (replace, put back, session cap); no file or fewer than `min_events` leaves scores unchanged; with evidence, shots like the kept ones move up and shots like the removed ones move down, within each modality; beta follows the formula; `recut` records and `plan_edit` applies with a note, and `personalize=False` gives exactly the plain scores; the offline check on synthetic albums finds a gain for same-type history and none for the control.
 
 ## 7. Acceptance tests (`tests/test_cufed.py`, `tests/test_cufed_eval.py`)
 
