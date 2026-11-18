@@ -95,6 +95,15 @@ class HeuristicWeights(_B):
     junk: float
 
 
+class CufedEvalCfg(_B):
+    sources: list[Literal["summe", "tvsum", "both", "cufed", "all"]]
+    kinds: list[Literal["linear", "mlp"]]
+    folds: int
+    epochs: int
+    bootstrap: int
+    require_ci: bool
+
+
 class CufedCfg(_B):
     sources: list[Literal["manual", "official", "hf"]]
     official_url: str | None = None
@@ -103,6 +112,7 @@ class CufedCfg(_B):
     min_photos: int
     score_range: tuple[float, float]
     max_consecutive_failures: int
+    eval: CufedEvalCfg
 
 
 class ImportanceCfg(_B):
@@ -113,6 +123,7 @@ class ImportanceCfg(_B):
     reject_exposure_clip: float
     blend_alpha: float
     ranker_weights: str
+    photo_ranker_weights: str
     cufed: CufedCfg
 
 

@@ -2,7 +2,7 @@
 
 Track 2, ROADMAP item 2 ("Photo-album importance"). Supersedes the optional 10B section of `10_train_importance.md`; everything else in spec 10 (RankNet, pairs within a group, CV by group, deploy format) still applies.
 
-Goal: the learned importance ranker (phase 10A) is trained on SumMe/TVSum **videos**, but the albums people upload are about 90% **photos**, and RESULTS.md has no photo-album number at all. Train and evaluate the same ranker on event photo albums with human importance labels, keep the same model and blend, and deploy a new checkpoint only if photo-album ranking improves without hurting SumMe.
+Goal: the learned importance ranker (phase 10A) is trained on SumMe/TVSum **videos**, but the albums people upload are about 90% **photos**, and RESULTS.md has no photo-album number at all. Train and evaluate the same ranker on event photo albums with human importance labels and deploy it as a **separate photo ranker** only if photo-album ranking improves. The video ranker stays as it is (see section 5 for why).
 
 Schedule (ROADMAP): days 1-3 sections 1-4 (download, label mapping, features); days 4-7 section 5 (training, evaluation, deploy decision); days 8-10 section 6 (personalization, only if time). Cut order: CUFED is the last ML item cut; if it fails, the 10A ranker stays deployed (that is the fallback).
 
@@ -68,20 +68,32 @@ python -m training.importance.cufed_features --limit 5     # smoke run on 5 albu
 
 ## 5. Training, evaluation, deploy decision (days 4-7)
 
-- `evaluate.py` is generalized from the hardcoded `summe`/`tvsum` to any dataset tag in the data: 5-fold CV **by group** (album or video), Kendall tau-b and Spearman rho (tie-aware; CUFED scores are discrete) within each held-out group, averaged per dataset (`summe`, `tvsum`, `cufed`).
-- Rows: random, aesthetic only, heuristic H, **the deployed 10A ranker as is**, learned {summe, tvsum, cufed, videos (summe+tvsum), all} x {linear, mlp}, and blends of the selected learned model with H at alpha in {0, 0.25, 0.5, 0.75, 1}.
-- Selection: the configuration with the best mean tau on **held-out CUFED albums**, among those whose SumMe tau is not clearly worse than the deployed ranker's (same `CLEARLY_WORSE` margin as spec 10); alpha by the same CV. Deploy only if it beats the deployed ranker on CUFED; otherwise keep the deployed checkpoint and report that honestly.
-- Deploy as spec 10 section 6 (`weights/importance_ranker.pt`, atomic, shared), plus a CUFED column in the RESULTS.md ranker table, a one-line takeaway, and a LOG **Heads-up** that new weights are live.
+```
+python scripts/run_job.py --name cufed_eval -- python -m training.importance.evaluate_cufed
+python -m training.importance.evaluate_cufed --deploy      # only after reading the report
+```
+
+- **New module `training/importance/evaluate_cufed.py`**; `evaluate.py` (10A, videos only) is left unchanged so its published numbers stay reproducible. It reuses `evaluate.rank01_within`, `evaluate.ALPHAS` and the RankNet trainer `train.fit` as they are. Settings in `importance.cufed.eval`.
+- Data: `windows.npz` + `cufed_photos.npz` concatenated on the shared keys (same `ranker_features` columns).
+- CV: 5 folds **by group** (video or album), each dataset dealt on its own. SumMe and TVSum are drawn first with the same generator as `evaluate.folds`, so the video folds are exactly 10A's. Inner validation for early stopping as in 10A (10% of the training groups). Per held-out group: Kendall tau-b and Spearman rho (tie-aware; CUFED scores are discrete), averaged per dataset (`summe`, `tvsum`, `cufed`). Out-of-fold scores are cached per configuration (keyed by a fingerprint of the data and settings), so a rerun after a Colab disconnect skips finished configurations.
+- **Photos get their own ranker.** The app already ranks photos only against photos and videos only against videos (`importance/blend.py`), so photos can use their own checkpoint: `weights/importance_ranker_photo.pt` (`importance.photo_ranker_weights`) scores photo candidates when it exists, with its own blend alpha; videos always use `importance_ranker.pt`; with no photo ranker, photos use the video ranker as before. Why (first run, 2026-11-15): one ranker for both forced a trade-off. Models trained on CUFED order photos about 4x better than the live ranker (CUFED tau 0.30 vs 0.08) but drop SumMe to about 0.10, so a SumMe guard ruled them all out, and the only model left was the live one with less weight on the learned part, which barely helped photos and dropped TVSum from 0.41 to 0.08 (a guard on SumMe alone missed that). With separate rankers there is no trade-off: this phase only ever changes the photo ranker.
+- Rows: random, aesthetic only, heuristic H, **what scores photos today, as is** (`deployed_as_is`: the photo ranker if live, else the video ranker), **its configuration re-run in this CV** (`deployed_config_cv`), learned {summe, tvsum, both (= SumMe + TVSum), cufed, all} x {linear, mlp}, and blends of the selected model with H at alpha in {0, 0.25, 0.5, 0.75, 1} (rank-normalized within the group, as `importance/blend.py` does at inference).
+- Selection: every (learned model, alpha) blend is a candidate (alpha 0 is the heuristic alone). Chosen: the best mean tau on **held-out CUFED albums**; ties prefer the smaller alpha. No video guard: the chosen model only scores photos, and the SumMe/TVSum columns are reported for information. The chosen model is retrained on all of its training data.
+- Baseline ("what the app does today on a photo album"): what scores photos today, as is, when it never saw CUFED (today: the video ranker, trained on SumMe + TVSum, so CUFED is out of sample for it); once a CUFED-trained ranker is live, its as-is CUFED score is in sample, so its configuration re-run in this CV is the baseline instead; no live checkpoint: the heuristic.
+- **Deploy rule:** the per-album tau gain (chosen minus baseline) must be above 0, and with `require_ci: true` its 95% bootstrap CI over albums (`bootstrap` resamples) must be above 0 too. With 133 albums a small average gain can be noise, and the live weights affect every teammate's app. Otherwise photos keep what they use today and the report says so.
+- **A run never touches the live weights.** It writes `DATA_ROOT/eval/importance_cufed/`: `report.md` (table, decision, per-event breakdown), `metrics.json`, `per_album_tau.png` (chosen vs baseline per album) and `candidate.pt` (spec 10 checkpoint format plus `trained_on`, `modality: photo` and `phase: 15`). `--deploy` copies the candidate to `weights/importance_ranker_photo.pt` only if the decision says deploy and the candidate matches `metrics.json` (sha1), keeping the previous file as `importance_ranker_photo.prev.pt`. It never writes `importance_ranker.pt`.
+- After a deploy: a CUFED column in the RESULTS.md ranker table, a one-line takeaway, a LOG **Heads-up** that a photo ranker is live, README "What works today". After a no-deploy: the same table and an honest takeaway.
 
 ## 6. Personalization (days 8-10, only if time)
 
 Learn from each user's pins and excludes (`Session.pins`, `Session.excluded`) to nudge importance for that user. Specified separately if reached; first thing dropped if time runs short.
 
-## 7. Acceptance tests (`tests/test_cufed.py`)
+## 7. Acceptance tests (`tests/test_cufed.py`, `tests/test_cufed_eval.py`)
 
 - Layout: a valid root is found under nested folders; a folder without `image_importance.json` (the super-resolution CUFED) is rejected with a clear message; archive extraction refuses paths outside the target.
 - Sources: an official HTML answer stops with instructions; the mirror is pinned to its resolved sha; a gated mirror falls through; a source on disk is reused without a download; a later official link or manual copy wins over an earlier mirror download; a dead official link falls through to the mirror.
 - Mapping: every labeled album appears exactly once (kept or dropped with the right reason), photos map one to one, `y` is min-max in [0, 1] over present photos only.
 - Reruns: with the mirror already in `raw/hf/`, the manual check does not report it as unknown files (no false super-resolution warning) and nothing is downloaded again.
 - Feature assembly: per-album rows, `y` re-normalized after ingest drops a duplicate, resume skips finished albums, consecutive failures stop the job (pipeline mocked).
+- Evaluation (`tests/test_cufed_eval.py`): video folds identical to 10A and unchanged by adding albums; selection on CUFED alone with the tie rule; the bootstrap gain and CI; end to end on synthetic data where importance is learnable (it learns, decides, writes the candidate but not the live weights; `--deploy` makes it the live photo ranker and never writes the video ranker; a rerun reuses the CV cache and compares against the right baseline; a non-deploy decision or a mismatched candidate is refused); a video-trained live ranker is today's photo baseline, compared as is. Blend (`tests/test_training.py`): with a photo ranker, photos use it and video scores are exactly unchanged; without one, scores equal the old single-ranker formula.
 - `test_cufed_parity` (`gpu`, `media`): features for an album from `cufed_features` equal `build_media` + `extract` on the same photos (same cache entries).
