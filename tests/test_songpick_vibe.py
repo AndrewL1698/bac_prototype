@@ -15,6 +15,14 @@ from montage.songpick import vibe
 from montage.songpick.pick import NO_TAGS, suggest
 from montage.types import ListeningEvent, TopTrack, TrackCandidate
 
+
+@pytest.fixture(autouse=True)
+def _no_why_llm():
+    """The Suggest handler calls the director's LLM for why-this-song (12.10) when a key is set; keep it offline."""
+    with config.override({"songpick.why.enabled": False}):
+        yield
+
+
 NOW = datetime(2026, 11, 5, 12, 0, 0)
 AXES = {"party": 0, "dance": 0, "happy": 0, "summer": 0, "sad": 1, "ambient": 1, "melancholy": 1, "calm": 1}
 

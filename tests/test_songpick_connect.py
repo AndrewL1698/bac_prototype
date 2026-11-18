@@ -20,6 +20,14 @@ from montage.types import UserError
 from scripts.fixtures_history import (BACKGROUND, FAVOURITE, TOP_PICK, spotify_recent_json, spotify_top_json,
                                       write_history)
 
+
+@pytest.fixture(autouse=True)
+def _no_why_llm():
+    """The Suggest handler calls the director's LLM for why-this-song (12.10) when a key is set; keep it offline."""
+    with config.override({"songpick.why.enabled": False}):
+        yield
+
+
 NOW = datetime(2026, 11, 5, 12, 0, 0)
 APP = "https://abc123def.gradio.live/"
 CALLBACK = Path(__file__).resolve().parents[1] / "docs" / "spotify" / "callback.html"

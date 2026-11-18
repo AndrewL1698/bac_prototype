@@ -130,7 +130,11 @@ def suggest(media: list[str], history_files: list[str] | None, sp: dict | None, 
     if album is not None:
         pick.album_valence, pick.album_arousal = round(album.valence, 4), round(album.arousal, 4)
     pick.notes = notes + pick.notes
-    choices = [(f"{c.artist} - {c.track}: {c.reason}", str(i)) for i, c in enumerate(pick.candidates)]
+    if progress:
+        progress(0.97, "writing why each song fits")
+    from montage.songpick import why
+    wrote = why.explain(pick, album.tags if album is not None else [])
+    choices = [(f"{c.artist} - {c.track}: {c.why or c.reason}", str(i)) for i, c in enumerate(pick.candidates)]
     if pick.mode == "release" and pick.period_start and pick.period_end:
         head = f"Songs that came out around your photos ({pick.period_start:%b %Y} - {pick.period_end:%b %Y})."
     elif pick.mode == "export" and pick.period_start and pick.period_end:
@@ -141,7 +145,8 @@ def suggest(media: list[str], history_files: list[str] | None, sp: dict | None, 
         head = "Your songs that best fit the photos' vibe."
     else:
         head = "Your best picks overall."
-    md = "\n".join([head] + [f"> {n}" for n in pick.notes])
+    details = [f"- {c.artist} - {c.track}: {c.reason}" for c in pick.candidates] if wrote else []
+    md = "\n".join([head] + [f"> {n}" for n in pick.notes] + (["", "Details:"] + details if details else []))
     return choices, pick, md
 
 

@@ -15,6 +15,14 @@ from montage.songpick import sentiment
 from montage.songpick.pick import NO_AUDIO, suggest
 from test_songpick_vibe import NOW, TAGS, album, fake_encode, scorer, top_lists
 
+
+@pytest.fixture(autouse=True)
+def _no_why_llm():
+    """The Suggest handler calls the director's LLM for why-this-song (12.10) when a key is set; keep it offline."""
+    with config.override({"songpick.why.enabled": False}):
+        yield
+
+
 FIX, GLUM, NEON = "fixture bloc|steady song", "glum owls|rainy window", "neon kites|beach party"
 # How the songs sound (valence, arousal), deliberately against their tags: Glum Owls sounds upbeat, Neon Kites sad.
 AUDIO = {FIX: (0.0, 0.0), GLUM: (0.7, 0.6), NEON: (-0.5, -0.6)}
