@@ -138,16 +138,19 @@ def mood_word(valence: float, arousal: float) -> str | None:
             (0, 1): "energetic", (0, -1): "calm", (1, 0): "bright", (-1, 0): "moody"}.get((v, a))
 
 
-def _reason(c: TrackCandidate, album: AlbumVibe, good: bool) -> str:
+def reason_line(c: TrackCandidate, album: AlbumVibe, good: bool) -> str:
+    """The vibe sentence put in front of a song's reason ('' when there is nothing to say)."""
     n = get_config().songpick.vibe.reason_tags
     named = ", ".join(c.tags[:n])
+    tagged = f" (tagged {named})" if named else ""
     if not good:
-        return f"Tagged {named}."
+        return f"Tagged {named}." if named else ""
     aw = mood_word(album.valence, album.arousal)
     sw = mood_word(c.valence, c.arousal) if c.valence is not None and c.arousal is not None else None
     if aw and sw == aw:
-        return f"{aw.capitalize()}, like your photos (tagged {named})."
-    return f"Fits your photos (tagged {named})."
+        return f"Sounds {aw}, like your photos{tagged}." if c.mood_source == "audio" else \
+            f"{aw.capitalize()}, like your photos{tagged}."
+    return f"Fits your photos{tagged}."
 
 
 def _ranks(raw: dict[str, float]) -> dict[str, float]:
@@ -174,6 +177,7 @@ def score(cands: list[TrackCandidate], album: AlbumVibe, tags_by_key: dict[str, 
         va = tag_mood(tags)
         if va is not None:
             c.valence, c.arousal = round(va[0], 4), round(va[1], 4)
+            c.mood_source = "tags"
             raw_mood[c.key] = mood_match(va, album)
     clip, mood = _ranks(raw_clip), _ranks(raw_mood)
     for c in cands:
@@ -190,7 +194,7 @@ def score(cands: list[TrackCandidate], album: AlbumVibe, tags_by_key: dict[str, 
         if c.vibe is None:
             c.vibe = round(med, 6)
         elif c.tags:
-            c.reason = f"{_reason(c, album, c.vibe >= med)} {c.reason}"
+            c.reason = f"{reason_line(c, album, c.vibe >= med)} {c.reason}"
     return len(scored)
 
 

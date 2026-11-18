@@ -1,8 +1,9 @@
 """'Pick a song for me' handlers for the Gradio app (plain values in and out, so tests need no Gradio).
 
 Flow: Connect Spotify (redirect to Spotify, back through docs/spotify/callback.html) -> Suggest songs
-(capture dates and mood of the chosen photos + listening data + song tags) -> Use this song (opt-in YouTube fetch) -> the
-song player is filled and the normal Generate flow runs unchanged.
+(capture dates and mood of the chosen photos + listening data + song tags; with the YouTube opt-in, also the top songs'
+audio mood, 12.9) -> Use this song (opt-in YouTube fetch, cached) -> the song player is filled and the normal Generate
+flow runs unchanged.
 
 The per-user state `sp` (a gr.State dict) holds the Spotify token and the fetched listening data. It
 lives only in the app process for that browser session: never written to disk, never logged.
@@ -94,9 +95,23 @@ MODE_CHOICES = [("Songs from back then (release date)", "release"), ("Best vibe 
                 ("My full Spotify history (data export)", "export")]
 
 
+def _sentiment_scorer(album, youtube_ok: bool):
+    """The audio-mood scorer (12.9) when the user opted in to YouTube and the MERT head is there; else None."""
+    if not youtube_ok or album is None or not get_config().songpick.sentiment.enabled:
+        return None
+    from montage.music.emotion import mert_available
+    if not mert_available():
+        log.info("songpick: no MERT emotion head, so no audio mood")
+        return None
+    from montage.songpick import sentiment
+    return sentiment.Scorer(album)
+
+
 def suggest(media: list[str], history_files: list[str] | None, sp: dict | None, mode: str | None = None,
-            progress: Callable[[float, str], None] | None = None) -> tuple[list[tuple[str, str]], SongPick, str]:
-    """(radio choices [(label, index)], the SongPick, markdown with the window and notes)."""
+            progress: Callable[[float, str], None] | None = None, youtube_ok: bool = False
+            ) -> tuple[list[tuple[str, str]], SongPick, str]:
+    """(radio choices [(label, index)], the SongPick, markdown with the window and notes). With `youtube_ok`, the
+    best few songs' audio is fetched and their sound re-ranks them."""
     sp = sp or {}
     if mode == "export" and not history_files:
         raise UserError("Upload your Spotify history files (data export JSON) for this mode, or pick another mode.")
@@ -109,9 +124,9 @@ def suggest(media: list[str], history_files: list[str] | None, sp: dict | None, 
         from montage.songpick import tags, vibe
         scorer = vibe.Scorer(album, tags.lookup)
         if progress:
-            progress(0.92, "looking up song tags")
+            progress(0.9, "looking up song tags" + (", then listening to the best few songs" if youtube_ok else ""))
     pick = pick_mod.suggest(taken_at, mode=mode, export=export, recent=sp.get("recent"), top=sp.get("top"),
-                            vibe_scorer=scorer)
+                            vibe_scorer=scorer, sentiment_scorer=_sentiment_scorer(album, youtube_ok))
     if album is not None:
         pick.album_valence, pick.album_arousal = round(album.valence, 4), round(album.arousal, 4)
     pick.notes = notes + pick.notes
@@ -120,6 +135,8 @@ def suggest(media: list[str], history_files: list[str] | None, sp: dict | None, 
         head = f"Songs that came out around your photos ({pick.period_start:%b %Y} - {pick.period_end:%b %Y})."
     elif pick.mode == "export" and pick.period_start and pick.period_end:
         head = f"Songs you played around {pick.period_start:%b %d, %Y} - {pick.period_end:%b %d, %Y}."
+    elif pick.vibe_source == "audio":
+        head = "Your songs that sound most like your photos."
     elif pick.vibe_source != "none":
         head = "Your songs that best fit the photos' vibe."
     else:
