@@ -9,16 +9,17 @@ Goal: "Pick the song for me."
 3. The user clicks **Use this song**. With the YouTube opt-in ticked, the app fetches the audio automatically; otherwise, or when YouTube blocks the fetch, it links to a YouTube search so the user can upload the file.
 4. The existing pipeline runs unchanged: `pipeline.generate` gets a song path, as today.
 
-**Status:** all of it is implemented on branch `phase-12-songpick`:
+**Status:** 12.1-12.7b merged (PR #5):
 - 12.1-12.4: data-export parsing, album period, period affinity, shortlist;
 - 12.5: Spotify sign-in;
 - 12.6: YouTube audio (opt-in);
 - 12.7: the app UI;
 - 12.7b (2026-11-08): the three modes, release-date windows, YouTube cookies + manual fallback.
 
-- 12.8 (branch `phase-12-vibe`): the stage A vibe match (section 6b) in all three modes.
+- 12.8 (PR #9, merged): the stage A vibe match (section 6b) in all three modes.
+- 12.9 (branch `phase-12-sentiment`): the sentiment match from the songs' audio (section 6c).
 
-Still to do: sentiment match with audio (12.9, MERT head), Claude "why this song" (12.10), local library matching (optional).
+Still to do: Claude "why this song" (12.10), local library matching (optional).
 
 **Where the audio comes from:** Spotify cannot provide it. Its SDKs only play inside Spotify's DRM player, preview clips and audio features were removed for new apps in Nov 2024, and its developer terms forbid syncing its content with video. The app uses Spotify only for listening *data*.
 - **YouTube (opt-in):** the audio is fetched from YouTube with `yt-dlp`. That breaks YouTube's terms, and the songs are copyrighted. Andrew accepted that risk for the class demo (PLAN Decisions, 2026-11-05). It is off by default and runs only after the user ticks the opt-in box and clicks **Use this song**.
@@ -165,7 +166,7 @@ Sign-in exposes only the last 50 plays (with dates) and top tracks for about 4 w
   - an optional upload of the history export;
   - the suggestions as a radio list with reasons;
   - a **How to pick** radio (the three modes; default `songpick.default_mode`); the export upload shows only in the export mode;
-  - the YouTube opt-in checkbox (default `youtube.enabled: false`) and **Use this song**, which fills the Song player, or (fetch off or blocked) leaves it as it is and shows a YouTube search link plus "drop the file in the Song box";
+  - the YouTube opt-in checkbox (default `youtube.enabled: false`), above **Suggest songs** since 12.9 (when ticked, Suggest also listens to the top songs, section 6c), and **Use this song**, which fills the Song player, or (fetch off or blocked) leaves it as it is and shows a YouTube search link plus "drop the file in the Song box";
   - a paste box for the callback page's fallback code.
 - **Serving:** the `cache/youtube_audio` folder is never served (it is in `blocked_paths`; anyone with the share link could fetch songs by video id). `use_song` returns a copy in the system temp dir (`youtube.serve_copy`), which Gradio moves into its own content-hashed cache.
 
@@ -193,8 +194,23 @@ Goal: rank the user's songs by how well they fit the photos, before any audio ex
   - `SongPick.album_valence` / `album_arousal` carry the album mood for the UI and later evaluation.
 - **Calibration** (`scripts/calibrate_album_mood.py`, on Colab; 2026-11-17): over the 133 CUFED event albums (`cufed_photos.npz`, phase 15) plus the demo and eval albums, `album_mood_center` is the mean raw score per album and `album_mood_scale` the std (RESULTS.md). The first calibration (2026-11-11, travel albums only) put most event albums at arousal ~1.
 
+## 6c. Sentiment match from audio (12.9; ROADMAP F1 piece 5)
+
+Goal: rank the top songs by how they **sound**, not only by their tags. Runs only when the user ticks the YouTube opt-in **before** Suggest songs (Andrew, 2026-11-18), and only with the MERT emotion head present (`music.emotion.mert_available()`).
+
+- **Where** (`songpick/sentiment.py::Scorer`, hook `pick.suggest(..., sentiment_scorer=...)`): after the stage A ranking, on its best `sentiment.max_songs` (6) songs. `pick.py` stays network-free; the head of the ranking (`max(k, max_songs)` songs) is re-blended and re-sorted, so eligibility, release windows and widening are unchanged.
+- **Per song:**
+  - audio: `youtube.find_and_fetch` (the same cached m4a **Use this song** uses), `workers` (3) fetches in parallel;
+  - mood: `music.profile.analyze_song` (the editor's analysis, cached by content hash, one song at a time on the GPU), mean valence/arousal over the default excerpt (`music.excerpt.choose_excerpt`), the part the montage plays;
+  - `None` when the analysis used the heuristic emotion (its valence is always 0);
+  - standardized like the album: `tanh((raw - song_mood_center) / song_mood_scale)`;
+  - no new song is analyzed after `budget_s` (90 s); a failed fetch or analysis is skipped. Logs carry counts and error types only.
+- **Scoring:** `vibe_sent = vibe.mood_match(song mood, album mood)`. For the songs with audio, the audio mood **replaces** the tag-lexicon mood: `vibe` = weighted mean of `vibe_clip` (`vibe.w_clip`) and `vibe_sent` (`sentiment.w_sent`), each rank-normalized over those songs. `valence`/`arousal` take the audio values (`mood_source = "audio"`). Songs without audio keep their stage A vibe; songs with neither tags nor audio get the median.
+- **Result:** `vibe_source = "audio"`. Reason line: "Sounds upbeat, like your photos (tagged ...)." when the mood words agree, else the stage A wording. When nothing could be fetched: the stage A ranking plus the note "Couldn't get the songs' audio from YouTube, ...".
+- **Calibration** (`scripts/calibrate_song_mood.py`, on Colab): the head over the DEAM songs it never trained on (test clips + full songs) gives the center (mean) and scale (std); our demo/eval songs are printed under it. DEAM is not chart pop, so recheck once the app has heard real shortlists.
+- **Curve shape** (an energetic album prefers a song with a high-arousal peak) is not used: the head agrees poorly with moment-to-moment emotion (per-song arousal CCC about 0.1, RESULTS phase 9B).
+
 ### Later
-- **12.9 Sentiment match with audio (ROADMAP F1 piece 5):** with the YouTube opt-in, fetch the top few songs and get their valence/arousal from the MERT head (`montage.music.emotion`, the editor's code path); re-rank by the distance to the album mood (+ curve shape).
 - **12.10:** Claude "why this song" (text only) and the song-pick mini study.
 - **MusicBrainz first-release dates** instead of the remaster heuristic (optional; 1 request/s, names only).
 - **Optional:** local library matching (ID3 tags via `mutagen`, fuzzy names), for users who keep music files.
@@ -218,6 +234,8 @@ Goal: rank the user's songs by how well they fit the photos, before any audio ex
 
 `songpick.vibe` (12.8; replaces `songpick.alpha`): `enabled true`, `max_tracks 40`, `alpha_by_mode {release 0.3, vibe 0.15, export 0.5}`, `w_clip 0.5`, `w_mood 0.5`, `templates`, `tag_mood_file configs/tag_mood.tsv`, `top_tags 8`, `min_tag_weight 10`, `reason_tags 3`, `artist_tag_weight 0.5`, `junk_tags`, `album_mood_center {valence 0.03, arousal 0.55}`, `album_mood_scale {valence 1.53, arousal 2.18}`, `mood_word_min 0.2`, `lastfm {api_key_env LASTFM_API_KEY, url, timeout_s 5, workers 4, min_tags 3}`, `musicbrainz {url, user_agent, interval_s 1.1, max_lookups 10, min_score 90, timeout_s 5}`.
 
+`songpick.sentiment` (12.9): `enabled true`, `max_songs 6`, `w_sent 0.5`, `workers 3`, `budget_s 90`, `song_mood_center`, `song_mood_scale`.
+
 `songpick.youtube`: `enabled false`, `max_results 6`, `duration_tol_s 10`, `min_song_s 60`, `max_song_s 900`, `min_match 0.55`, `topic_bonus 0.25`, `bad_words`, `bad_penalty 0.4`, `duration_penalty 0.4`, `cookies_file`, `cookies_env MONTAGE_YT_COOKIES`.
 
 ## 8. Schemas (`montage/types.py`, `docs/spec/schemas.md`)
@@ -225,6 +243,7 @@ Goal: rank the user's songs by how well they fit the photos, before any audio ex
 New models: `ListeningEvent` (with `source`, `duration_ms`), `TopTrack`, `TrackCandidate` (with `duration_ms`, `sources`), `SongPick` (with `sources`). See schemas.md, section "Song pick". No existing model changes.
 2026-11-08: `ListeningEvent`, `TopTrack`, `TrackCandidate` gain `release_date`, `release_precision`, `release_reliable`; `SongPick` gains `mode`, and `period_source` gains `release` / `release_widened`.
 2026-11-10 (12.8): `TrackCandidate` gains `vibe_clip`, `vibe_mood`, `valence`, `arousal`, `tags`; `SongPick` gains `album_valence`, `album_arousal`. All optional with defaults.
+2026-11-18 (12.9): `TrackCandidate` gains `vibe_sent` and `mood_source` ("tags" | "audio"); `SongPick.vibe_source` gains "audio". Optional with defaults.
 
 ## 9. Acceptance tests (`tests/test_songpick.py`, no marks, run locally)
 
@@ -267,3 +286,9 @@ New models: `ListeningEvent` (with `source`, `duration_ms`), `TopTrack`, `TrackC
   - release eligibility unchanged by vibe; export mode uses the scorer; the app handler sets the album mood and falls back when the album mood fails;
   - tag cleaning; Last.fm track tags filled with artist tags and cached; no key uses MusicBrainz (User-Agent, score threshold, rate limit); failures are not cached; MusicBrainz lookups capped;
   - on Colab: `@pytest.mark.gpu` `album_vibe` on the fixtures, `@pytest.mark.network` a live tag lookup.
+- **`tests/test_songpick_sentiment.py`** (12.9, no marks; fake fetch and fake audio moods):
+  - a party album ranks the upbeat-sounding song first and a calm album the calm one, whatever the tags say; reasons ("Sounds ..."), alpha blend, determinism;
+  - `w_clip` vs `w_sent` decide between the tag match and the sound; a failed fetch keeps its stage A vibe;
+  - blocked fetch, heuristic emotion, or the time budget -> the stage A order with the note; only the best `max_songs` are fetched; audio without tags;
+  - release eligibility unchanged; the app listens only when ticked and the MERT head is present;
+  - on Colab: `@pytest.mark.gpu` `song_mood` on the fixture song.

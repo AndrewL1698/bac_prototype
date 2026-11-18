@@ -84,7 +84,7 @@ Day 2
   - [x] evaluation parts (Track B): eval grid, metrics, render check, report, RESULTS.md (merged 2026-10-27; the live vote runs at the demo)
 
 Extension (2 weeks, see ROADMAP.md)
-- [ ] **12. Song pick: three modes + vibe/sentiment match** (Track 1; ROADMAP F1; `spec/12_songpick.md`; claimed by Andrew, provisional; spec needs the release-date and best-vibe modes)
+- [ ] **12. Song pick: three modes + vibe/sentiment match** (Track 1, Andrew; ROADMAP F1; `spec/12_songpick.md`)
   - [x] 12.1-12.7b: Spotify connect, three modes, suggestions, opt-in YouTube audio, app (Andrew; merged, PR #5)
   - [x] 12.8 vibe match, stage A: song tags vs the photos' CLIP embedding and mood (Andrew; PR #9)
   - [ ] 12.9 sentiment match from the song's audio (MERT head); 12.10 "why this song"
@@ -106,6 +106,7 @@ Extension (2 weeks, see ROADMAP.md)
 | Director: hard "no people" filter | Keshav | director-avoid-people | 2026-11-15 | PR for review |
 | 13a. Beat This! mirror | Keshav | phase-13-beat-this-mirror | 2026-11-05 | PR #4; checkpoint cached on Drive; HF mirror upload pending (needs an HF write token) |
 | 15. Photo-album importance (CUFED; spec 15_cufed.md) | Shiven | phase-15-cufed-eval | 2026-11-10 | Track 2; days 1-3 merged (PR #6); days 4-7 done: photo ranker deployed (CUFED tau 0.305 vs 0.079), PR #10; days 8-10 optional |
+| 12.9 sentiment match from audio (MERT head); then 12.10 "why this song" | Andrew | phase-12-sentiment | 2026-11-18 | Track 1 |
 
 ## Decisions
 
@@ -228,3 +229,6 @@ New dev 2 (name TBD)
 - 2026-11-17 | Andrew | Album mood recalibrated on the 133 CUFED event albums + the demo and eval albums (`scripts/calibrate_album_mood.py`): `album_mood_center` {valence 0.03, arousal 0.55}, `album_mood_scale` {valence 1.53, arousal 2.18} (mean and std per album); supersedes the 2026-11-11 values | the travel-only calibration put museum, wedding and sports albums all at arousal ~1 (Shiven, PR #9 review); now event types spread out. Cost: travel albums read calmer (Summer Trip 'energetic' -> 'warm and calm'), accepted by Andrew
 - 2026-11-18 | Andrew | The 2026-11-17 calibration stays after an app test gave Summer Trip and sedona_1 the same shortlist: all three of our albums are photos from one trip (CLIP cos 0.98; CUFED albums are 0.51-0.76 from Summer Trip), and CUFED event albums do get different songs (RESULTS.md). Centering the album CLIP embedding on the mean CUFED album was measured and not adopted | the CLIP term moved little with it (Spearman between our albums 0.96-0.98 -> 0.86-0.96); the mood term carries the album-to-album difference
 - 2026-11-18 | Andrew | **Connect Spotify** sits at the top of the Media panel, above the uploads; the rest of song pick stays in its accordion | connecting reloads the page (Spotify sends the browser back), which dropped photos uploaded before it (found in the PR #9 app test). A no-reload popup flow is possible later but has more moving parts (opener lost across Spotify's pages, popup blockers)
+- 2026-11-18 | Andrew | 12.9: the YouTube opt-in moves above **Suggest songs**; when ticked, Suggest fetches the best `sentiment.max_songs` (6) songs of the tag ranking, reads their mood with the MERT head (the editor's `analyze_song`, so the chosen song's Generate is warm) and re-ranks them; unticked, blocked, or no MERT head: the tag ranking as before | Andrew's call; the audio is the only song mood not guessed from tags, and fetching after the list is shown would need a second button
+- 2026-11-18 | Andrew | Song mood for matching = mean head valence/arousal over the default excerpt, `tanh((raw - song_mood_center) / song_mood_scale)`, calibrated on the DEAM songs the head never trained on (`scripts/calibrate_song_mood.py`); no curve-shape term | the excerpt is what the montage plays; the head's outputs sit in a narrow band, the album-side problem from the PR #9 review; per-song moment-to-moment CCC is about 0.1, too weak for shape
+- 2026-11-18 | Andrew | For songs with audio, the audio mood replaces the tag-lexicon mood (vibe = `w_clip` CLIP tag match + `w_sent` audio mood, rank-normalized over those songs); songs whose fetch fails keep their stage A vibe | the lexicon was a stand-in until audio exists (2026-11-10 decision); one blocked fetch must not sink a song

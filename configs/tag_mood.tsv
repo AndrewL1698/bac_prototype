@@ -69,6 +69,10 @@ electropop	0.4	0.55
 synthpop	0.3	0.4
 indie pop	0.4	0.2
 k-pop	0.5	0.6
+c-pop	0.45	0.35
+cpop	0.45	0.35
+mandopop	0.4	0.25
+chinese	0.4	0.25
 disco	0.6	0.65
 funk	0.5	0.55
 house	0.4	0.7
