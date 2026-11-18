@@ -400,6 +400,13 @@ class SentimentCfg(_B):
     song_mood_scale: dict[str, float]
 
 
+class WhyCfg(_B):
+    enabled: bool
+    max_words: int
+    max_tokens: int
+    photo_tags: int
+
+
 class SongpickCfg(_B):
     min_play_ms: int
     full_play_ms: int
@@ -421,6 +428,7 @@ class SongpickCfg(_B):
     release: ReleaseCfg
     vibe: VibeCfg
     sentiment: SentimentCfg
+    why: WhyCfg
     spotify: SpotifyCfg
     youtube: YoutubeCfg
 
