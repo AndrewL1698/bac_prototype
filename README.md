@@ -25,7 +25,7 @@ _Keep this list current. Update it when a phase merges to `main`._
 - **Phase 9B (music emotion):** a MERT-based head trained on DEAM (`weights/emotion_head.pt`) gives per-moment valence and arousal; test CCC 0.74 valence / 0.82 arousal. The app's status line shows `Emotion: MERT`.
 - **Phase 10A (importance ranker):** a RankNet ranker trained on SumMe/TVSum with features from our own pipeline (`weights/importance_ranker.pt`), blended 0.75 learned + 0.25 heuristic; in cross-validation it beats the heuristic (Kendall tau SumMe 0.17 vs 0.12, TVSum 0.41 vs -0.02). The status line shows `Importance: learned+heuristic`.
 - **Phase 12 (song pick):**
-  - In the app, open **Pick a song for me**: **Connect Spotify** (read-only: recent plays and top songs), choose **How to pick**, then **Suggest songs** (3-5 songs with a reason each):
+  - In the app, press **Connect Spotify** at the top of the Media panel *before* adding photos (read-only: recent plays and top songs; it reloads the page, so uploads made before it are lost). Then add photos, open **Pick a song for me**, choose **How to pick**, and press **Suggest songs** (3-5 songs with a reason each):
     - **Songs from back then** (default): songs you listened to this year that came out around when the photos were taken (or that you played during them);
     - **Best vibe fit**: dates ignored; ranked by how well each song's genre and mood tags (Last.fm, MusicBrainz) fit your photos' look and mood (12.8, branch `phase-12-vibe`). The other two modes use the same vibe match to order their songs.
     - **My full Spotify history**: upload the Spotify data export to get songs you actually played back then.

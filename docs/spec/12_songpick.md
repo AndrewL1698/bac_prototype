@@ -160,8 +160,7 @@ Sign-in exposes only the last 50 plays (with dates) and top tracks for about 4 w
 - **Failures** become a `UserError`: without cookies it suggests adding the secret; with cookies it says they may have expired. The app then shows a YouTube search link (`search_url`) and asks the user to upload the file.
 
 ### 12.7 App (`montage/app/songpick_ui.py`, wired in `gradio_app.py`)
-- **Where:** a "Pick a song for me (Spotify)" accordion above the Song input, containing:
-  - Connect Spotify, which reloads the page through Spotify;
+- **Where:** **Connect Spotify** sits at the top of the Media panel, above the uploads, because it reloads the page through Spotify and a reload would drop uploads made before it (Andrew's PR #9 test, 2026-11-18). The rest is a "Pick a song for me (Spotify)" accordion above the Song input, containing:
   - Suggest songs, which reads the capture dates of the chosen album or uploads with `ingest_with_notes`;
   - an optional upload of the history export;
   - the suggestions as a radio list with reasons;
