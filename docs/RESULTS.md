@@ -134,6 +134,22 @@ Config: `album_mood_center {valence 0.03, arousal 0.55}`, `album_mood_scale {val
 - Cost: measured against weddings and parties, every travel album reads calm, so Summer Trip's suggestions lean calmer than before.
 - Limit: the valence poles favour smiling people, so scenery-heavy albums (beach, nature, city, architecture) read "melancholic". This was already true with the old values; candidate fix: valence prompts that do not hinge on people. 12.9 (MERT on the song's audio) replaces the song side of this comparison, not the album side.
 
+Do different albums get different songs? (2026-11-18, T4, throwaway script, current code: rank-normalized terms, new calibration.) Songs: the 119 tags in `tag_mood.tsv` plus common genre tags, each as a one-tag song; vibe = 0.5 CLIP rank + 0.5 mood rank. Compared with the demo Summer Trip album (warm and calm; top 5: calm, mellow, peaceful, chill, chillout), one CUFED album per event type, a few shown:
+
+| Album | CLIP cos to Summer Trip | Mood word | Spearman vs Summer Trip | Same top 10 | Top 5 |
+|---|---|---|---|---|---|
+| sedona_1 (eval) | 0.98 | warm and calm | +0.98 | 8/10 | (same trip as Summer Trip) |
+| sedona_2 (eval) | 0.98 | melancholic | +0.93 | 6/10 | |
+| Wedding | 0.75 | warm and calm | +0.86 | 4/10 | lovesong, chillout, love songs, mellow, peaceful |
+| Birthday | 0.63 | upbeat | -0.20 | 1/10 | danceable, party, upbeat, triumphant, c pop |
+| Sports | 0.51 | energetic | -0.23 | 2/10 | 10s, intense, epic, energetic, exciting |
+| Protest | 0.66 | intense | -0.28 | 1/10 | aggressive, angry, alternative, intense, trap |
+| Museum | 0.70 | melancholic | +0.67 | 1/10 | somber, melancholy, bittersweet, cpop, nostalgic |
+
+- Different events get different songs. Our three eval/demo albums are photos from the same trip (CLIP cos 0.98; CUFED albums are 0.51-0.76 from Summer Trip), so the same shortlist for Summer Trip and sedona_1 is correct. The travel-only calibration told them apart only because its center sat between them.
+- The CLIP term alone barely moves between albums (Spearman 0.96-0.98 across our three). Centering the album embedding on the mean CUFED album lowers that only to 0.86-0.96, so it is not worth the extra moving part; the mood term carries most of the album-to-album difference.
+- Gap: "cpop", "c pop", "chinese" and "mandopop" are not in `tag_mood.tsv` (k-pop is), so songs tagged only with them are ranked by CLIP alone. Follow-up: add them.
+
 ## Live vote (phase 11)
 _Runs live at the workshop (Rate tab); `python -m montage.eval.vote --analyze` summarizes the votes._
 
