@@ -155,6 +155,20 @@ def test_ui_listens_only_when_ticked_and_mert_is_there(monkeypatch, ui, ticked, 
         assert md.startswith("Your songs that sound most like your photos.") and "Glum Owls" in choices[0][0]
 
 
+# ---------- offline study (montage/eval/songpick_study.py) ----------
+
+def test_study_songs_and_rankers():
+    from montage.eval import songpick_study as study
+    songs = study.study_songs()
+    assert len(songs) == 40 and {q for _, _, q in songs} == {"upbeat", "intense", "warm", "sad"}
+    assert study.quadrant((0.5, -0.2)) == "warm" and study.quadrant(None) is None
+    three = [("Neon Kites", "Beach Party", "upbeat"), ("Glum Owls", "Rainy Window", "sad"),
+             ("Fixture Bloc", "Steady Song", "warm")]
+    orders = study.rank(album("party"), three, TAGS, AUDIO, fake_encode)
+    assert orders["tags"][0] == NEON and orders["audio"][0] == GLUM and set(orders["both"]) == set(AUDIO)
+    assert orders["audio"] == [GLUM, FIX, NEON]
+
+
 # ---------- on Colab ----------
 
 @pytest.mark.gpu

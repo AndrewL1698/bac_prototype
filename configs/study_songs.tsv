@@ -1,0 +1,44 @@
+# Song-pick study songs (phase 12; montage/eval/songpick_study.py): well-known public songs, 10 per mood quadrant.
+# Columns (tab-separated): artist, track, expected mood quadrant (hand label: upbeat, intense, warm, sad).
+# Only these names leave the machine (Last.fm/MusicBrainz tags, YouTube search); no one's listening data.
+artist	track	expected
+Pharrell Williams	Happy	upbeat
+Mark Ronson	Uptown Funk	upbeat
+Justin Timberlake	Can't Stop the Feeling!	upbeat
+Dua Lipa	Levitating	upbeat
+Katrina and the Waves	Walking on Sunshine	upbeat
+ABBA	Dancing Queen	upbeat
+Earth, Wind & Fire	September	upbeat
+Avicii	Wake Me Up	upbeat
+Daft Punk	Get Lucky	upbeat
+Queen	Don't Stop Me Now	upbeat
+Rage Against the Machine	Killing in the Name	intense
+Linkin Park	Numb	intense
+Metallica	Enter Sandman	intense
+Eminem	Lose Yourself	intense
+Nine Inch Nails	Closer	intense
+System of a Down	Chop Suey!	intense
+Billie Eilish	bury a friend	intense
+Kendrick Lamar	HUMBLE.	intense
+The Prodigy	Breathe	intense
+Slipknot	Duality	intense
+Jack Johnson	Banana Pancakes	warm
+Norah Jones	Don't Know Why	warm
+Israel Kamakawiwo'ole	Somewhere Over the Rainbow	warm
+Bill Withers	Lovely Day	warm
+Louis Armstrong	What a Wonderful World	warm
+Ed Sheeran	Perfect	warm
+Bob Marley & The Wailers	Three Little Birds	warm
+John Legend	All of Me	warm
+Coldplay	Yellow	warm
+Vance Joy	Riptide	warm
+Adele	Someone Like You	sad
+Radiohead	No Surprises	sad
+Johnny Cash	Hurt	sad
+Billie Eilish	when the party's over	sad
+Gary Jules	Mad World	sad
+Lewis Capaldi	Someone You Loved	sad
+Sufjan Stevens	Fourth of July	sad
+Bon Iver	Skinny Love	sad
+Simon & Garfunkel	The Sound of Silence	sad
+Lana Del Rey	Video Games	sad

@@ -388,3 +388,11 @@ Format:
 - Next: on Colab: confirm `weights/emotion_head.pt` loads (smoke `mert`), run `scripts/calibrate_song_mood.py` and put its center/scale in config (now 0/1 placeholders), gpu tests + full `pytest -q`, app test with the box ticked; seconds per song into RESULTS. Then 12.10 "why this song".
 - Blockers: none (Colab not reachable from this session).
 - Heads-up: schema: `TrackCandidate.vibe_sent`, `TrackCandidate.mood_source`, `SongPick.vibe_source` "audio" (all optional). New config `songpick.sentiment`. `pick.suggest` gains `sentiment_scorer`; `vibe._reason` is now `vibe.reason_line`. CLAUDE.md section 11 notes that the opt-in fetches several songs.
+
+## 2026-11-18 ET | Andrew | phase 12.10 | branch phase-12-why (stacked on phase-12-sentiment)
+- Done: 12.10 "why this song": one call to the director's model per Suggest writes a sentence per song from names, tags and mood words only (never listening data); the factual reasons move under "Details"; any failure shows them as before. New `montage/songpick/why.py`; `AlbumVibe.tags` (the photos' most common zero-shot tags). Song-pick UI tests turn it off so they never call the API.
+- Done: offline song-pick study `montage/eval/songpick_study.py` + `configs/study_songs.tsv` (40 public songs, 10 per hand-labelled mood quadrant): tags vs audio vs both on the CUFED albums; mood agreement with the labels, tag-vs-audio Spearman, top songs per event type, Kendall tau.
+- Results: local full `pytest -q -m 'not network'`: 221 passed, 82 skipped, 1 failed (`test_job_stop`, fails on main too on macOS).
+- Next: Colab: `test_why_live` (api), run the study as a job (about 40 YouTube fetches on the spare-account cookies, approved with the plan), RESULTS.md table; then merge #15 first, this one after.
+- Blockers: none.
+- Heads-up: schema `TrackCandidate.why`; config `songpick.why`; CLAUDE.md section 11 now lists what the why line sends.
