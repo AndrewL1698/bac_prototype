@@ -284,6 +284,23 @@ Format:
 - Blockers: none.
 - Heads-up: the YouTube audio cache is never an allowed Gradio path (CLAUDE.md §11).
 
+## 2026-11-10 ET | Andrew | phase 12.8 | branch phase-12-vibe
+- Done: stage A song-vibe match (Track 1, ML #1), spec 12 section 6b.
+  - `montage/songpick/vibe.py`: album side from the editor's cached ingest + features (pooled CLIP embedding per asset; absolute mood from the raw CLIP mood poles), song side from tags (CLIP text prompt ensemble + a hand-set tag valence/arousal lexicon `configs/tag_mood.tsv`). vibe = mean of the CLIP match and the mood match; untagged songs get the median.
+  - `montage/songpick/tags.py`: Last.fm track/artist tags (new optional Colab Secret `LASTFM_API_KEY`), MusicBrainz artist tags for the gaps (no key, 1 request/s, capped). Names only leave the machine; tags are cached in memory only.
+  - `pick.suggest(vibe_scorer=...)`: the vibe orders all three modes (`alpha_by_mode`); release eligibility unchanged. The app's Suggest songs computes the photos' mood (so Generate is warm afterwards) and shows the tags in each reason.
+- Tests: `tests/test_songpick_vibe.py` (19 local + 1 gpu + 1 network) and the existing song-pick tests: 102 pass locally, 2 skipped; the live MusicBrainz lookup passes from the laptop.
+- Next: Colab (Andrew): add the `LASTFM_API_KEY` secret, start the app from `phase-12-vibe`, calibrate `songpick.vibe.album_mood_scale` on the demo + eval albums (currently a guess, 2.0), run the gpu/network tests and full `pytest -q`, try a party vs a calm album in all three modes; RESULTS.md table; PR. Then 12.9 (MERT sentiment on fetched audio).
+- Blockers: none.
+- Heads-up: schemas: `TrackCandidate` gains `vibe_clip`, `vibe_mood`, `valence`, `arousal`, `tags`; `SongPick` gains `album_valence`, `album_arousal` (all optional). Config: new `songpick.vibe.*`; `songpick.alpha` removed (now `songpick.vibe.alpha_by_mode`). New file `configs/tag_mood.tsv`. Bootstrap passes the optional Colab Secret `LASTFM_API_KEY`.
+
+## 2026-11-11 ET | Andrew | phase 12.8 | branch phase-12-vibe
+- Done: calibrated the album mood on Colab (demo Summer Trip + eval sedona_1/2). Raw arousal is negative on all three, so the album mood now subtracts a center before the scale: new config key `songpick.vibe.album_mood_center {valence 0.28, arousal -1.53}`, `album_mood_scale {valence 1.0, arousal 0.6}`. Summer Trip reads energetic, sedona_1 warm and calm, sedona_2 melancholic.
+- Tested on Colab (A100): song-pick + hygiene tests 96 passed, 1 skipped (incl. the live Last.fm/MusicBrainz lookup). In the app, Summer Trip and sedona_1 get different suggestions.
+- Next: PR for 12.8 stage A (merged main into the branch; full `pytest -q` on Colab before merging). Then tune the vibe scoring and 12.9 (MERT valence/arousal on the fetched audio).
+- Blockers: none.
+- Heads-up: new config key `songpick.vibe.album_mood_center`.
+- Results: calibration table in RESULTS.md (phase 12.8 section).
 ## 2026-11-10 01:49 ET | Keshav | app UI: Print Table look + Revise panel | branch claude/montage-ui-design-critique-1fa16d (PR #2)
 - Done: (1) Revise loop in one panel, in task order: print strip, Selected shot (with why), Note for the editor, Changes with Recut first. Pin/Exclude became Keep/Stop keeping and Remove/Put back; pending changes listed live with "Recut · N changes"; the note clears after a recut; "Put back removed shots" undoes removals after a recut. (2) Print Table look, picked in an Impeccable direction round: neutral black, white text, one signal red; Archivo with tabular figures; timeline shots are white instant prints with a state cell in the bottom margin. Themed error/empty states; Gradio footer hidden. (3) Merged main (phase 12) into the PR: the "Pick a song for me (Spotify)" accordion now sits in the Media panel; "Use this song" switches the song source to Upload so the picked song shows. (4) Planner error now ends "Put back at least one shot, then recut."
 - Tests: Colab A100 full `pytest -q` on the merged commit ee03dd5: 215 passed, 8 skipped (7 need ANTHROPIC_API_KEY, 1 timing test needs MONTAGE_TIMING=1), 0 failed. Local non-GPU suite: 154 passed, 2 skipped. Playwright replay of the Revise loop on a stub pipeline passes at 1440x900 and 390 wide.
@@ -355,3 +372,12 @@ Format:
 - Next: run `tests/test_music.py` on Colab (the two cache tests need librosa), then merge.
 - Blockers: none
 - Heads-up: new config key `music.beat_this.timeout_s`; `FullAnalysis` gains `beat_this_tried` (old caches default to False, so librosa-cached songs are redone once when Beat This! loads, as before). PR #8 edits the same `analyze_song` reuse check: keep both conditions.
+
+## 2026-11-18 01:07 ET | Andrew | phase 12.8 | branch phase-12-vibe
+- Done: PR #9 review items. Keshav: full `pytest -q` on Colab (below); CLAUDE.md section 11 now lists the Last.fm and MusicBrainz tag lookups. Shiven: `vibe_clip` and `vibe_mood` are rank-normalized over the scored songs before mixing (S2, S3); the album mood is recalibrated on the 133 CUFED event albums + our albums with the new `scripts/calibrate_album_mood.py` (S1). Merged main twice (PLAN conflicts only; kept every row and decision from main).
+- Done: app test on Colab T4. "Best vibe fit" gave Summer Trip and an upload of sedona_1 the same shortlist. Measured why: all three of our albums are photos from one trip (CLIP cos 0.98), while CUFED event albums get different songs (Birthday: party/danceable; Protest: aggressive/angry; Wedding: lovesong/mellow). Table in RESULTS.md. The calibration stays; centering the album CLIP embedding was measured and not adopted (PLAN decision).
+- Done: **Connect Spotify** moved to the top of the Media panel, above the uploads: connecting reloads the page and dropped photos uploaded before it. End-to-end app flow re-tested by Andrew after the move: connect, upload, Suggest songs, uploads kept.
+- Results: Colab T4, full `pytest -q -rs` on bd482e7 (the merge commit with main after #10, = what merges): 209 passed, 70 skipped, 0 failed. Earlier, on 1e75cd9 (rank normalization + calibration): 202 passed, 70 skipped, 0 failed. On 5929b4a (Connect Spotify move): `tests/test_app.py`, `test_songpick_connect.py`, `test_songpick_vibe.py`, `test_repo_hygiene.py`: 64 passed, 5 skipped (fixtures not generated). Local (no torch): song-pick + app + hygiene, 89 passed, 6 skipped.
+- Next: after merge, 12.9 (sentiment match from the song's audio, MERT head) and 12.10 ("why this song"). Small follow-up: add "cpop", "c pop", "chinese", "mandopop" to `configs/tag_mood.tsv` (k-pop is there; songs tagged only with these are ranked by CLIP alone).
+- Blockers: none.
+- Heads-up: CLAUDE.md section 11 changed (Last.fm, MusicBrainz). Config `songpick.vibe.album_mood_center` / `album_mood_scale` have new values. `AlbumVibe` gains `raw` (the mood before center/scale). New script `scripts/calibrate_album_mood.py`. The Connect Spotify button moved out of the song-pick accordion.

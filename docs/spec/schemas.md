@@ -226,7 +226,12 @@ class TrackCandidate(BaseModel):
     n_skips_window: int
     lift: float                      # period share vs whole-history share, smoothed (1 = as usual)
     affinity: float                  # [0,1], max-normalized over the candidates of one pick
-    vibe: float | None = None        # [0,1] from a vibe stage (later phases); None = not computed
+    vibe: float | None = None        # [0,1] combined vibe match (12.8 stage A: tags); None = not computed
+    vibe_clip: float | None = None   # [0,1] CLIP match of the song's tags vs the photos (min-max over the scored pool)
+    vibe_mood: float | None = None   # [0,1] 1 - valence/arousal distance, song tags vs photos' mood
+    valence: float | None = None     # [-1,1] song valence from its tags (tag_mood lexicon); None = no mood tag
+    arousal: float | None = None     # [-1,1] song arousal from its tags
+    tags: list[str] = []             # Last.fm/MusicBrainz tags used (best first, cleaned)
     score: float                     # final rank score
     reason: str                      # short human-readable "why this song"
     duration_ms: int | None = None   # track length when known (sign-in data)
@@ -243,10 +248,12 @@ class SongPick(BaseModel):
     n_events_window: int             # of those, inside the period
     candidates: list[TrackCandidate] # shortlist, best first
     vibe_source: Literal["none", "tags", "contrastive"] = "none"
+    album_valence: float | None = None   # [-1,1] the photos' mood (absolute CLIP mood poles); None = not computed
+    album_arousal: float | None = None
     notes: list[str] = []            # warnings (widened period, few plays, no dates)
     sources: list[str] = []          # listening data used: "export", "recent", "top:<time_range>"
     mode: Literal["release", "vibe", "export"] = "vibe"   # release: songs that came out around the photos;
-    # vibe: best fit regardless of dates (ranked by listening until a vibe stage exists); export: played back then
+    # vibe: best fit regardless of dates; export: played back then
 ```
 
 ## On-disk layout per run

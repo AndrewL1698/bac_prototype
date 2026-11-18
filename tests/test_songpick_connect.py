@@ -217,7 +217,7 @@ def test_suggest_vibe_mode_ignores_dates():
     recent, top = listening()
     pick = suggest([datetime(2021, 7, 3)], mode="vibe", recent=recent, top=top, now=NOW)
     assert pick.mode == "vibe" and pick.period_start is None and pick.period_source == "history"
-    assert any("Vibe matching" in n for n in pick.notes)
+    assert any("photos' mood" in n for n in pick.notes)  # no vibe scorer: affinity only, with a note
     assert set(pick.sources) >= {"top:short_term", "top:medium_term", "top:long_term"}
 
 
@@ -343,7 +343,7 @@ def test_ui_page_load_and_connect(client_id, monkeypatch):
 def test_ui_suggest_and_use_song(monkeypatch, tmp_path):
     recent, top = listening()
     sp = {"token": token(), "recent": recent, "top": top}
-    monkeypatch.setattr(songpick_ui, "_album_dates", lambda media: [datetime.utcnow() - timedelta(days=1)])
+    monkeypatch.setattr(songpick_ui, "_album", lambda media, progress=None: ([datetime.utcnow() - timedelta(days=1)], None, []))
     with pytest.raises(UserError, match="Connect Spotify"):
         songpick_ui.suggest(["album"], None, {})
     choices, pick, md = songpick_ui.suggest(["album"], None, sp, "release")

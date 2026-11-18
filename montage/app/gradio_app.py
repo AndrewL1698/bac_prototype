@@ -288,9 +288,10 @@ def build_app():
 
     @friendly
     def on_sp_suggest(files, album, hist_files, sp, mode, progress=gr.Progress()):
-        progress(0.2, desc="reading capture dates")
+        progress(0.02, desc="reading your photos")
         hist = [f if isinstance(f, str) else f.name for f in (hist_files or [])]
-        choices, pick, md = songpick_ui.suggest(media_list(files, album), hist or None, sp, mode)
+        choices, pick, md = songpick_ui.suggest(media_list(files, album), hist or None, sp, mode,
+                                                progress=lambda f, m: progress(f, desc=m))
         return gr.Radio(choices=choices, value=choices[0][1] if choices else None), pick, md
 
     @friendly
@@ -311,6 +312,12 @@ def build_app():
         with gr.Row(elem_id="workspace"):
             with gr.Column(scale=3, min_width=260, elem_classes="ws-panel"):
                 gr.Markdown("Media", elem_classes="panel-title")
+                # Connecting reloads the page (Spotify sends the browser back), so it comes before the uploads
+                sp_state = gr.State({})
+                sp_connect = gr.Button("Connect Spotify (for song suggestions)", size="sm")
+                sp_status = gr.Markdown("")
+                sp_url_in = gr.Textbox(visible=False)
+                sp_url_out = gr.Textbox(visible=False)
                 # the source radios only show when demo media exists; they keep exactly one input live
                 media_src = gr.Radio(["Upload media", "Demo album"], value="Upload media", show_label=False,
                                      container=False, visible=bool(albums))
@@ -320,20 +327,15 @@ def build_app():
                                     container=False, visible=bool(songs))
                 song_file = gr.Audio(label="Song", type="filepath", elem_id="song")
                 song_choice = gr.Dropdown(choices=[""] + songs, value="", label="Demo song", visible=False)
-                sp_state = gr.State({})
                 sp_pick = gr.State(None)
                 with gr.Accordion("Pick a song for me (Spotify)", open=False):
-                    gr.Markdown("Connect Spotify first (read-only: recent plays and top songs), then add photos, "
-                                "choose how to pick, and press **Suggest songs**. Connecting reloads this page.")
+                    gr.Markdown("Press **Connect Spotify** at the top before adding photos (it reloads this page; "
+                                "read-only: recent plays and top songs), then choose how to pick and press "
+                                "**Suggest songs**.")
                     from montage.config import get_config as _cfg
                     sp_mode = gr.Radio(label="How to pick", choices=songpick_ui.MODE_CHOICES,
                                        value=_cfg().songpick.default_mode)
-                    with gr.Row():
-                        sp_connect = gr.Button("Connect Spotify")
-                        sp_suggest = gr.Button("Suggest songs")
-                    sp_status = gr.Markdown("")
-                    sp_url_in = gr.Textbox(visible=False)
-                    sp_url_out = gr.Textbox(visible=False)
+                    sp_suggest = gr.Button("Suggest songs")
                     sp_hist = gr.File(label="Your Spotify history (data export JSON files)", file_count="multiple",
                                       file_types=[".json"], visible=_cfg().songpick.default_mode == "export")
                     sp_choice = gr.Radio(label="Suggested songs", choices=[])

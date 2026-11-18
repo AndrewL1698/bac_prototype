@@ -177,7 +177,8 @@ def write_cookies(secret: str | None) -> Path | None:
 
 
 def write_env(user: str, api_key: str | None, app_password: str | None = None,
-              spotify_client_id: str | None = None, yt_cookies: Path | None = None) -> None:
+              spotify_client_id: str | None = None, yt_cookies: Path | None = None,
+              lastfm_key: str | None = None) -> None:
     lines = [
         f"export MONTAGE_DATA_ROOT={DATA_ROOT}",
         "export MONTAGE_SCRATCH=/content/scratch",
@@ -192,6 +193,8 @@ def write_env(user: str, api_key: str | None, app_password: str | None = None,
         lines.append(f"export SPOTIFY_CLIENT_ID='{spotify_client_id}'")
     if yt_cookies:
         lines.append(f"export MONTAGE_YT_COOKIES={yt_cookies}")
+    if lastfm_key:
+        lines.append(f"export LASTFM_API_KEY='{lastfm_key}'")
     ENV_FILE.touch(mode=0o600, exist_ok=True)
     os.chmod(ENV_FILE, 0o600)
     ENV_FILE.write_text("\n".join(x for x in lines if x) + "\n")
@@ -204,6 +207,8 @@ def write_env(user: str, api_key: str | None, app_password: str | None = None,
         os.environ["SPOTIFY_CLIENT_ID"] = spotify_client_id
     if yt_cookies:
         os.environ["MONTAGE_YT_COOKIES"] = str(yt_cookies)
+    if lastfm_key:
+        os.environ["LASTFM_API_KEY"] = lastfm_key
 
 
 def gpu_info() -> tuple[str, bool]:
@@ -238,6 +243,7 @@ def main(argv: list[str] | None = None) -> int:
     api_key = read_secret("ANTHROPIC_API_KEY") or saved.get("ANTHROPIC_API_KEY")
     app_password = read_secret("APP_PASSWORD") or saved.get("MONTAGE_APP_PASSWORD")
     spotify_id = read_secret("SPOTIFY_CLIENT_ID") or saved.get("SPOTIFY_CLIENT_ID")
+    lastfm_key = read_secret("LASTFM_API_KEY") or saved.get("LASTFM_API_KEY")
     yt_secret = read_secret("YOUTUBE_COOKIES")
     yt_cookies = write_cookies(yt_secret) if yt_secret else (
         Path(saved["MONTAGE_YT_COOKIES"]) if saved.get("MONTAGE_YT_COOKIES") and Path(saved["MONTAGE_YT_COOKIES"]).is_file() else None)
@@ -245,13 +251,13 @@ def main(argv: list[str] | None = None) -> int:
         print("YOUTUBE_COOKIES is set but is not a cookies.txt file (or base64 of one); YouTube cookies are off.")
     Path("/content/scratch").mkdir(parents=True, exist_ok=True)
     ffver, zs_ok = ensure_ffmpeg()
-    write_env(user, api_key, app_password, spotify_id, yt_cookies)
+    write_env(user, api_key, app_password, spotify_id, yt_cookies, lastfm_key)
     req = ensure_requirements(args.foreground_install)
     gpu, cuda = gpu_info()
     print(f"bootstrap: branch {args.branch}@{commit} | user {user} | GPU {gpu} | CUDA {'ok' if cuda else 'NO'} | "
           f"FFmpeg {ffver} zscale {'ok' if zs_ok else 'missing'} | API key {'yes' if api_key else 'no'} | "
           f"app password {'yes' if app_password else 'no'} | Spotify {'yes' if spotify_id else 'no'} | "
-          f"YouTube cookies {'yes' if yt_cookies else 'no'} | "
+          f"YouTube cookies {'yes' if yt_cookies else 'no'} | Last.fm {'yes' if lastfm_key else 'no'} | "
           f"requirements {req} | {'shared Drive ok' if drive_ok else 'shared Drive MISSING'}")
     return 0
 

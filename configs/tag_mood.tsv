@@ -1,0 +1,119 @@
+# Song tag -> valence, arousal in [-1, 1] (phase 12.8, stage A vibe match).
+# Hand-set from Russell's circumplex (valence: unpleasant..pleasant, arousal: calm..excited).
+# Mood words carry most of the signal; genres get a moderate placement. Tags not listed carry no mood.
+# Columns are tab-separated: tag, valence, arousal. Lowercase tags; "-" and "_" read as spaces.
+tag	valence	arousal
+# --- mood: pleasant, excited ---
+happy	0.8	0.5
+joyful	0.85	0.55
+upbeat	0.7	0.6
+uplifting	0.75	0.45
+feel good	0.8	0.45
+fun	0.75	0.6
+party	0.6	0.85
+energetic	0.4	0.85
+exciting	0.5	0.8
+euphoric	0.8	0.8
+summer	0.65	0.45
+sunny	0.7	0.35
+dance	0.5	0.75
+danceable	0.5	0.7
+catchy	0.5	0.4
+anthem	0.55	0.7
+triumphant	0.6	0.7
+cheerful	0.8	0.4
+playful	0.65	0.45
+groovy	0.5	0.5
+# --- mood: pleasant, calm ---
+chill	0.35	-0.55
+chillout	0.35	-0.55
+relaxing	0.4	-0.7
+calm	0.3	-0.75
+peaceful	0.45	-0.75
+mellow	0.25	-0.55
+dreamy	0.3	-0.4
+romantic	0.55	-0.25
+love songs	0.5	-0.2
+sweet	0.55	-0.2
+warm	0.5	-0.3
+soothing	0.4	-0.7
+soft	0.25	-0.6
+easy listening	0.35	-0.5
+lazy	0.2	-0.6
+hopeful	0.5	0.0
+nostalgic	0.05	-0.3
+# --- mood: unpleasant, calm ---
+sad	-0.75	-0.45
+melancholy	-0.6	-0.4
+melancholic	-0.6	-0.4
+depressing	-0.8	-0.5
+lonely	-0.65	-0.45
+heartbreak	-0.65	-0.15
+bittersweet	-0.2	-0.3
+dark	-0.5	0.1
+moody	-0.3	-0.15
+somber	-0.6	-0.5
+haunting	-0.35	-0.1
+atmospheric	0.0	-0.45
+emotional	-0.2	0.0
+# --- mood: unpleasant, excited ---
+angry	-0.65	0.85
+aggressive	-0.5	0.9
+intense	-0.2	0.8
+heavy	-0.3	0.75
+epic	0.2	0.75
+# --- genres (moderate placement) ---
+pop	0.45	0.35
+dance pop	0.5	0.6
+electropop	0.4	0.55
+synthpop	0.3	0.4
+indie pop	0.4	0.2
+k-pop	0.5	0.6
+disco	0.6	0.65
+funk	0.5	0.55
+house	0.4	0.7
+edm	0.4	0.8
+electronic	0.15	0.45
+techno	0.0	0.75
+trance	0.25	0.7
+drum and bass	0.1	0.85
+dubstep	-0.05	0.85
+hip-hop	0.15	0.5
+hip hop	0.15	0.5
+rap	0.1	0.55
+trap	0.0	0.6
+r&b	0.35	0.0
+rnb	0.35	0.0
+soul	0.4	0.0
+reggae	0.5	0.0
+reggaeton	0.5	0.65
+latin	0.5	0.55
+afrobeats	0.55	0.6
+rock	0.1	0.6
+indie rock	0.15	0.45
+alternative	0.0	0.4
+punk	0.0	0.8
+pop punk	0.3	0.75
+metal	-0.3	0.9
+hard rock	0.0	0.75
+emo	-0.45	0.45
+grunge	-0.3	0.55
+indie	0.15	0.1
+indie folk	0.2	-0.35
+folk	0.25	-0.35
+acoustic	0.3	-0.45
+singer-songwriter	0.1	-0.35
+country	0.35	0.1
+blues	-0.2	-0.1
+jazz	0.3	-0.2
+classical	0.2	-0.4
+piano	0.15	-0.5
+ambient	0.1	-0.8
+lo-fi	0.2	-0.6
+lofi	0.2	-0.6
+shoegaze	-0.05	0.1
+dream pop	0.25	-0.3
+bedroom pop	0.25	-0.3
+ballad	0.0	-0.5
+soundtrack	0.15	0.1
+gospel	0.6	0.3
