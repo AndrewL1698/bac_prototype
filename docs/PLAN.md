@@ -84,7 +84,7 @@ Day 2
   - [x] evaluation parts (Track B): eval grid, metrics, render check, report, RESULTS.md (merged 2026-10-27; the live vote runs at the demo)
 
 Extension (2 weeks, see ROADMAP.md)
-- [ ] **12. Song pick: three modes + vibe/sentiment match** (Track 1; ROADMAP F1; `spec/12_songpick.md`; claimed by Andrew, provisional; spec needs the release-date and best-vibe modes)
+- [ ] **12. Song pick: three modes + vibe/sentiment match** (Track 1, Andrew; ROADMAP F1; `spec/12_songpick.md`)
   - [x] 12.1-12.7b: Spotify connect, three modes, suggestions, opt-in YouTube audio, app (Andrew; merged, PR #5)
   - [x] 12.8 vibe match, stage A: song tags vs the photos' CLIP embedding and mood (Andrew; PR #9)
   - [ ] 12.9 sentiment match from the song's audio (MERT head); 12.10 "why this song"
@@ -106,6 +106,7 @@ Extension (2 weeks, see ROADMAP.md)
 | Director: hard "no people" filter | Keshav | director-avoid-people | 2026-11-15 | PR for review |
 | 13a. Beat This! mirror | Keshav | phase-13-beat-this-mirror | 2026-11-05 | PR #4; checkpoint cached on Drive; HF mirror upload pending (needs an HF write token) |
 | 15. Photo-album importance (CUFED; spec 15_cufed.md) | Shiven | phase-15-cufed-eval | 2026-11-10 | Track 2; days 1-3 merged (PR #6); days 4-7 done: photo ranker deployed (CUFED tau 0.305 vs 0.079), PR #10; days 8-10 optional |
+| 12.9 sentiment match from audio (MERT head); then 12.10 "why this song" | Andrew | phase-12-sentiment | 2026-11-18 | Track 1 |
 
 ## Decisions
 
