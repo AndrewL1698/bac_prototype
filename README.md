@@ -27,7 +27,7 @@ _Keep this list current. Update it when a phase merges to `main`._
 - **Phase 12 (song pick):**
   - In the app, press **Connect Spotify** at the top of the Media panel *before* adding photos (read-only: recent plays and top songs; it reloads the page, so uploads made before it are lost). Then add photos, open **Pick a song for me**, choose **How to pick**, and press **Suggest songs** (3-5 songs with a reason each):
     - **Songs from back then** (default): songs you listened to this year that came out around when the photos were taken (or that you played during them);
-    - **Best vibe fit**: dates ignored; ranked by how well each song's genre and mood tags (Last.fm, MusicBrainz) fit your photos' look and mood (12.8, branch `phase-12-vibe`). The other two modes use the same vibe match to order their songs.
+    - **Best vibe fit**: dates ignored; ranked by how well each song's genre and mood tags (Last.fm, MusicBrainz) fit your photos' look and mood (12.8). The other two modes use the same vibe match to order their songs.
     - **My full Spotify history**: upload the Spotify data export to get songs you actually played back then.
   - Opt-in: tick **Fetch the song's audio from YouTube** and press **Use this song** to fill the Song box. On Colab this needs the `YOUTUBE_COOKIES` secret (below); otherwise the app links to a YouTube search and you upload the file.
   - CLI for the export: `python -m montage.songpick --history DIR --start YYYY-MM-DD --end YYYY-MM-DD [--mode vibe]`.

@@ -372,3 +372,12 @@ Format:
 - Next: run `tests/test_music.py` on Colab (the two cache tests need librosa), then merge.
 - Blockers: none
 - Heads-up: new config key `music.beat_this.timeout_s`; `FullAnalysis` gains `beat_this_tried` (old caches default to False, so librosa-cached songs are redone once when Beat This! loads, as before). PR #8 edits the same `analyze_song` reuse check: keep both conditions.
+
+## 2026-11-18 01:07 ET | Andrew | phase 12.8 | branch phase-12-vibe
+- Done: PR #9 review items. Keshav: full `pytest -q` on Colab (below); CLAUDE.md section 11 now lists the Last.fm and MusicBrainz tag lookups. Shiven: `vibe_clip` and `vibe_mood` are rank-normalized over the scored songs before mixing (S2, S3); the album mood is recalibrated on the 133 CUFED event albums + our albums with the new `scripts/calibrate_album_mood.py` (S1). Merged main twice (PLAN conflicts only; kept every row and decision from main).
+- Done: app test on Colab T4. "Best vibe fit" gave Summer Trip and an upload of sedona_1 the same shortlist. Measured why: all three of our albums are photos from one trip (CLIP cos 0.98), while CUFED event albums get different songs (Birthday: party/danceable; Protest: aggressive/angry; Wedding: lovesong/mellow). Table in RESULTS.md. The calibration stays; centering the album CLIP embedding was measured and not adopted (PLAN decision).
+- Done: **Connect Spotify** moved to the top of the Media panel, above the uploads: connecting reloads the page and dropped photos uploaded before it. End-to-end app flow re-tested by Andrew after the move: connect, upload, Suggest songs, uploads kept.
+- Results: Colab T4, `pytest -q -rs` on 1e75cd9 (rank normalization + calibration): 202 passed, 70 skipped, 0 failed. On 5929b4a (Connect Spotify move): `tests/test_app.py`, `test_songpick_connect.py`, `test_songpick_vibe.py`, `test_repo_hygiene.py`: 64 passed, 5 skipped (fixtures not generated). Local (no torch): song-pick + app + hygiene, 89 passed, 6 skipped.
+- Next: after merge, 12.9 (sentiment match from the song's audio, MERT head) and 12.10 ("why this song"). Small follow-up: add "cpop", "c pop", "chinese", "mandopop" to `configs/tag_mood.tsv` (k-pop is there; songs tagged only with these are ranked by CLIP alone).
+- Blockers: none.
+- Heads-up: CLAUDE.md section 11 changed (Last.fm, MusicBrainz). Config `songpick.vibe.album_mood_center` / `album_mood_scale` have new values. `AlbumVibe` gains `raw` (the mood before center/scale). New script `scripts/calibrate_album_mood.py`. The Connect Spotify button moved out of the song-pick accordion.
