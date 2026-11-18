@@ -279,6 +279,11 @@ songpick:                         # phase 12: pick a song from the user's listen
     # scripts/calibrate_song_mood.py (DEAM test + full songs): center = their mean, scale = their std.
     song_mood_center: {valence: 0.0, arousal: 0.0}
     song_mood_scale: {valence: 1.0, arousal: 1.0}
+  why:                            # 12.10: one LLM sentence per suggested song (director.model; names, tags, moods only)
+    enabled: true                 # needs the director's LLM (ANTHROPIC_API_KEY); otherwise the ranking reasons show
+    max_words: 22
+    max_tokens: 600
+    photo_tags: 5                 # what the photos show (most common zero-shot photo tags), sent with the moods
   spotify:                        # "Connect Spotify" (OAuth with PKCE; read-only listening data)
     client_id_env: "SPOTIFY_CLIENT_ID"
     redirect_uri: "https://andrewl1698.github.io/bac_prototype/spotify/callback.html"

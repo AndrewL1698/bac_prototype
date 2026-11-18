@@ -235,7 +235,8 @@ class TrackCandidate(BaseModel):
     mood_source: Literal["tags", "audio"] | None = None   # where valence/arousal came from; None = no mood
     tags: list[str] = []             # Last.fm/MusicBrainz tags used (best first, cleaned)
     score: float                     # final rank score
-    reason: str                      # short human-readable "why this song"
+    reason: str                      # short human-readable "why this song" (facts from the ranking)
+    why: str | None = None           # one LLM-written sentence (12.10); None = show `reason`
     duration_ms: int | None = None   # track length when known (sign-in data)
     sources: list[str] = []          # "export", "recent", "top:<time_range>"
     release_date: date | None = None  # album release date (sign-in data); the first day of its year/month when less precise
