@@ -96,7 +96,11 @@ Extension (2 weeks, see ROADMAP.md)
 - [ ] **18. Eval v2 (slim): more albums, with/without brief, song-pick mini study** (Track 4; ROADMAP item 8; spec TBD)
 - [ ] **22. Image-set <-> music contrastive model** (Track 3; ROADMAP F1 stage B; go/no-go on day 3; spec TBD)
 - [ ] **23. "My montages" gallery** (Track 4; ROADMAP F5; spec TBD)
-- Dropped in the 2-week re-scope (2026-11-07): 14 temporal emotion, 16 people-aware editing, 19 learned editing preferences, 20 9:16 and variable length, 21 FastAPI + timeline editor.
+- [ ] **24. Simple everyday UI** (Andrew; ROADMAP F6; `spec/24_simple_ui.md`; Track 4 reviews)
+  - [ ] 24.0 Gradio cleanup: 3-step flow at `/`, team lab at `/lab`, calmer Print Table look
+  - [ ] 24.1 React (TypeScript) frontend on `@gradio/client`, served from the same VM and share link
+  - [ ] 24.2 FastAPI + React switch, only on a trigger in spec 24 section 7
+- Dropped in the 2-week re-scope (2026-11-07): 14 temporal emotion, 16 people-aware editing, 19 learned editing preferences, 20 9:16 and variable length, 21 FastAPI + timeline editor (partly back as phase 24, 2026-11-25).
 
 ## Current work
 
@@ -106,6 +110,7 @@ Extension (2 weeks, see ROADMAP.md)
 | Director: hard "no people" filter | Keshav | director-avoid-people | 2026-11-15 | PR for review |
 | 13a. Beat This! mirror | Keshav | phase-13-beat-this-mirror | 2026-11-05 | PR #4; checkpoint cached on Drive; HF mirror upload pending (needs an HF write token) |
 | 15. Photo-album importance (CUFED; spec 15_cufed.md) | Shiven | phase-15-cufed-eval | 2026-11-10 | Track 2; days 1-3 merged (PR #6); days 4-7 done: photo ranker deployed (CUFED tau 0.305 vs 0.079), PR #10; days 8-10 optional |
+| 24. Simple everyday UI (docs first: spec 24, ROADMAP F6) | Andrew | phase-24-simple-ui-docs | 2026-11-25 | Track 4 (Keshav) to review the PR |
 
 ## Decisions
 
@@ -159,6 +164,7 @@ Extension (2 weeks, see ROADMAP.md)
 - 2026-11-05 | Andrew | Spotify redirect goes through a fixed GitHub Pages page (docs/spotify/callback.html) that sends the browser back only to *.gradio.live or localhost | share links change on every restart, and Spotify needs a fixed redirect URI
 - 2026-11-05 | Andrew | Spotify Development Mode limits accepted: owner on Premium, at most 5 allowlisted users | extended quota needs about 250k monthly users
 - 2026-11-05 | Keshav | Beat This! checkpoint is fetched by our code (not torch hub): Drive copy, then torch hub cache, then `music.beat_this.sources` in order (pinned HF mirror first, authors' host last); every copy must match the sha256 in config; a failed load retries after `retry_s` instead of never | the authors' host was down for the whole demo and a failure used to stick for the life of the app
+- 2026-11-25 | Andrew | Phase 21 partly back as phase 24 (ROADMAP F6): first a Gradio cleanup (3-step flow at `/`, today's full app as the team lab at `/lab`), then a React frontend on `@gradio/client` served from the same VM; a FastAPI backend only on a spec 24 trigger; the timeline editor stays out | everyday users see too many controls at once; the pipeline and its endpoints stay the same, so each stage is small and reversible
 
 ## Setup checklist
 
