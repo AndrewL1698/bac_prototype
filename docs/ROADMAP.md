@@ -60,6 +60,13 @@ Package `montage/songpick/`, an optional pre-step before the existing pipeline (
 ## F5. My montages gallery
 A simple saved-montages list: title, date, song, thumbnail, video link, and "reopen" to recut. It builds on the existing `Session` already persisted at `DATA_ROOT/sessions/<id>.json` (`montage/pipeline.py`). Index in SQLite on the shared Drive, written only by the app process (one writer at a time), per-person by `MONTAGE_USER`, no login. Personal media stays on Drive; the database is never committed.
 
+## F6. Simple everyday UI
+The app should look calm and obvious to someone who has never edited video. Spec: `spec/24_simple_ui.md` (phase 24, Andrew; Track 4 reviews).
+- **24.0 Gradio cleanup:** a 3-step flow at `/` (add photos/videos, pick a song, generate; brief optional), then the video, Export 1080p, and the Revise and Director panels. Today's full app moves to `/lab` for the team. Same Print Table look, calmer.
+- **24.1 React frontend** (TypeScript) on `@gradio/client`, served from the same Colab VM and share link; Spotify sign-in in a popup so connecting no longer reloads the page.
+- **24.2 FastAPI + React**, only if `@gradio/client` falls short, real users or scale need it, or someone has 3+ free days after the freeze.
+- Still out: the timeline editor. No pipeline or model changes.
+
 ## Two-week schedule
 
 | Days | Track 1: Song vibe (ML #1) | Track 2: Photo importance (ML #2) | Track 3: Contrastive song model (ML #3) | Track 4: Story + product (ML #4) |
@@ -82,7 +89,7 @@ Rules carried over from CLAUDE.md:
 - Learned editing preferences (preference logging, Bradley-Terry reward model, tuned planner weights).
 - People-aware editing (face embeddings, clustering, naming, people in the director).
 - 9:16 vertical output and variable length.
-- FastAPI layer and the timeline editor.
+- Timeline editor. FastAPI layer only via F6 stage 24.2 triggers.
 
 ## Open questions for the team
 - Track ownership: who takes Tracks 1-4?

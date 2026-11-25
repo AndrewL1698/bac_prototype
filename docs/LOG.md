@@ -381,3 +381,9 @@ Format:
 - Next: after merge, 12.9 (sentiment match from the song's audio, MERT head) and 12.10 ("why this song"). Small follow-up: add "cpop", "c pop", "chinese", "mandopop" to `configs/tag_mood.tsv` (k-pop is there; songs tagged only with these are ranked by CLIP alone).
 - Blockers: none.
 - Heads-up: CLAUDE.md section 11 changed (Last.fm, MusicBrainz). Config `songpick.vibe.album_mood_center` / `album_mood_scale` have new values. `AlbumVibe` gains `raw` (the mood before center/scale). New script `scripts/calibrate_album_mood.py`. The Connect Spotify button moved out of the song-pick accordion.
+
+## 2026-11-25 ET | Andrew | phase 24 | branch phase-24-simple-ui-docs
+- Done: docs for a simpler, calmer everyday UI (no code): new `docs/spec/24_simple_ui.md`, ROADMAP section F6, PLAN phase 24 (24.0 / 24.1 / 24.2), a Current work row and a Decision. Stages: 24.0 Gradio cleanup (3-step flow at `/`, today's full app as the team lab at `/lab`, Print Table look kept but calmer, labels unchanged); 24.1 React (TypeScript) frontend on `@gradio/client` served from the same VM and share link, with popup Spotify sign-in; 24.2 FastAPI + React only on a trigger (spec 24 section 7).
+- Next: Track 4 (Keshav) reviews the PR; then 24.0 on a new branch. In 24.1, CLAUDE.md's repo map and README gain `web/`.
+- Blockers: none.
+- Heads-up: phase 21 (FastAPI + timeline editor) is partly back as phase 24: a React frontend yes, FastAPI only on a trigger, timeline editor still out. 24.0 adds an `e2e` pytest marker (Playwright for Python). The generate/recut/export endpoint names and the first 11 outputs stay the contract the React app will use.
