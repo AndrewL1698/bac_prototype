@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from montage import config
+from montage import config, paths
 from montage.app import songpick_ui
 from montage.songpick import sentiment
 from montage.songpick.pick import NO_AUDIO, suggest
@@ -149,12 +149,18 @@ def test_ui_listens_only_when_ticked_and_mert_is_there(monkeypatch, ui, ticked, 
 
 # ---------- on Colab ----------
 
+# The trained head on the real DATA_ROOT, read at import: conftest points DATA_ROOT at an empty folder before tests run.
+REAL_HEAD = paths.data_root() / "weights" / config.get_config().music.emotion.head_weights
+
+
 @pytest.mark.gpu
 def test_song_mood_on_fixture_song(fixtures):
+    import shutil
+
     from conftest import gpu_available
-    from montage.music.emotion import mert_available
-    if not gpu_available() or not mert_available():
+    if not gpu_available() or not REAL_HEAD.exists():
         pytest.skip("no GPU or no MERT emotion head")
+    shutil.copy(REAL_HEAD, paths.weights_dir() / REAL_HEAD.name)
     va = sentiment.song_mood(fixtures / "song_sections.wav")
     assert va is not None and all(-1 <= x <= 1 for x in va)
     print(f"fixture song mood: valence {va[0]:.3f}, arousal {va[1]:.3f}")
