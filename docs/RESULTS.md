@@ -171,7 +171,23 @@ Do different albums get different songs? (2026-11-18, T4, throwaway script, curr
 
 - Different events get different songs. Our three eval/demo albums are photos from the same trip (CLIP cos 0.98; CUFED albums are 0.51-0.76 from Summer Trip), so the same shortlist for Summer Trip and sedona_1 is correct. The travel-only calibration told them apart only because its center sat between them.
 - The CLIP term alone barely moves between albums (Spearman 0.96-0.98 across our three). Centering the album embedding on the mean CUFED album lowers that only to 0.86-0.96, so it is not worth the extra moving part; the mood term carries most of the album-to-album difference.
-- Gap: "cpop", "c pop", "chinese" and "mandopop" are not in `tag_mood.tsv` (k-pop is), so songs tagged only with them are ranked by CLIP alone. Follow-up: add them.
+- Gap: "cpop", "c pop", "chinese" and "mandopop" are not in `tag_mood.tsv` (k-pop is), so songs tagged only with them are ranked by CLIP alone. Added in 12.9 (PR #15).
+
+## Song audio mood, 12.9 (phase 12)
+Song mood calibration (2026-11-26, T4; `scripts/calibrate_song_mood.py`): raw mood = the MERT emotion head's mean (valence, arousal) over a song. Fit on the 232 DEAM songs the head never trained on (174 test clips, 58 full songs); song mood = `tanh((raw - center) / scale)` with center = their mean and scale = their std.
+
+Config: `song_mood_center {valence 0.11, arousal 0.16}`, `song_mood_scale {valence 0.2, arousal 0.25}` (were the neutral placeholders `{0, 0}` / `{1, 1}`).
+
+| Song | Raw valence | Raw arousal | Valence | Arousal | Mood word |
+|---|---|---|---|---|---|
+| DEAM test (mean of 174) | +0.12 | +0.19 | | | |
+| DEAM full (mean of 58) | +0.09 | +0.07 | | | |
+| Calm - Spring Wilderness (demo) | -0.45 | -0.52 | -0.99 | -0.99 | melancholic |
+| Life is a Highway (demo) | +0.72 | +0.71 | +1.00 | +0.98 | upbeat |
+| deam_2019_energetic (eval) | +0.58 | +0.41 | +0.98 | +0.76 | upbeat |
+
+- The head's outputs sit in a narrow band (std 0.2-0.25), so without the calibration every song read as neutral.
+- Limit: DEAM is not chart pop. Our clear-cut songs saturate near +-1, so two upbeat pop songs may land close together; the ranking uses ranks of the match (`vibe._ranks`), which keeps their order. The offline study (12.10 PR) shows how well this separates 40 chart songs.
 
 ## Live vote (phase 11)
 _Runs live at the workshop (Rate tab); `python -m montage.eval.vote --analyze` summarizes the votes._

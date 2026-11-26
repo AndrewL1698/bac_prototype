@@ -277,8 +277,8 @@ songpick:                         # phase 12: pick a song from the user's listen
     budget_s: 90                  # no new song is analyzed after this many seconds; the rest keep their tag vibe
     # song mood = tanh((mean head output over the default excerpt - center) / scale). Calibrate with
     # scripts/calibrate_song_mood.py (DEAM test + full songs): center = their mean, scale = their std.
-    song_mood_center: {valence: 0.0, arousal: 0.0}
-    song_mood_scale: {valence: 1.0, arousal: 1.0}
+    song_mood_center: {valence: 0.11, arousal: 0.16}   # 2026-11-26, 232 DEAM songs (RESULTS.md)
+    song_mood_scale: {valence: 0.2, arousal: 0.25}
   why:                            # 12.10: one LLM sentence per suggested song (director.model; names, tags, moods only)
     enabled: true                 # needs the director's LLM (ANTHROPIC_API_KEY); otherwise the ranking reasons show
     max_words: 22
