@@ -389,6 +389,13 @@ Format:
 - Blockers: none (Colab not reachable from this session).
 - Heads-up: schema: `TrackCandidate.vibe_sent`, `TrackCandidate.mood_source`, `SongPick.vibe_source` "audio" (all optional). New config `songpick.sentiment`. `pick.suggest` gains `sentiment_scorer`; `vibe._reason` is now `vibe.reason_line`. CLAUDE.md section 11 notes that the opt-in fetches several songs.
 
+## 2026-11-18 ET | Andrew | phase 12.10 | branch phase-12-why (stacked on phase-12-sentiment)
+- Done: 12.10 "why this song": one call to the director's model per Suggest writes a sentence per song from names, tags and mood words only (never listening data); the factual reasons move under "Details"; any failure shows them as before. New `montage/songpick/why.py`; `AlbumVibe.tags` (the photos' most common zero-shot tags). Song-pick UI tests turn it off so they never call the API.
+- Done: offline song-pick study `montage/eval/songpick_study.py` + `configs/study_songs.tsv` (40 public songs, 10 per hand-labelled mood quadrant): tags vs audio vs both on the CUFED albums; mood agreement with the labels, tag-vs-audio Spearman, top songs per event type, Kendall tau.
+- Results: local full `pytest -q -m 'not network'`: 221 passed, 82 skipped, 1 failed (`test_job_stop`, fails on main too on macOS).
+- Next: Colab: `test_why_live` (api), run the study as a job (about 40 YouTube fetches on the spare-account cookies, approved with the plan), RESULTS.md table; then merge #15 first, this one after.
+- Blockers: none.
+- Heads-up: schema `TrackCandidate.why`; config `songpick.why`; CLAUDE.md section 11 now lists what the why line sends.
 ## 2026-11-26 ET | Andrew | phase 12.9 + 12.10 | branches phase-12-sentiment, phase-12-why
 - Done: Colab (T4) testing of PRs #15 and #16. Smoke `mert` PASS; song mood calibrated on 232 DEAM songs (center 0.11/0.16, scale 0.20/0.25, in config + RESULTS); song-pick tests 89 passed incl. the real-MERT gpu test; offline study ran (40/40 songs, 133 CUFED albums, RESULTS); full `pytest -q` 297 passed, 9 skipped, 1 failed (`test_render_timing`, 46 s vs the A100's 25 s limit). Fixes on the way: Keshav's shared-cache fix cherry-picked (4742b12), gpu song-mood test copies the trained head into the test DATA_ROOT, smoke mert check through `montage.music.emotion`, study no longer caches failed fetches.
 - Results: the MERT head reads energy, not valence: audio mood agrees with the hand label for upbeat 10/10 and sad 7/10 but intense 1/10 and warm 0/10 (tag vs audio Spearman arousal 0.78, valence 0.27). About 25 s per song (fetch + analysis) on a T4.

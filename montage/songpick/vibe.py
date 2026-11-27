@@ -43,6 +43,7 @@ class AlbumVibe:
     n_assets: int
     taken_at: list[datetime | None] = field(default_factory=list)
     raw: tuple[float, float] = (0.0, 0.0)  # (valence, arousal) before center/scale; for calibration
+    tags: list[str] = field(default_factory=list)  # what the photos show, most common first (for 12.10)
 
 
 def norm_tag(t: str) -> str:
@@ -96,8 +97,26 @@ def album_vibe(media_paths: list[str], progress: Callable[[float, str], None] | 
     arr = feats.arrays
     av = album_from_features(arr["emb"], feats.asset_ids, arr["mood_arousal_raw"], arr["mood_valence_raw"],
                              [a.taken_at for a in ms.assets])
+    av.tags = album_tags(arr["emb"], feats.asset_ids)
     log.info("songpick: album mood from %d assets: valence %.2f, arousal %.2f", av.n_assets, av.valence, av.arousal)
     return av
+
+
+def album_tags(emb: np.ndarray, asset_ids: Sequence[str]) -> list[str]:
+    """The zero-shot photo tags (`features.tags`) found on the most assets, best first; [] if that fails."""
+    from collections import Counter
+
+    from montage.features.tags import top_tags
+    try:
+        per_row = top_tags(np.asarray(emb), [str(i) for i in range(len(asset_ids))])
+    except Exception as e:  # noqa: BLE001  optional: only feeds the why-this-song line
+        log.warning("songpick: photo tags failed (%s)", type(e).__name__)
+        return []
+    per_asset: dict[str, set[str]] = {}
+    for i, a in enumerate(asset_ids):
+        per_asset.setdefault(a, set()).update(per_row[str(i)])
+    counts = Counter(t for tags in per_asset.values() for t in tags)
+    return [t for t, _ in sorted(counts.items(), key=lambda x: (-x[1], x[0]))][: get_config().songpick.why.photo_tags]
 
 
 # ---------- song side ----------

@@ -15,6 +15,14 @@ from montage.songpick import sentiment
 from montage.songpick.pick import NO_AUDIO, suggest
 from test_songpick_vibe import NOW, TAGS, album, fake_encode, scorer, top_lists
 
+
+@pytest.fixture(autouse=True)
+def _no_why_llm():
+    """The Suggest handler calls the director's LLM for why-this-song (12.10) when a key is set; keep it offline."""
+    with config.override({"songpick.why.enabled": False}):
+        yield
+
+
 FIX, GLUM, NEON = "fixture bloc|steady song", "glum owls|rainy window", "neon kites|beach party"
 # How the songs sound (valence, arousal), deliberately against their tags: Glum Owls sounds upbeat, Neon Kites sad.
 AUDIO = {FIX: (0.0, 0.0), GLUM: (0.7, 0.6), NEON: (-0.5, -0.6)}
@@ -145,6 +153,20 @@ def test_ui_listens_only_when_ticked_and_mert_is_there(monkeypatch, ui, ticked, 
     assert pick.vibe_source == expect and len(ui) == (1 if expect == "audio" else 0)
     if expect == "audio":
         assert md.startswith("Your songs that sound most like your photos.") and "Glum Owls" in choices[0][0]
+
+
+# ---------- offline study (montage/eval/songpick_study.py) ----------
+
+def test_study_songs_and_rankers():
+    from montage.eval import songpick_study as study
+    songs = study.study_songs()
+    assert len(songs) == 40 and {q for _, _, q in songs} == {"upbeat", "intense", "warm", "sad"}
+    assert study.quadrant((0.5, -0.2)) == "warm" and study.quadrant(None) is None
+    three = [("Neon Kites", "Beach Party", "upbeat"), ("Glum Owls", "Rainy Window", "sad"),
+             ("Fixture Bloc", "Steady Song", "warm")]
+    orders = study.rank(album("party"), three, TAGS, AUDIO, fake_encode)
+    assert orders["tags"][0] == NEON and orders["audio"][0] == GLUM and set(orders["both"]) == set(AUDIO)
+    assert orders["audio"] == [GLUM, FIX, NEON]
 
 
 # ---------- on Colab ----------

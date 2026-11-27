@@ -189,6 +189,32 @@ Config: `song_mood_center {valence 0.11, arousal 0.16}`, `song_mood_scale {valen
 - The head's outputs sit in a narrow band (std 0.2-0.25), so without the calibration every song read as neutral.
 - Limit: DEAM is not chart pop. Our clear-cut songs saturate near +-1, so two upbeat pop songs may land close together; the ranking uses ranks of the match (`vibe._ranks`), which keeps their order. The offline study (12.10 PR) shows how well this separates 40 chart songs.
 
+## Song-pick study, tags vs audio (phase 12, offline)
+2026-11-26, T4, `montage.eval.songpick_study` (background job, 19 min). 40 public songs, 10 per hand-labelled mood quadrant (`configs/study_songs.tsv`), against the 133 CUFED event albums. Tags from Last.fm/MusicBrainz (memory only), audio from the YouTube fetch (40 of 40, no cookies needed this time) and the calibrated MERT head. Evaluation only; nothing was tuned.
+
+| Mood source | Agrees with hand label | upbeat | intense | warm | sad |
+|---|---|---|---|---|---|
+| tags (lexicon) | 48% | - | - | - | - |
+| audio (MERT head) | 45% | 10/10 | 1/10 | 0/10 | 7/10 |
+
+Spearman tag vs audio mood over the 40 songs: valence 0.27, arousal 0.78. Kendall tau between the tags order and the both order, mean over albums: 0.59 (the audio moves the list a fair amount).
+
+Top 3 per ranker, a few event types (mean rank over that type's albums; all 22 in `DATA_ROOT/eval/songpick/report.md`):
+
+| Event type | Tags | Audio | Both |
+|---|---|---|---|
+| Sports | Wake Me Up, Get Lucky, Uptown Funk | Lose Yourself, HUMBLE., Killing in the Name | Wake Me Up, Yellow, Breathe |
+| Halloween | Wake Me Up, Someone You Loved, Uptown Funk | Breathe, Closer, Numb | Wake Me Up, Breathe, Get Lucky |
+| Wedding | Someone You Loved, Lovely Day, Wake Me Up | Three Little Birds, Perfect, Lovely Day | Wake Me Up, Lovely Day, Get Lucky |
+| GroupActivity | Wake Me Up, Get Lucky, Someone You Loved | Happy, Levitating, Don't Stop Me Now | Wake Me Up, Breathe, Riptide |
+| NatureTrip | Somewhere Over the Rainbow, Banana Pancakes, Hurt | when the party's over, What a Wonderful World, Fourth of July | Somewhere Over the Rainbow, Mad World, Banana Pancakes |
+| Christmas | Hurt, Someone Like You, The Sound of Silence | Someone You Loved, Someone Like You, No Surprises | Someone You Loved, Yellow, No Surprises |
+
+- The audio head reads energy well (arousal agrees with the tags, 0.78) but not valence: it folds valence into arousal, so intense songs (Killing in the Name, Enter Sandman) read upbeat and warm, quiet songs (Banana Pancakes, Three Little Birds) read sad. This matches DEAM, where valence and arousal are strongly correlated.
+- Even so, the audio column picks fitting songs for high-energy events (sports, Halloween, group activities) where the tag column falls back on the same few broadly tagged songs (Wake Me Up, Hurt and Yellow top many unrelated event types).
+- Both: the blend leans to songs that are fair on both terms (Yellow, Wake Me Up), so it is safer than audio alone but less distinctive. Candidate follow-ups (Andrew's call): weight valence lower than arousal in the audio match, or raise `w_sent` above 0.5.
+- Speed: fetch + full analysis about 25 s per song on a T4 (40 songs in 18.5 min, run serially). With `max_songs: 6` Suggest would take about 2.5 min, so `budget_s: 90` stops after about 4 songs (more when the parallel fetches overlap the analysis); the rest keep their tag vibe.
+
 ## Live vote (phase 11)
 _Runs live at the workshop (Rate tab); `python -m montage.eval.vote --analyze` summarizes the votes._
 

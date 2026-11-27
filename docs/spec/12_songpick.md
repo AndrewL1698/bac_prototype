@@ -18,8 +18,9 @@ Goal: "Pick the song for me."
 
 - 12.8 (PR #9, merged): the stage A vibe match (section 6b) in all three modes.
 - 12.9 (branch `phase-12-sentiment`): the sentiment match from the songs' audio (section 6c).
+- 12.10 (branch `phase-12-why`): the "why this song" line (section 6d).
 
-Still to do: Claude "why this song" (12.10), local library matching (optional).
+Still to do: local library matching (optional).
 
 **Where the audio comes from:** Spotify cannot provide it. Its SDKs only play inside Spotify's DRM player, preview clips and audio features were removed for new apps in Nov 2024, and its developer terms forbid syncing its content with video. The app uses Spotify only for listening *data*.
 - **YouTube (opt-in):** the audio is fetched from YouTube with `yt-dlp`. That breaks YouTube's terms, and the songs are copyrighted. Andrew accepted that risk for the class demo (PLAN Decisions, 2026-11-05). It is off by default and runs only after the user ticks the opt-in box and clicks **Use this song**.
@@ -210,8 +211,17 @@ Goal: rank the top songs by how they **sound**, not only by their tags. Runs onl
 - **Calibration** (`scripts/calibrate_song_mood.py`, on Colab): the head over the DEAM songs it never trained on (test clips + full songs) gives the center (mean) and scale (std); our demo/eval songs are printed under it. DEAM is not chart pop, so recheck once the app has heard real shortlists.
 - **Curve shape** (an energetic album prefers a song with a high-arousal peak) is not used: the head agrees poorly with moment-to-moment emotion (per-song arousal CCC about 0.1, RESULTS phase 9B).
 
+## 6d. "Why this song" (12.10)
+
+Goal: one plain sentence per suggested song, written for the user, instead of the factual ranking reason.
+
+- **Where** (`songpick/why.py::explain`, called by `songpick_ui.suggest` on the final shortlist): one call to the director's LLM (`director.model`, gate `director.llm_enabled()`), structured output `{"lines": [str]}`, one line per song in order, at most `why.max_words` words.
+- **What is sent** (Andrew, 2026-11-18; CLAUDE.md section 11): the photos' mood word and the `why.photo_tags` (5) zero-shot photo tags found on the most assets (`vibe.album_tags`, from `features.tags`); per song: artist, track, tags, mood word and whether it was heard in the audio or read from tags. Never play counts, play dates, release dates, ranks, album names, uris or the ranking reasons. A test lists these.
+- **Prompt:** only the given facts; never lyrics, the artist's life, dates or popularity.
+- **Result:** `TrackCandidate.why`. The app's radio shows `why`, and the factual reasons move to a "Details" list under it. Any failure (no key, refusal, wrong line count, timeout) or `why.enabled: false`: `why` stays `None` and the app shows `reason` as before. Logs carry counts only.
+
 ### Later
-- **12.10:** Claude "why this song" (text only) and the song-pick mini study.
+- **Song-pick study (offline):** `montage/eval/songpick_study.py`, tags vs audio vs both on the CUFED event albums (RESULTS.md).
 - **MusicBrainz first-release dates** instead of the remaster heuristic (optional; 1 request/s, names only).
 - **Optional:** local library matching (ID3 tags via `mutagen`, fuzzy names), for users who keep music files.
 - **Stage B** (contrastive image-set <-> music model) is its own phase.
@@ -236,6 +246,8 @@ Goal: rank the top songs by how they **sound**, not only by their tags. Runs onl
 
 `songpick.sentiment` (12.9): `enabled true`, `max_songs 6`, `w_sent 0.5`, `workers 3`, `budget_s 90`, `song_mood_center`, `song_mood_scale`.
 
+`songpick.why` (12.10): `enabled true`, `max_words 22`, `max_tokens 600`, `photo_tags 5`.
+
 `songpick.youtube`: `enabled false`, `max_results 6`, `duration_tol_s 10`, `min_song_s 60`, `max_song_s 900`, `min_match 0.55`, `topic_bonus 0.25`, `bad_words`, `bad_penalty 0.4`, `duration_penalty 0.4`, `cookies_file`, `cookies_env MONTAGE_YT_COOKIES`.
 
 ## 8. Schemas (`montage/types.py`, `docs/spec/schemas.md`)
@@ -244,6 +256,7 @@ New models: `ListeningEvent` (with `source`, `duration_ms`), `TopTrack`, `TrackC
 2026-11-08: `ListeningEvent`, `TopTrack`, `TrackCandidate` gain `release_date`, `release_precision`, `release_reliable`; `SongPick` gains `mode`, and `period_source` gains `release` / `release_widened`.
 2026-11-10 (12.8): `TrackCandidate` gains `vibe_clip`, `vibe_mood`, `valence`, `arousal`, `tags`; `SongPick` gains `album_valence`, `album_arousal`. All optional with defaults.
 2026-11-18 (12.9): `TrackCandidate` gains `vibe_sent` and `mood_source` ("tags" | "audio"); `SongPick.vibe_source` gains "audio". Optional with defaults.
+2026-11-18 (12.10): `TrackCandidate` gains `why` (optional).
 
 ## 9. Acceptance tests (`tests/test_songpick.py`, no marks, run locally)
 
@@ -292,3 +305,5 @@ New models: `ListeningEvent` (with `source`, `duration_ms`), `TopTrack`, `TrackC
   - blocked fetch, heuristic emotion, or the time budget -> the stage A order with the note; only the best `max_songs` are fetched; audio without tags;
   - release eligibility unchanged; the app listens only when ticked and the MERT head is present;
   - on Colab: `@pytest.mark.gpu` `song_mood` on the fixture song.
+- **`tests/test_songpick_why.py`** (12.10; fake client): the payload carries names, tags and moods and none of the listening data; `why` filled, `reason` kept; wrong line count, refusal, truncation and timeout leave `why` unset; off without the LLM or when disabled; the app shows `why` with the details below; photo tags count each asset once; `@pytest.mark.api` live call on Colab.
+- Song-pick UI tests turn `why` off (autouse fixture), so they never call the API when a key is set.
