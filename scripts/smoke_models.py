@@ -72,22 +72,16 @@ def aesthetic():
 
 @check("mert")
 def mert():
+    """Through the app's own feature code (montage.music.emotion), which copes with newer transformers."""
     import numpy as np
-    import torch
-    from transformers import AutoModel, Wav2Vec2FeatureExtractor
-    cfg = get_config().music.emotion
-    model = AutoModel.from_pretrained(cfg.model, trust_remote_code=True, revision=cfg.revision).eval()
-    fe = Wav2Vec2FeatureExtractor.from_pretrained(cfg.model, trust_remote_code=True, revision=cfg.revision)
-    dev = "cuda" if torch.cuda.is_available() else "cpu"
-    model.to(dev)
-    sr = fe.sampling_rate
-    x = fe(np.random.randn(5 * sr).astype(np.float32) * 0.1, sampling_rate=sr, return_tensors="pt")
-    with torch.no_grad():
-        out = model(**{k: v.to(dev) for k, v in x.items()}, output_hidden_states=True)
-    hs = out.hidden_states
-    assert len(hs) == 13 and hs[-1].shape[-1] == 768, f"{len(hs)} states, shape {tuple(hs[-1].shape)}"
     import transformers
-    return f"13 x {tuple(hs[-1].shape)} transformers {transformers.__version__}"
+
+    from montage.music.emotion import mert_available, mert_window_features
+    sr = get_config().music.mert_sr
+    feats = mert_window_features(np.random.randn(2, 5 * sr).astype(np.float32) * 0.1)
+    assert feats.shape == (2, 13, 768), f"features {feats.shape}"
+    head = "found" if mert_available() else "MISSING (weights/emotion_head.pt)"
+    return f"2 x 13 x 768, emotion head {head}, transformers {transformers.__version__}"
 
 
 @check("beat_this")

@@ -269,6 +269,16 @@ songpick:                         # phase 12: pick a song from the user's listen
       max_lookups: 10             # artists looked up per suggestion (one request each, cached per process)
       min_score: 90               # search match score (0-100) needed to trust the artist found
       timeout_s: 5
+  sentiment:                      # 12.9: the song's own audio mood (MERT head, music.emotion) vs the photos' mood
+    enabled: true                 # used only when the user ticks the YouTube box before Suggest songs
+    max_songs: 6                  # audio is fetched and analyzed for this many of the best stage A songs
+    w_sent: 0.5                   # vibe = weighted mean of the CLIP tag match (vibe.w_clip) and the audio mood match
+    workers: 3                    # parallel YouTube fetches (analysis runs one song at a time on the GPU)
+    budget_s: 90                  # no new song is analyzed after this many seconds; the rest keep their tag vibe
+    # song mood = tanh((mean head output over the default excerpt - center) / scale). Calibrate with
+    # scripts/calibrate_song_mood.py (DEAM test + full songs): center = their mean, scale = their std.
+    song_mood_center: {valence: 0.11, arousal: 0.16}   # 2026-11-26, 232 DEAM songs (RESULTS.md)
+    song_mood_scale: {valence: 0.2, arousal: 0.25}
   spotify:                        # "Connect Spotify" (OAuth with PKCE; read-only listening data)
     client_id_env: "SPOTIFY_CLIENT_ID"
     redirect_uri: "https://andrewl1698.github.io/bac_prototype/spotify/callback.html"

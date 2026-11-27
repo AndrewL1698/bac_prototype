@@ -390,6 +390,16 @@ class VibeCfg(_B):
     musicbrainz: MusicbrainzCfg
 
 
+class SentimentCfg(_B):
+    enabled: bool
+    max_songs: int
+    w_sent: float
+    workers: int
+    budget_s: float
+    song_mood_center: dict[str, float]
+    song_mood_scale: dict[str, float]
+
+
 class SongpickCfg(_B):
     min_play_ms: int
     full_play_ms: int
@@ -410,6 +420,7 @@ class SongpickCfg(_B):
     max_window_days: float
     release: ReleaseCfg
     vibe: VibeCfg
+    sentiment: SentimentCfg
     spotify: SpotifyCfg
     youtube: YoutubeCfg
 

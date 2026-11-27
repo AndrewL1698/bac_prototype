@@ -243,10 +243,12 @@ class TrackCandidate(BaseModel):
     lift: float                      # period share vs whole-history share, smoothed (1 = as usual)
     affinity: float                  # [0,1], max-normalized over the candidates of one pick
     vibe: float | None = None        # [0,1] combined vibe match (12.8 stage A: tags); None = not computed
-    vibe_clip: float | None = None   # [0,1] CLIP match of the song's tags vs the photos (min-max over the scored pool)
-    vibe_mood: float | None = None   # [0,1] 1 - valence/arousal distance, song tags vs photos' mood
-    valence: float | None = None     # [-1,1] song valence from its tags (tag_mood lexicon); None = no mood tag
-    arousal: float | None = None     # [-1,1] song arousal from its tags
+    vibe_clip: float | None = None   # [0,1] CLIP match of the song's tags vs the photos (rank-normalized over the scored pool)
+    vibe_mood: float | None = None   # [0,1] 1 - valence/arousal distance, song tags vs photos' mood (rank-normalized)
+    vibe_sent: float | None = None   # [0,1] same, the song's audio mood (MERT head, 12.9) vs photos' mood (rank-normalized)
+    valence: float | None = None     # [-1,1] song valence (from its audio when mood_source is "audio", else its tags)
+    arousal: float | None = None     # [-1,1] song arousal
+    mood_source: Literal["tags", "audio"] | None = None   # where valence/arousal came from; None = no mood
     tags: list[str] = []             # Last.fm/MusicBrainz tags used (best first, cleaned)
     score: float                     # final rank score
     reason: str                      # short human-readable "why this song"
@@ -264,7 +266,7 @@ class SongPick(BaseModel):
     n_events: int                    # music plays in the cleaned history
     n_events_window: int             # of those, inside the period
     candidates: list[TrackCandidate] # shortlist, best first
-    vibe_source: Literal["none", "tags", "contrastive"] = "none"
+    vibe_source: Literal["none", "tags", "audio", "contrastive"] = "none"   # audio: some songs ranked by their sound (12.9)
     album_valence: float | None = None   # [-1,1] the photos' mood (absolute CLIP mood poles); None = not computed
     album_arousal: float | None = None
     notes: list[str] = []            # warnings (widened period, few plays, no dates)

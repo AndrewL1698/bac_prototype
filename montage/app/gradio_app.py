@@ -287,11 +287,11 @@ def build_app():
         return songpick_ui.paste_code(text)
 
     @friendly
-    def on_sp_suggest(files, album, hist_files, sp, mode, progress=gr.Progress()):
+    def on_sp_suggest(files, album, hist_files, sp, mode, yt_ok, progress=gr.Progress()):
         progress(0.02, desc="reading your photos")
         hist = [f if isinstance(f, str) else f.name for f in (hist_files or [])]
         choices, pick, md = songpick_ui.suggest(media_list(files, album), hist or None, sp, mode,
-                                                progress=lambda f, m: progress(f, desc=m))
+                                                progress=lambda f, m: progress(f, desc=m), youtube_ok=bool(yt_ok))
         return gr.Radio(choices=choices, value=choices[0][1] if choices else None), pick, md
 
     @friendly
@@ -335,13 +335,14 @@ def build_app():
                     from montage.config import get_config as _cfg
                     sp_mode = gr.Radio(label="How to pick", choices=songpick_ui.MODE_CHOICES,
                                        value=_cfg().songpick.default_mode)
-                    sp_suggest = gr.Button("Suggest songs")
                     sp_hist = gr.File(label="Your Spotify history (data export JSON files)", file_count="multiple",
                                       file_types=[".json"], visible=_cfg().songpick.default_mode == "export")
+                    sp_yt = gr.Checkbox(label="Fetch the audio of the top suggested songs from YouTube, to match how "
+                                              "they sound (only for songs you're allowed to use)",
+                                        value=_cfg().songpick.youtube.enabled)
+                    sp_suggest = gr.Button("Suggest songs")
                     sp_choice = gr.Radio(label="Suggested songs", choices=[])
                     sp_md = gr.Markdown("")
-                    sp_yt = gr.Checkbox(label="Fetch the song's audio from YouTube (only for songs you're allowed to use)",
-                                        value=_cfg().songpick.youtube.enabled)
                     sp_use = gr.Button("Use this song")
                     with gr.Accordion("Spotify page asked you to paste a code?", open=False):
                         sp_code = gr.Textbox(label="Code from the Spotify sign-in page")
@@ -433,7 +434,7 @@ def build_app():
                          ).success(None, [sp_url_out], None, js="(u) => { if (u) { window.location.href = u; } }")
         sp_code_btn.click(on_sp_paste, [sp_code], [sp_state, sp_status])
         sp_mode.change(lambda m: gr.update(visible=m == "export"), [sp_mode], [sp_hist])
-        sp_suggest.click(on_sp_suggest, [files, album, sp_hist, sp_state, sp_mode], [sp_choice, sp_pick, sp_md])
+        sp_suggest.click(on_sp_suggest, [files, album, sp_hist, sp_state, sp_mode, sp_yt], [sp_choice, sp_pick, sp_md])
         sp_use.click(on_sp_use, [sp_choice, sp_pick, sp_yt], [song_file, song_choice, sp_md, song_src])
         gen_btn.click(on_generate, [files, album, song_file, song_choice, brief, seed, target_len, excerpt_start,
                                     thumbs, system, ui], outs, api_name="generate", show_progress_on=video)
