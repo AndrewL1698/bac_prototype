@@ -60,7 +60,8 @@ def cand(artist: str, track: str) -> TrackCandidate:
 
 
 def audio_moods(songs: list[tuple[str, str, str]]) -> dict[str, tuple[float, float]]:
-    """Standardized audio mood per song key; raw moods cached in moods.json, so a rerun fetches nothing new."""
+    """Standardized audio mood per song key; raw moods cached in moods.json, so a rerun fetches only the songs that
+    failed (e.g. YouTube blocked them before the cookies were set)."""
     from montage.songpick import youtube
     path = out_dir() / "moods.json"
     raw: dict[str, list[float] | None] = json.loads(path.read_text()) if path.exists() else {}
@@ -74,7 +75,8 @@ def audio_moods(songs: list[tuple[str, str, str]]) -> dict[str, tuple[float, flo
                 log.warning("study song %d: %s", i, type(e).__name__)
                 va = None
             raw[k] = list(va) if va is not None else None
-            paths.atomic_write(path, lambda p: Path(p).write_text(json.dumps(raw, indent=1)))
+            done = {k: v for k, v in raw.items() if v is not None}   # failures are retried on the next run
+            paths.atomic_write(path, lambda p: Path(p).write_text(json.dumps(done, indent=1)))
         jobs.report(0.05 + 0.6 * (i + 1) / len(songs), f"audio mood {i + 1}/{len(songs)}")
     return {k: sentiment.standardize(tuple(v)) for k, v in raw.items() if v is not None}
 
